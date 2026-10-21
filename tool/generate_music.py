@@ -13,6 +13,11 @@ v2에서 다듬은 것:
 - 템포: 유아가 편하게 듣도록 조금 느리게
 - 계절 특징: 봄=밝은 실로폰과 새소리, 여름=스틸드럼과 통통 튀는 리듬,
   가을=기타와 따뜻한 낮은 현, 겨울=첼레스타와 종소리·썰매 방울
+v3 (음색만 바꿈, 멜로디·화성·곡 구조·이음매·음량은 그대로):
+- 사용자가 고른 참고 음원의 "느낌"만 따라 악기를 바꿨다 (참고 음원의 음이나 샘플은 쓰지 않음)
+- 멜로디: 사인에 가까운 오카리나·휘슬·리코더 (숨소리 어택, 고르게 이어지는 음, 봄은 넓은 비브라토)
+- 화음: 떨림 없는 사인 오르간, 베이스: 둥근 사인, 반주: 우쿨렐레식 짧은 튕김과 글로켄
+- 잔향: 아주 짧고 작게 (거의 마른 소리)
 """
 
 import math
@@ -21,6 +26,7 @@ import random
 import subprocess
 import tempfile
 import wave
+from functools import partial
 
 import numpy as np
 from scipy.signal import butter, lfilter
@@ -222,6 +228,109 @@ def chirp(f0=2600):
     f = f0 * (1 + 0.25 * np.sin(np.pi * t / 0.09))
     s = np.sin(2 * np.pi * np.cumsum(f) / SR)
     return s * np.sin(np.pi * t / 0.09) ** 2
+
+
+# ---------------- v3 악기: 참고 음원처럼 맑은 사인 계열 + 짧은 튕김, 거의 마른 소리 ----------------
+# 참고 음원 분석(요약): 멜로디는 배음이 거의 없는 사인에 가까운 관악기(오카리나·휘슬 느낌,
+# 2배음 -14~-18dB, 3배음 이하 -60dB), 어택 30~80ms, 끝까지 고르게 이어지고 봄은 넓은 비브라토.
+# 화음은 떨림 없는 사인 오르간, 베이스는 둥근 사인, 반주는 밝은 배음이 짧게 사라지는
+# 우쿨렐레/칼림바식 튕김(높은 성분 -6dB 35~65ms, -20dB 180~240ms), 반짝이는 글로켄.
+# 잔향은 거의 없다(음이 끊기면 바로 조용해짐), 모노.
+
+def _gate(t, dur, rel):
+    """음 길이만큼 유지하고 rel초 동안 부드럽게 끝낸다"""
+    x = np.clip((dur + rel - t) / rel, 0, 1)
+    return 0.5 - 0.5 * np.cos(np.pi * x)
+
+
+def _vib_phase(f, t, rate, cents, delay=0.12):
+    """비브라토는 음이 자리잡은 뒤에 천천히 들어온다"""
+    depth = 2 ** (cents / 1200) - 1
+    ramp = np.clip((t - delay) / 0.2, 0, 1)
+    inst = f * (1 + depth * ramp * np.sin(2 * np.pi * rate * t))
+    return 2 * np.pi * np.cumsum(inst) / SR
+
+
+def ocarina(f, dur, vel=1.0, vib=30, rate=5.0, h2=0.18):
+    """오카리나·휘슬: 거의 순수한 사인 + 약한 2배음, 숨소리 어택, 고르게 이어짐"""
+    rel = 0.08
+    hold = dur * 0.94
+    n = int(SR * (hold + rel + 0.02))
+    t = _t(n)
+    ph = _vib_phase(f, t, rate, vib)
+    s = np.sin(ph) + h2 * np.sin(2 * ph) + 0.012 * np.sin(3 * ph)
+    # 첫 30ms의 아주 작은 숨소리 (음 높이 근처 대역 잡음)
+    r = np.random.default_rng(int(f * 10) + int(dur * 1000))
+    lo, hi = min(f * 1.5, 9000), min(f * 4, 10000)
+    b, a = butter(2, [lo / (SR / 2), hi / (SR / 2)], btype="band")
+    s += 0.05 * vel * lfilter(b, a, r.uniform(-1, 1, n)) * np.exp(-t / 0.03)
+    env = _attack(t, 0.045) * (0.88 + 0.12 * np.exp(-t / 0.25)) * _gate(t, hold, rel)
+    return s * env
+
+
+def recorder(f, dur, vel=1.0):
+    """부드러운 리코더: 삼각파에 가까운 배음, 빠른 어택 뒤 천천히 작아짐 (가을 참고 음원)"""
+    rel = 0.1
+    hold = dur * 0.95
+    n = int(SR * (hold + rel + 0.02))
+    t = _t(n)
+    ph = _vib_phase(f, t, 2.0, 5, delay=0.2)
+    s = np.sin(ph) + 0.28 * np.sin(2 * ph) + 0.05 * np.sin(3 * ph) + 0.035 * np.sin(4 * ph)
+    env = _attack(t, 0.02) * (0.32 + 0.68 * np.exp(-t / 0.28)) * _gate(t, hold, rel)
+    return s * env * (0.9 + 0.1 * vel)
+
+
+def uke(f, dur, vel=1.0):
+    """우쿨렐레·칼림바식 튕김: 배음이 풍부하지만 높은 배음은 수십 ms 안에 사라진다"""
+    n = int(SR * (dur + 0.9))
+    t = _t(n)
+    s = np.zeros(n)
+    pos = 0.2  # 튕기는 자리 (배음 색깔)
+    for k in range(1, 13):
+        if f * k > 9000:
+            break
+        amp = abs(math.sin(math.pi * k * pos)) / k ** 1.05
+        tau = 0.55 / (1 + 0.9 * (k - 1)) ** 1.1
+        s += amp * np.sin(2 * np.pi * f * k * t + 0.3 * k) * np.exp(-t / tau)
+    s *= _attack(t, 0.003)
+    s *= _gate(t, dur + 0.35, 0.3)
+    return s * (0.8 + 0.2 * vel)
+
+
+def glock(f, dur, vel=1.0):
+    """작은 글로켄: 맑은 사인 + 금속 배음 한 줄, 짧게"""
+    n = int(SR * (dur + 0.8))
+    t = _t(n)
+    s = (_partial(f, 1, t) * np.exp(-t / 0.4)
+         + 0.1 * vel * _partial(f, 2.76, t) * np.exp(-t / 0.06)
+         + 0.04 * vel * _partial(f, 5.4, t) * np.exp(-t / 0.02))
+    return s * _attack(t, 0.002)
+
+
+def round_bass(f, dur, sustain=False):
+    """둥근 사인 베이스: 음 길이만큼 고르게, 끝은 짧게 닫힌다"""
+    rel = 0.05 if not sustain else 0.12
+    n = int(SR * (dur + rel + 0.02))
+    t = _t(n)
+    s = np.sin(2 * np.pi * f * t) + 0.22 * np.sin(4 * np.pi * f * t) + 0.05 * np.sin(6 * np.pi * f * t)
+    e = _attack(t, 0.012 if not sustain else 0.03) * _gate(t, dur * 0.92, rel)
+    if not sustain:
+        e *= 0.75 + 0.25 * np.exp(-t / 0.12)  # 살짝 튕기는 머리
+    return s * e
+
+
+def sine_pad(freqs, dur, dark=False):
+    """떨림 없는 사인 오르간 화음 (참고 음원의 맑은 화음 줄)"""
+    rel = 0.12
+    n = int(SR * (dur + rel + 0.02))
+    t = _t(n)
+    out = np.zeros(n)
+    for f in freqs:
+        out += np.sin(2 * np.pi * f * t) + 0.1 * np.sin(4 * np.pi * f * t)
+        if not dark:
+            out += 0.025 * np.sin(6 * np.pi * f * t)
+    e = _attack(t, 0.04) * _gate(t, dur * 0.97, rel)
+    return out * e / len(freqs)
 
 
 # ---------------- 작곡 (첫 버전 그대로) ----------------
@@ -437,7 +546,7 @@ def render(name, *, key, bpm, prog, rhythms, lead, seed, swing=0.0,
 
         # 화음 패드 (ii·V는 7음 더하기)
         voicing = pad_voicing(tonic, deg, voicing, seventh=deg in (1, 4))
-        put("pad", pad([hz(m) for m in voicing], bar_len, dark=dark_pad), t0, 1.0)
+        put("pad", sine_pad([hz(m) for m in voicing], bar_len, dark=dark_pad), t0, 1.0)
 
         # 베이스
         root = bass_note(deg)
@@ -459,10 +568,11 @@ def render(name, *, key, bpm, prog, rhythms, lead, seed, swing=0.0,
             pat = [(0, root, 2), (2, fifth, 2), (4, root + 12 if root + 12 <= 55 else root, 2),
                    (6, approach, 2)]
         for slot, m, d in pat:
-            put("bass", pizz_bass(hz(m), eighth * d * 0.9, sustain=bass == "sustain"),
+            put("bass", round_bass(hz(m), eighth * d * 0.9, sustain=bass == "sustain"),
                 t0 + when(slot), 1.0)
 
-        # 분산 화음 (첫 버전의 음 그대로, 악기만 바꿈)
+        # 분산 화음 (첫 버전의 음·음역 그대로, v3에서 악기만 바꿈)
+        #   celesta → 글로켄, marimba·offbeat → 우쿨렐레(같은 음역), guitar·harp → 우쿨렐레(한 옥타브 아래)
         apat = [0, 1, 2, 1, 0, 2, 1, 2]
         for k, p in enumerate(apat):
             if section_b and k % 2 == 1 and arp != "offbeat":
@@ -471,13 +581,13 @@ def render(name, *, key, bpm, prog, rhythms, lead, seed, swing=0.0,
                 continue
             f = hz(72 + tonic + tones[p] + (12 if k % 4 == 3 else 0))
             if arp == "celesta":
-                sig = celesta(f, eighth)
+                sig = glock(f, eighth, vel=0.7)
             elif arp in ("marimba", "offbeat"):
-                sig = marimba(f, eighth, vel=0.6)
+                sig = uke(f, eighth, vel=0.6)
             elif arp == "guitar":
-                sig = pluck(f / 2, eighth, rng, vel=0.5)
+                sig = uke(f / 2, eighth, vel=0.5)
             else:
-                sig = harp(f / 2 if k % 4 != 3 else f, eighth)
+                sig = uke(f / 2 if k % 4 != 3 else f, eighth, vel=0.6)
             put("arp", sig, t0 + when(k), 0.9 if k % 4 == 0 else 0.7)
 
         # 멜로디
@@ -535,15 +645,16 @@ def render(name, *, key, bpm, prog, rhythms, lead, seed, swing=0.0,
         return np.sqrt(np.mean(x ** 2)) + 1e-12
 
     # 층별 크기 (멜로디 기준 dB)
-    level = {"lead": 0, "arp": -11, "pad": -14, "bass": -7, "perc": -19}
+    level = {"lead": 0, "arp": -11, "pad": -14, "bass": -9, "perc": -21}
     if lead is pluck:
         level["arp"] = -13
     norm = {k: L[k] / rms(L[k]) * 10 ** (level[k] / 20) for k in L}
     dry = sum(norm.values())
     send = sum(norm[k] * s for k, s in
                (("lead", .35), ("arp", .45), ("pad", .5), ("perc", .2), ("bass", .08)))
-    ir = make_ir(1.6 if name in ("winter", "home") else 1.3, seed)
-    mix = dry + 0.32 * circ_reverb(send, ir)
+    # v3: 참고 음원처럼 거의 마른 소리. 아주 짧은 방 울림만 조금 (음이 끝나면 바로 조용해진다)
+    ir = make_ir(1.0 if name in ("winter", "home") else 0.8, seed)
+    mix = dry + 0.13 * circ_reverb(send, ir)
 
     # 마무리 EQ: 아주 낮은 소리와 귀를 찌르는 높은 소리를 줄인다
     b, a = butter(2, 45 / (SR / 2), btype="high")
@@ -584,27 +695,27 @@ if __name__ == "__main__":
     gentle = [[2, 2, 2, 2], [3, 1, 2, 2], [2, 1, 1, 4], [2, 2, 4]]
     jingly = [[2, 2, 2, 2], [1, 1, 2, 2, 2], [2, 2, 1, 1, 2], [2, 2, 4]]
     # 화음 진행 (음계 도수: 0=I 3=IV 4=V 5=vi 1=ii)
-    # 봄: 밝은 C장조, 실로폰 + 첼레스타 반짝임 + 새소리
+    # 봄: 밝은 C장조, 오카리나(넓은 비브라토) + 글로켄 반짝임 + 새소리
     render("spring", key="C", bpm=112, prog=[0, 4, 5, 3, 0, 4, 3, 4],
-           rhythms=bouncy, lead=marimba, seed=11, drums="pop", arp="celesta",
+           rhythms=bouncy, lead=partial(ocarina, vib=40, rate=5.0), seed=11, drums="pop", arp="celesta",
            bass="bounce", extras=("birds",))
-    # 여름: 경쾌한 F장조, 스틸드럼 + 엇박 실로폰 + 셰이커·손북
+    # 여름: 경쾌한 F장조, 휘슬 + 엇박 우쿨렐레 + 셰이커·손북
     render("summer", key="F", bpm=120, prog=[0, 3, 4, 0, 5, 3, 1, 4],
-           rhythms=island, lead=steel, seed=23, drums="island", arp="offbeat",
+           rhythms=island, lead=partial(ocarina, vib=18, rate=5.5, h2=0.12), seed=23, drums="island", arp="offbeat",
            bass="calypso")
-    # 가을: 따뜻한 G장조, 기타 + 낮고 어두운 현 + 길게 긋는 베이스, 흔들리는 박자
+    # 가을: 따뜻한 G장조, 리코더 + 우쿨렐레 + 길게 이어지는 베이스, 흔들리는 박자
     render("autumn", key="G", bpm=96, prog=[0, 5, 3, 4, 0, 5, 1, 4],
-           rhythms=gentle, lead=pluck, seed=37, swing=0.33, drums="soft",
+           rhythms=gentle, lead=recorder, seed=37, swing=0.33, drums="soft",
            arp="guitar", bass="sustain", dark_pad=True)
-    # 겨울: D장조, 첼레스타 + 썰매 방울 + 종소리
+    # 겨울: D장조, 부드러운 플루트 + 우쿨렐레 + 썰매 방울 + 종소리
     render("winter", key="D", bpm=104, prog=[0, 3, 0, 4, 5, 3, 1, 4],
-           rhythms=jingly, lead=celesta, seed=41, drums="jingle", arp="harp",
+           rhythms=jingly, lead=partial(ocarina, vib=15, rate=4.5, h2=0.1), seed=41, drums="jingle", arp="harp",
            bass="walk", extras=("chimes",))
-    # 대기화면: 실로폰과 하프, 차분하게
+    # 대기화면: 오카리나와 우쿨렐레, 차분하게
     render("home", key="F", bpm=100, prog=[0, 5, 3, 4, 0, 5, 3, 4],
-           rhythms=gentle, lead=marimba, seed=53, drums="soft", arp="harp",
+           rhythms=gentle, lead=partial(ocarina, vib=25, rate=4.5), seed=53, drums="soft", arp="harp",
            bass="sustain")
-    # 상점: 첼레스타, 통통 튀게
+    # 상점: 리코더와 우쿨렐레, 통통 튀게
     render("shop", key="G", bpm=112, prog=[0, 3, 4, 0, 5, 1, 4, 0],
-           rhythms=bouncy, lead=celesta, seed=67, drums="pop", arp="marimba",
+           rhythms=bouncy, lead=recorder, seed=67, drums="pop", arp="marimba",
            bass="bounce")

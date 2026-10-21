@@ -6,7 +6,7 @@
 - 모든 소리는 둥근 어택(클릭 없음)과 부드러운 끝(페이드)으로 만든다.
 - 소리마다 들리는 크기(K-가중 순간 음량)를 정해 두고 맞춘다. 최대 음량은 -3 dBFS 아래.
   정답·팡파르(-18)가 가장 크고, 코인·사기(-19), 도장·다시 해 봐요(-21)는 조금 작고 부드럽게,
-  자주 나는 누르기 소리(-25)는 가장 작게.
+  캐릭터 콕 찌르기(-21)는 도장과 같은 크기, 자주 나는 누르기 소리(-25)는 가장 작게.
 - 짧은 잔향을 살짝 더해 따뜻하게.
 
 사용법: python3 tool/generate_sfx.py  (프로젝트 루트에서 실행, numpy·scipy 필요)
@@ -53,6 +53,20 @@ def tone(f0, dur, f1=None, decay=6.0, harmonics=(1.0, 0.25, 0.08), vibrato=0.0, 
             s += h * np.sin(phase * (k + 1))
     env = np.exp(-decay * t) * _rise(t, attack)
     env *= np.clip((dur - t) / 0.015, 0, 1)  # 끝도 둥글게
+    return s * env
+
+
+def boing(f0, dur, wobble=0.22, rate=16.0, settle=0.07, lift=1.35, decay=9.0):
+    """통통 튀는 '뽀잉': 위로 살짝 튀었다가 용수철처럼 흔들리며 제자리로 돌아오는 음."""
+    n = int(dur * RATE)
+    t = _t(n)
+    jump = lift ** np.exp(-t / 0.025) - 1  # 처음 25ms 동안 위로 톡 튀어 오름
+    spring = wobble * np.exp(-t / settle) * np.sin(2 * np.pi * rate * t)
+    f = f0 * (1 + jump + spring)
+    phase = 2 * np.pi * np.cumsum(f) / RATE
+    s = np.sin(phase) + 0.18 * np.sin(2 * phase) + 0.05 * np.sin(3 * phase)
+    env = np.exp(-decay * t) * _rise(t, 0.003)
+    env *= np.clip((dur - t) / 0.03, 0, 1)
     return s * env
 
 
@@ -146,6 +160,12 @@ def main():
     # 터치: 비눗방울 "뽁" (자주 나므로 가장 작게)
     save("tap.wav", mix([(0, tone(520, .09, f1=820, decay=30, harmonics=(1, .12), attack=.0015))],
                         .11, loudness=-25, wet=0))
+    # 캐릭터 콕 찌르기: "뽀잉~" 말랑한 공이 통 튀는 소리 + 위로 작은 '뿅' (짧고 귀엽게)
+    save("poke.wav", mix([
+        (0.000, noise_tap(.012, 1800, seed=11) * .15),
+        (0.000, boing(G5, .26)),
+        (0.085, tone(D6, .16, f1=G6, decay=18, harmonics=(1, .15), attack=.003) * .32),
+    ], .32, loudness=-21, wet=.06))
     # 코인: "띠링" 미 → 도(높은)
     save("coin.wav", mix([
         (0.00, tone(E6, .14, decay=14, harmonics=BELL)),
