@@ -16,7 +16,9 @@ class WebAudioEngine {
   final Map<String, Future<web.AudioBuffer?>> _cache = {};
   final List<web.AudioBufferSourceNode> _voiceNodes = [];
   web.AudioBufferSourceNode? _musicNode;
+  web.GainNode? _trackGain; // 곡마다 따로: 부드럽게 커지고 작아지기
   String? _musicUrl;
+  double? _musicLoop;
   final double _musicVolume = .32;
   bool _ducked = false;
   int _token = 0;
@@ -70,7 +72,7 @@ class WebAudioEngine {
       final want = _musicUrl;
       if (want != null && _musicNode == null) {
         _musicUrl = null;
-        playMusic(want);
+        playMusic(want, loopSeconds: _musicLoop);
       }
     }, onError: (_) => _resuming = null);
   }
@@ -133,19 +135,24 @@ class WebAudioEngine {
       _voiceNodes.add(src);
       t += buffers[i]!.duration;
     }
-    _duck(true);
+    duck(true);
     _unduck?.cancel();
     final left = Duration(
       milliseconds: ((t - ctx.currentTime) * 1000).round() + 150,
     );
-    _unduck = Timer(left, () => _duck(false));
+    _unduck = Timer(left, () => duck(false));
     // 말이 다 끝날 때까지 기다린다 (그래야 다음 화면이 말을 끊지 않는다)
     await Future<void>.delayed(left);
     return true;
   }
 
   void stopVoice({bool keepToken = false}) {
-    if (!keepToken) _token++;
+    if (!keepToken) {
+      _token++;
+      // 말을 멈추면 줄여 둔 음악도 바로 돌려놓는다
+      _unduck?.cancel();
+      if (_ducked) duck(false);
+    }
     for (final n in _voiceNodes) {
       try {
         n.stop();
@@ -156,10 +163,13 @@ class WebAudioEngine {
 
   // ---------------- 배경 음악 ----------------
 
-  Future<void> playMusic(String url) async {
+  /// [loopSeconds]: 곡 한 바퀴의 정확한 길이. MP3는 앞뒤에 아주 짧은 빈 소리가 붙을 수 있는데,
+  /// 브라우저가 이것을 지우지 않으면 반복할 때마다 '툭' 끊긴다. 그럴 때만 반복 구간을 잘라 맞춘다.
+  Future<void> playMusic(String url, {double? loopSeconds}) async {
     if (_musicUrl == url && _musicNode != null) return;
     stopMusic();
     _musicUrl = url;
+    _musicLoop = loopSeconds;
     final ctx = _context();
     final buf = await _load(url);
     if (buf == null || _musicUrl != url) return;
@@ -167,34 +177,70 @@ class WebAudioEngine {
     final src = ctx.createBufferSource()
       ..buffer = buf
       ..loop = true;
-    src.connect(_musicGain!);
-    // 부드럽게 커지기
-    final g = _musicGain!.gain;
-    g.cancelScheduledValues(ctx.currentTime);
-    g.setValueAtTime(0, ctx.currentTime);
-    g.linearRampToValueAtTime(_target, ctx.currentTime + 1.2);
+    if (loopSeconds != null) _fitLoop(src, buf, loopSeconds);
+    final gain = ctx.createGain()..connect(_musicGain!);
+    src.connect(gain);
+    // 부드럽게 커지기 (목소리 때문에 줄이는 것은 _musicGain이 따로 맡는다)
+    final now = ctx.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(1, now + 1.5);
     src.start();
     _musicNode = src;
+    _trackGain = gain;
   }
 
+  /// 디코딩된 곡이 원래 길이보다 길면(브라우저가 MP3 앞뒤의 빈 소리를 지우지 않은 경우),
+  /// 앞의 빈 소리(LAME 표준: 인코더 576 + 디코더 529 = 1105샘플)를 건너뛰고 정확한 길이만 반복한다.
+  static void _fitLoop(
+    web.AudioBufferSourceNode src,
+    web.AudioBuffer buf,
+    double loopSeconds,
+  ) {
+    final extra = buf.duration - loopSeconds;
+    if (extra < .002 || extra > .2) return;
+    const mp3Delay = 1105 / 44100;
+    final lead = extra >= mp3Delay ? mp3Delay : 0.0;
+    src
+      ..loopStart = lead
+      ..loopEnd = lead + loopSeconds;
+  }
+
+  /// 음악을 부드럽게 줄이며 끈다 (곡을 바꿀 때도 앞 곡이 스르르 사라진다)
   void stopMusic() {
     _musicUrl = null;
-    try {
-      _musicNode?.stop();
-    } catch (_) {}
+    final node = _musicNode;
+    final gain = _trackGain;
     _musicNode = null;
+    _trackGain = null;
+    if (node == null) return;
+    final ctx = _ctx;
+    if (ctx == null || gain == null || ctx.state != 'running') {
+      try {
+        node.stop();
+      } catch (_) {}
+      return;
+    }
+    final now = ctx.currentTime;
+    final g = gain.gain;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value, now);
+    g.linearRampToValueAtTime(0, now + .6);
+    try {
+      node.stop(now + .65);
+    } catch (_) {}
   }
 
   double get _target => _ducked ? _musicVolume * .35 : _musicVolume;
 
-  /// 말할 때는 음악을 작게
-  void _duck(bool on) {
+  /// 말할 때는 음악을 작게 (녹음 조각은 자동, 기기 음성은 AudioService가 부른다)
+  void duck(bool on) {
     _ducked = on;
     final ctx = _ctx;
     if (ctx == null || _musicGain == null) return;
     final g = _musicGain!.gain;
-    g.cancelScheduledValues(ctx.currentTime);
-    g.setValueAtTime(g.value, ctx.currentTime);
-    g.linearRampToValueAtTime(_target, ctx.currentTime + .25);
+    final now = ctx.currentTime;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value, now);
+    g.linearRampToValueAtTime(_target, now + (on ? .25 : .6));
   }
 }

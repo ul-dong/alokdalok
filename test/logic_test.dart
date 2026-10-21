@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:alokdalok/character/nickname.dart';
@@ -316,6 +317,26 @@ void main() {
         greaterThan(DeviceAudio.voiceScore('ko-kr-x-koc-local')),
       );
       expect(DeviceAudio.voiceScore('Yuna'), greaterThan(0));
+    });
+  });
+
+  group('배경 음악', () {
+    test('곡마다 반복 길이가 있고, 음악 생성기의 BPM과 같다', () {
+      final src = File('tool/generate_music.py').readAsStringSync();
+      final bpm = {
+        for (final m in RegExp(
+          r'render\("(\w+)", key="\w", bpm=(\d+)',
+        ).allMatches(src))
+          m.group(1)!: int.parse(m.group(2)!),
+      };
+      expect(bpm.keys.toSet(), AudioService.musicLoopSeconds.keys.toSet());
+      for (final e in bpm.entries) {
+        expect(
+          AudioService.musicLoopSeconds[e.key],
+          closeTo(16 * 4 * 60 / e.value, 1e-9),
+          reason: e.key,
+        );
+      }
     });
   });
 }
