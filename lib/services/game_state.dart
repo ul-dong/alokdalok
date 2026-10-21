@@ -13,7 +13,28 @@ import 'eye_guard.dart';
 import 'save_data.dart';
 import 'storage_service.dart';
 
-enum GameKind { number, color }
+/// 놀이 종류. 이 값 하나로 단계 고르기·놀이 화면을 연다 (`games/game_entry.dart`).
+enum GameKind { number, color, shape, size, match }
+
+extension GameKindInfo on GameKind {
+  /// 화면에 쓰는 이름 (부모님용 보조 글자)
+  String get title => switch (this) {
+    GameKind.number => '숫자 놀이',
+    GameKind.color => '색깔 놀이',
+    GameKind.shape => '모양 놀이',
+    GameKind.size => '크기 놀이',
+    GameKind.match => '짝 맞추기',
+  };
+
+  /// 단계 수
+  int get stageCount => switch (this) {
+    GameKind.number => Stages.number.length,
+    GameKind.color => Stages.color.length,
+    GameKind.shape => Stages.shape.length,
+    GameKind.size => Stages.size.length,
+    GameKind.match => Stages.match.length,
+  };
+}
 
 enum PurchaseResult { ok, alreadyOwned, notEnoughCoins, unknownItem }
 
@@ -62,13 +83,31 @@ class GameState extends ChangeNotifier {
   bool get sfxOn => _d.sfxOn;
   int get sessionsPlayed => _d.sessionsPlayed;
 
-  int unlockedStage(GameKind g) =>
-      g == GameKind.number ? _d.numberStageUnlocked : _d.colorStageUnlocked;
-  Set<int> clearedStages(GameKind g) => Set.unmodifiable(
-    g == GameKind.number ? _d.numberStageCleared : _d.colorStageCleared,
-  );
-  int stageCount(GameKind g) =>
-      g == GameKind.number ? Stages.number.length : Stages.color.length;
+  int unlockedStage(GameKind g) => switch (g) {
+    GameKind.number => _d.numberStageUnlocked,
+    GameKind.color => _d.colorStageUnlocked,
+    GameKind.shape => _d.shapeStageUnlocked,
+    GameKind.size => _d.sizeStageUnlocked,
+    GameKind.match => _d.matchStageUnlocked,
+  };
+  Set<int> clearedStages(GameKind g) => Set.unmodifiable(_cleared(g));
+  int stageCount(GameKind g) => g.stageCount;
+
+  Set<int> _cleared(GameKind g) => switch (g) {
+    GameKind.number => _d.numberStageCleared,
+    GameKind.color => _d.colorStageCleared,
+    GameKind.shape => _d.shapeStageCleared,
+    GameKind.size => _d.sizeStageCleared,
+    GameKind.match => _d.matchStageCleared,
+  };
+
+  void _setUnlocked(GameKind g, int stage) => switch (g) {
+    GameKind.number => _d.numberStageUnlocked = stage,
+    GameKind.color => _d.colorStageUnlocked = stage,
+    GameKind.shape => _d.shapeStageUnlocked = stage,
+    GameKind.size => _d.sizeStageUnlocked = stage,
+    GameKind.match => _d.matchStageUnlocked = stage,
+  };
 
   bool owns(String itemId) => _d.owned.contains(itemId);
 
@@ -174,20 +213,14 @@ class GameState extends ChangeNotifier {
   /// 한 판 완료 보상과 다음 단계 열기.
   Future<SessionReward> completeSession(GameKind game, int stageId) async {
     final firstPlay = _d.sessionsPlayed == 0 ? Economy.firstPlayBonus : 0;
-    final cleared = game == GameKind.number
-        ? _d.numberStageCleared
-        : _d.colorStageCleared;
+    final cleared = _cleared(game);
     final newStage = cleared.contains(stageId) ? 0 : Economy.newStageBonus;
     cleared.add(stageId);
 
     int? unlocked;
     final next = stageId + 1;
     if (next <= stageCount(game) && unlockedStage(game) < next) {
-      if (game == GameKind.number) {
-        _d.numberStageUnlocked = next;
-      } else {
-        _d.colorStageUnlocked = next;
-      }
+      _setUnlocked(game, next);
       unlocked = next;
     }
 

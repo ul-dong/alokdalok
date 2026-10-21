@@ -42,6 +42,16 @@ class VoiceLines {
     '바르게 앉아서 봐요.',
     '화면을 똑바로 봐 주세요.',
     '잘했어요! 다시 놀아요.',
+    // 모양·크기·짝 맞추기 놀이
+    '모양 놀이를 해 볼까요?',
+    '크기 놀이를 해 볼까요?',
+    '짝 맞추기를 해 볼까요?',
+    '다시 찾아볼까요?',
+    '똑같은 모양을 찾아볼까요?',
+    '똑같은 그림 두 장을 찾아볼까요?',
+    '똑같은',
+    '똑같아요!',
+    '가장',
   ];
 
   static String _subject(String w) => '$w${hasBatchim(w) ? '이' : '가'}';
@@ -79,6 +89,29 @@ class VoiceLines {
         ..add('${c.name}!')
         ..add('이건 ${c.name}이에요.')
         ..add('${_object(c.name)} 찾아볼까요?');
+    }
+
+    // 모양 놀이: 동그라미! / 동그라미를 / 이건 동그라미예요.
+    for (final sh in ShapeKind.values) {
+      out
+        ..add('${sh.ko}!')
+        ..add(sh.object)
+        ..add(sh.thisIs);
+    }
+
+    // 크기 놀이: 큰 사과를 / 작은 오리를 (+ "가장")
+    for (final a in SizeAsk.values) {
+      for (final k in ObjectKind.values) {
+        out.add('${a.adjective} ${k.object}');
+      }
+    }
+
+    // 짝 맞추기: 사과! / 빨간 사과! (같은 물건 다른 색 단계)
+    for (final k in ObjectKind.values) {
+      out.add('${k.ko}!');
+      for (final c in GameColor.extended) {
+        out.add('${c.adjective} ${k.ko}!');
+      }
     }
 
     // 상점: 아이템·탈것 이름
