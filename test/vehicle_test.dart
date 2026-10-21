@@ -12,6 +12,7 @@ import 'package:alokdalok/services/save_data.dart';
 import 'package:alokdalok/services/storage_service.dart';
 import 'package:alokdalok/shop/shop_screen.dart';
 import 'package:alokdalok/vehicle/garage_screen.dart';
+import 'package:alokdalok/vehicle/sticker_art.dart';
 import 'package:alokdalok/vehicle/vehicle_painter.dart';
 import 'package:alokdalok/widgets/common.dart';
 import 'package:alokdalok/widgets/paged_grid.dart';
@@ -439,15 +440,30 @@ void main() {
         expect(t.takeException(), isNull);
         expect(find.byType(Scrollable), findsNothing);
         final screen = Offset.zero & size;
-        final stickers = pressable('스티커');
-        expect(stickers, findsNWidgets(StickerKind.values.length + 1));
-        expect(pressable('색'), findsNWidgets(6));
-        for (final f in [stickers, pressable('색'), pressable('지우개')]) {
-          for (final e in f.evaluate()) {
-            final r = t.getRect(find.byWidget(e.widget));
-            expect(screen.contains(r.bottomRight - const Offset(1, 1)), isTrue);
+        void allOnScreen(List<Finder> fs) {
+          for (final f in fs) {
+            for (final e in f.evaluate()) {
+              final r = t.getRect(find.byWidget(e.widget));
+              expect(
+                screen.contains(r.bottomRight - const Offset(1, 1)),
+                isTrue,
+              );
+            }
           }
         }
+
+        final stickers = pressable('스티커');
+        expect(stickers, findsNWidgets(StickerKind.values.length + 1));
+        allOnScreen([stickers, pressable('지우개')]);
+        // 좁은 판은 색을 '물감' 탭에서 크게 고른다 (칸을 60px 이상으로)
+        if (pressable('물감').evaluate().isNotEmpty) {
+          expect(pressable('색'), findsNothing);
+          await t.tap(pressable('물감'));
+          await settle(t, 300);
+        }
+        expect(pressable('색'), findsNWidgets(6));
+        allOnScreen([pressable('색')]);
+        expect(t.takeException(), isNull);
         // 고르기: 모두 보이거나, 큰 화살표로 하나씩 넘긴다
         final all = Vehicles.all.every(
           (v) => pressable(v.name).evaluate().isNotEmpty,
@@ -458,6 +474,52 @@ void main() {
           await settle(t, 300);
           expect(t.takeException(), isNull);
         }
+      });
+
+      testWidgets('꾸미기: $name에서 스티커·색·색칠 칸이 모두 60px 이상', (t) async {
+        await setSize(t, size);
+        final s = await fresh(rewards: 160);
+        for (final v in Vehicles.all) {
+          await s.buyVehicle(v.id);
+        }
+        await t.pumpWidget(wrap(s, const GarageScreen()));
+        await settle(t);
+        void atLeast60(Finder f, int count, String what) {
+          expect(f, findsNWidgets(count), reason: what);
+          for (final e in f.evaluate()) {
+            final r = t.getRect(find.byWidget(e.widget));
+            expect(
+              r.width >= 60 && r.height >= 60,
+              isTrue,
+              reason:
+                  '$what ${r.width.toStringAsFixed(1)}x'
+                  '${r.height.toStringAsFixed(1)}',
+            );
+          }
+        }
+
+        // 스티커 칸 (탭 '스티커'는 빼고 StickerIcon이 든 칸만)
+        final stickerCells = find.ancestor(
+          of: find.byType(StickerIcon),
+          matching: pressable('스티커'),
+        );
+        atLeast60(stickerCells, StickerKind.values.length, '스티커');
+        if (pressable('물감').evaluate().isNotEmpty) {
+          await t.tap(pressable('물감'));
+          await settle(t, 300);
+        }
+        atLeast60(pressable('색'), 6, '색');
+        await t.tap(pressable('색칠'));
+        await settle(t, 300);
+        final paints = find.byWidgetPredicate(
+          (w) =>
+              w is Pressable &&
+              Vehicles.paints.any(
+                (p) => w.semanticLabel?.startsWith(p.name) ?? false,
+              ),
+        );
+        atLeast60(paints, Vehicles.paints.length, '색칠');
+        expect(t.takeException(), isNull);
       });
 
       testWidgets('색칠: $name에서 코인이 모자라면 모으자는 안내와 진행 막대', (t) async {
