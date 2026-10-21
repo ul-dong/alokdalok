@@ -36,6 +36,9 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
   Color color = Vehicles.stickerColors.first;
   bool eraser = false;
   bool painting = false;
+
+  /// 좁은 화면에서 스티커 색을 고르는 판을 열었는지 (색 칸을 60px 이상으로 따로 보여 준다)
+  bool choosingColor = false;
   int cheer = 0;
 
   @override
@@ -147,7 +150,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
                         children: [
                           // 왼쪽: 탈것 (누르면 스티커가 붙는다) + 탑승
                           Expanded(
-                            flex: narrow ? 4 : 6,
+                            flex: narrow ? 7 : 6,
                             child: Column(
                               children: [
                                 Expanded(child: _vehicleView(v)),
@@ -162,7 +165,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
                           const SizedBox(width: 12),
                           // 오른쪽: 스티커·색
                           Expanded(
-                            flex: narrow ? 6 : 4,
+                            flex: narrow ? 13 : 4,
                             child: _panel(state, v),
                           ),
                         ],
@@ -346,61 +349,152 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
     );
   }
 
-  Widget _panel(GameState state, Vehicle v) => Column(
-    children: [
-      Row(
+  /// 꾸미기 판 안쪽 크기 (위 탭 줄과 CreamCard 여백을 뺀 크기)
+  static Size _inner(BoxConstraints c) =>
+      Size(c.maxWidth - 12, max(0.0, c.maxHeight - _tabsH - 12));
+
+  static const _tabsH = 54.0;
+  static const _gap = 6.0;
+
+  /// 터치 칸 최소 크기 (사양: 60~72px 이상)
+  static const minCell = 60.0;
+
+  /// 스티커 10종 + 색 6가지를 한 판에 함께 놓을 때 칸 크기.
+  /// 넓은 판: 스티커 5칸 두 줄 + 색 6칸 한 줄. 키 큰 판: 스티커 3칸 네 줄 + 색 3칸 두 줄.
+  static ({double cell, int cols}) _together(Size a) {
+    final n = Vehicles.stickerColors.length;
+    final wide = min(
+      min((a.width - _gap * 4) / 5, (a.width - _gap * (n - 1)) / n),
+      (a.height - _gap * 2) / 3,
+    );
+    final tall = min((a.width - _gap * 2) / 3, (a.height - _gap * 5) / 6);
+    return tall > wide * 1.15
+        ? (cell: tall.clamp(20.0, 110.0), cols: 3)
+        : (cell: wide.clamp(20.0, 110.0), cols: 5);
+  }
+
+  /// 함께 놓으면 칸이 60px보다 작아지는 판인지.
+  /// 그러면 스티커와 색을 탭으로 나눠 각각 크게 보여 준다 (쪽 넘기기 없이).
+  static bool splitColors(Size inner) => _together(inner).cell < minCell;
+
+  Widget _panel(GameState state, Vehicle v) => LayoutBuilder(
+    builder: (context, c) {
+      final split = splitColors(_inner(c));
+      final picking = split && choosingColor && !painting;
+      final tabs = <(String, bool, VoidCallback)>[
+        (
+          '스티커',
+          !painting && !picking,
+          () => setState(() {
+            painting = false;
+            choosingColor = false;
+            eraser = false;
+            wanted = null;
+          }),
+        ),
+        if (split)
+          (
+            '물감',
+            picking,
+            () => setState(() {
+              painting = false;
+              choosingColor = true;
+              eraser = false;
+              wanted = null;
+            }),
+          ),
+        (
+          '색칠',
+          painting,
+          () => setState(() {
+            painting = true;
+            choosingColor = false;
+            eraser = false;
+            wanted = null;
+          }),
+        ),
+      ];
+      return Column(
         children: [
-          for (final (paintMode, label) in const [(false, '스티커'), (true, '색칠')])
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 6, bottom: 6),
-                child: PillButton(
-                  height: 48,
-                  color: painting == paintMode ? Palette.pink : Colors.white,
-                  edge: painting == paintMode
-                      ? const Color(0xFFD9718F)
-                      : Palette.creamDeep,
-                  semanticLabel: label,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  onTap: () => setState(() {
-                    painting = paintMode;
-                    eraser = false;
-                    wanted = null;
-                  }),
-                  child: FitBox(
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: TextSizes.label,
-                        color: painting == paintMode
-                            ? Colors.white
-                            : Palette.text,
+          Row(
+            children: [
+              for (final (label, on, onTap) in tabs)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6, bottom: 6),
+                    child: PillButton(
+                      height: 48,
+                      color: on ? Palette.pink : Colors.white,
+                      edge: on ? const Color(0xFFD9718F) : Palette.creamDeep,
+                      semanticLabel: label,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      onTap: onTap,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 물감 탭에는 지금 고른 색을 작은 동그라미로
+                          if (label == '물감') ...[
+                            Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Flexible(
+                            child: FitBox(
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: TextSizes.label,
+                                  color: on ? Colors.white : Palette.text,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
+            ],
+          ),
+          Expanded(
+            child: painting
+                ? _paintPanel(state, v)
+                : picking
+                ? _colorPanel()
+                : _stickerPanel(split: split),
+          ),
         ],
-      ),
-      Expanded(
-        child: painting ? _paintPanel(state, v) : _stickerPanel(state, v),
-      ),
-    ],
+      );
+    },
   );
 
   /// 색칠: 탈것마다 색을 따로 산다 (한 색 10코인). 처음 색은 공짜.
   Widget _paintPanel(GameState state, Vehicle v) {
     final current = state.paintOf(v.id).id;
     return CreamCard(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(6),
       child: LayoutBuilder(
         builder: (context, c) {
-          const cols = 3, rows = 3, gap = 8.0;
-          final cell = min(
-            (c.maxWidth - gap * (cols - 1)) / cols,
-            (c.maxHeight - gap * (rows - 1)) / rows,
+          // 9가지 색을 가장 크게 놓는 줄·칸 수 (좁은 판은 5칸 두 줄)
+          const gap = _gap;
+          final g = TileGrid.fit(
+            Vehicles.paints.length,
+            c.biggest,
+            gap: gap,
+            maxTile: 140,
           );
+          final cols = g.cols;
+          final cell = g.tile;
           return Center(
             child: SizedBox(
               width: cell * cols + gap * (cols - 1),
@@ -465,109 +559,139 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
     }
   }
 
-  /// 스티커 10종(5 x 2)과 색 6가지를 한 화면에. 밀어서 보기 없이 칸 크기를 맞춘다.
-  Widget _stickerPanel(GameState state, Vehicle v) => CreamCard(
+  Widget _stickerTile(StickerKind k, double cell) => Pressable(
+    onTap: () => setState(() {
+      kind = k;
+      eraser = false;
+    }),
+    semanticLabel: '스티커',
+    child: Container(
+      width: cell,
+      height: cell,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(cell * .25),
+        border: Border.all(
+          color: !eraser && k == kind ? Palette.pink : Palette.creamDeep,
+          width: !eraser && k == kind ? 4 : 2,
+        ),
+      ),
+      child: StickerIcon(kind: k, color: color, size: cell * .9),
+    ),
+  );
+
+  /// 색 하나: 누르는 칸은 [cell] 크기 그대로, 동그라미는 조금 작게
+  Widget _colorDot(Color col, double cell, {VoidCallback? then}) => Pressable(
+    onTap: () {
+      setState(() {
+        color = col;
+        eraser = false;
+      });
+      then?.call();
+    },
+    semanticLabel: '색',
+    child: SizedBox.square(
+      dimension: cell,
+      child: Center(
+        child: Container(
+          width: cell * .86,
+          height: cell * .86,
+          decoration: BoxDecoration(
+            color: col,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: col == color && !eraser ? Palette.text : Colors.white,
+              width: 3,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _cells(int count, double cell, int cols, Widget Function(int) item) =>
+      GridRows(
+        last: count,
+        cols: cols,
+        cellWidth: cell,
+        cellHeight: cell,
+        gap: _gap,
+        itemBuilder: item,
+      );
+
+  /// 스티커 10종과 색 6가지. 밀어서 보기 없이 칸 크기를 맞춘다.
+  /// [split]이면(좁은 판) 스티커만 크게 놓고, 색은 '물감' 탭에서 고른다.
+  Widget _stickerPanel({required bool split}) => CreamCard(
     padding: const EdgeInsets.all(6),
     child: LayoutBuilder(
       builder: (context, c) {
-        const gap = 6.0;
-        final n = Vehicles.stickerColors.length;
-        // 색 동그라미는 스티커 칸의 0.9배(위아래 2씩 더 누를 수 있게).
-        // 넓은 칸: 스티커 5칸 두 줄 + 색 한 줄. 키 큰 칸(큰 화면): 스티커 3칸 네 줄 + 색 두 줄.
-        // 둘 중 칸이 더 커지는 배치를 고른다.
-        double fit(int cols, int rows, int colorRows) => min(
-          (c.maxWidth - gap * (cols - 1)) / cols,
-          min(
-            (c.maxHeight - gap * (rows + colorRows - 1) - 8) /
-                (rows + colorRows * .9),
-            (c.maxWidth - gap * (n / colorRows)) / (n / colorRows) / .9,
-          ),
-        );
-        final wide = fit(5, 2, 1), tall = fit(3, 4, 2);
-        final cols = tall > wide * 1.15 ? 3 : 5;
-        final cell = (cols == 3 ? tall : wide).clamp(20.0, 110.0);
-        final dot = cell * .9;
-        final perRow = cols == 3 ? n ~/ 2 : n;
-        return SizedBox(
-          width: c.maxWidth,
+        final kinds = StickerKind.values;
+        if (split) {
+          final g = TileGrid.fit(
+            kinds.length,
+            c.biggest,
+            gap: _gap,
+            maxTile: 110,
+          );
+          return Center(
+            child: _cells(
+              kinds.length,
+              g.tile,
+              g.cols,
+              (i) => _stickerTile(kinds[i], g.tile),
+            ),
+          );
+        }
+        final t = _together(c.biggest);
+        final cols = t.cols, cell = t.cell;
+        final colors = Vehicles.stickerColors;
+        final perRow = cols == 3 ? colors.length ~/ 2 : colors.length;
+        return Center(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: cell * cols + gap * (cols - 1),
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: gap,
-                  runSpacing: gap,
-                  children: [
-                    for (final k in StickerKind.values)
-                      Pressable(
-                        onTap: () => setState(() {
-                          kind = k;
-                          eraser = false;
-                        }),
-                        semanticLabel: '스티커',
-                        child: Container(
-                          width: cell,
-                          height: cell,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(cell * .25),
-                            border: Border.all(
-                              color: !eraser && k == kind
-                                  ? Palette.pink
-                                  : Palette.creamDeep,
-                              width: !eraser && k == kind ? 4 : 2,
-                            ),
-                          ),
-                          child: StickerIcon(
-                            kind: k,
-                            color: color,
-                            size: cell * .9,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+              _cells(
+                kinds.length,
+                cell,
+                cols,
+                (i) => _stickerTile(kinds[i], cell),
               ),
-              const SizedBox(height: gap),
-              SizedBox(
-                width: perRow * (dot + gap),
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  children: [
-                    for (final col in Vehicles.stickerColors)
-                      Pressable(
-                        onTap: () => setState(() {
-                          color = col;
-                          eraser = false;
-                        }),
-                        semanticLabel: '색',
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: gap / 2,
-                            vertical: 2,
-                          ),
-                          child: Container(
-                            width: dot,
-                            height: dot,
-                            decoration: BoxDecoration(
-                              color: col,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: col == color && !eraser
-                                    ? Palette.text
-                                    : Colors.white,
-                                width: 3,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+              const SizedBox(height: _gap),
+              _cells(
+                colors.length,
+                cell,
+                perRow,
+                (i) => _colorDot(colors[i], cell),
               ),
             ],
+          ),
+        );
+      },
+    ),
+  );
+
+  /// 좁은 판의 '물감' 탭: 색 6가지를 크게. 고르면 바로 스티커 탭으로 돌아간다.
+  Widget _colorPanel() => CreamCard(
+    padding: const EdgeInsets.all(6),
+    child: LayoutBuilder(
+      builder: (context, c) {
+        final colors = Vehicles.stickerColors;
+        final g = TileGrid.fit(
+          colors.length,
+          c.biggest,
+          gap: _gap,
+          maxTile: 110,
+        );
+        return Center(
+          child: _cells(
+            colors.length,
+            g.tile,
+            g.cols,
+            (i) => _colorDot(
+              colors[i],
+              g.tile,
+              then: () => setState(() => choosingColor = false),
+            ),
           ),
         );
       },
