@@ -58,6 +58,12 @@ class EyeRules {
   static const maxYaw = 35.0;
   static const maxPitch = 30.0;
   static const maxRoll = 45.0;
+
+  /// 경고가 풀리는 거리 = 경고 거리 + 이만큼 (경계에서 깜빡이지 않게)
+  static const clearMarginCm = 4.0;
+
+  /// 부모님이 맞추는 기준 거리 ("30cm 기준 맞추기")
+  static const calibrationCm = 30.0;
   static const closeHold = Duration(seconds: 2);
   static const angleHold = Duration(seconds: 3);
   static const clearHold = Duration(milliseconds: 900);
@@ -80,6 +86,12 @@ class EyeGuard extends ChangeNotifier {
   /// 30cm에서 잰 얼굴 크기 (부모님이 맞춘 값). 없으면 기본 계산을 쓴다.
   double? calibration;
 
+  /// 이보다 가까우면 경고하는 거리 (cm). 부모님이 설정에서 조절한다.
+  double tooCloseCm = EyeRules.tooCloseCm;
+
+  /// 경고가 풀리는 거리 (cm)
+  double get clearCm => tooCloseCm + EyeRules.clearMarginCm;
+
   EyeAlert _alert = EyeAlert.none;
   EyeAlert get alert => _alert;
 
@@ -96,7 +108,7 @@ class EyeGuard extends ChangeNotifier {
 
   double distanceOf(double size) {
     final cal = calibration;
-    if (cal != null && cal > 0) return EyeRules.tooCloseCm * cal / size;
+    if (cal != null && cal > 0) return EyeRules.calibrationCm * cal / size;
     return _sensor.defaultDistanceCm(size);
   }
 
@@ -164,8 +176,8 @@ class EyeGuard extends ChangeNotifier {
       return;
     }
     final d = distanceOf(r.size);
-    final close = d < EyeRules.tooCloseCm;
-    final farEnough = d > EyeRules.clearCm;
+    final close = d < tooCloseCm;
+    final farEnough = d > clearCm;
     final tilted =
         r.yaw.abs() > EyeRules.maxYaw ||
         r.pitch.abs() > EyeRules.maxPitch ||

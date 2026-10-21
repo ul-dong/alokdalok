@@ -20,12 +20,12 @@
 |---|---|---|
 | 첫 실행: 친구 고르기 → 이름 짓기 → 이후 홈 | 있음 | `lib/app.dart` RootGate, `screens/zodiac_picker_screen.dart`, `screens/nickname_screen.dart` |
 | 홈: 큰 버튼 3개(놀이터 가기·내 캐릭터·꾸미기 상점)만 | **부분** | `screens/home_screen.dart`: 숫자 놀이·색깔 놀이·내 캐릭터·꾸미기 상점·내 가방·탈것 꾸미기 6개 타일. '놀이터 가기' 없음, 가방·탈것 꾸미기 별도 진입 |
-| 홈 구석 작은 톱니바퀴 → 부모 확인 → 설정 | 부분 | 톱니바퀴(60px) 있음, 부모 확인 없음 |
+| 홈 구석 작은 톱니바퀴 → 부모 확인 → 설정 | 부분 | 톱니바퀴(60px) 있음. 부모 확인 `confirmParent(context)`(`widgets/parental_gate.dart`)는 준비됨 — 홈에서 부르는 것은 트랙 A |
 | 놀이터 화면 (기구 그림 5개, 이름표, 깬 단계만큼 별, 내 캐릭터 서 있음) | **없음** | 새 화면 필요 (`screens/playground_screen.dart` 예정) |
 | 단계 고르기: 카드에 문제 그림 + 계절 아이콘, 아래 골인 길 | 있음(가로 스크롤 문제) | `screens/stage_picker.dart` (계절 아이콘, JourneyTrail, 잠김 시 "앞 단계를 먼저…"). 카드 목록이 `ListView` 가로 스크롤 → 원칙 4 위반. 잠긴 카드 흔들림 확인 필요 |
 | 놀이 화면: 위 멈춤·발자국·코인 / 가운데 문제 카드 / 아래 길·말풍선 | 있음 | `games/common/game_frame.dart` |
 | 내 캐릭터: 옷 입기, 탈것 타기, 친구 바꾸기 | 있음 | `screens/character_screen.dart` (+ `screens/bag_screen.dart` 중복 기능) |
-| 설정: 눈 보호·놀이 시간·눈 쉬기 간격·소리·백업 | **부분** | `screens/settings_screen.dart`: 소리(음성·효과음·음악·목소리 종류), 눈 지킴이, 닉네임, 기록 지우기(꾹 누르기), 라이선스. 놀이 시간·눈 쉬기·백업 없음 |
+| 설정: 눈 보호·놀이 시간·눈 쉬기 간격·소리·백업 | 있음 | `screens/settings_screen.dart`: 눈 보호(켜기·경고 거리 25/30/35/40cm·30cm 보정), 하루 놀이 시간, 눈 쉬기 간격, 소리, 부모 확인 켜기/끄기, 백업, 닉네임, 기록 지우기, 라이선스 |
 
 ## 2. 놀이 5종
 
@@ -95,25 +95,25 @@
 
 | 사양 | 상태 | 메모 |
 |---|---|---|
-| 부모 확인: 덧셈(각 6~9) 숫자 패드, 설정 진입·놀이 시간 연장 시 | **없음** | `widgets/parental_gate.dart` 예정 |
-| 눈 보호·놀이 시간·부모 확인 **기본 켜짐** | **부분** | `SaveData.eyeGuardOn = false` 기본 꺼짐. 놀이 시간·부모 확인은 기능 자체 없음 |
+| 부모 확인: 덧셈(각 6~9) 숫자 패드, 설정 진입·놀이 시간 연장 시 | 있음 | `widgets/parental_gate.dart` `confirmParent(context)` (틀리면 새 문제, 닫으면 false). 놀이 시간 연장은 덮개 안에서 바로 연결. 설정 진입 연결은 트랙 A |
+| 눈 보호·놀이 시간·부모 확인 **기본 켜짐** | 있음 | 저장 v6: `eyeGuardOn`·`parentGateOn` 기본 true, `playLimitMin` 기본 10. v5→v6에서 눈 보호를 켬 |
 | 눈 보호 기준 30cm / 해제 34cm | 있음 | `services/eye_guard.dart` `EyeRules.tooCloseCm 30`, `clearCm 34` |
 | 각도 좌우 35° · 위아래 30° · 기울기 45° | 있음 | `maxYaw 35`, `maxPitch 30`, `maxRoll 45` |
 | 2~3초 지속 시에만 | 있음 | `closeHold 2s`, `angleHold 3s`, `clearHold 0.9s` |
 | 안드로이드 ML Kit / 웹 MediaPipe(앱 내장) | 있음 | `services/eye_sensor_io.dart` (google_mlkit_face_detection + camera), `services/eye_sensor_web.dart` + `web/eye_guard.js` + `web/mediapipe/` (CDN 없음) |
 | iOS ML Kit | 코드상 있음, 빌드 미확인 | `eye_sensor_io.dart`가 `Platform.isIOS` 지원 (bgra8888, 회전 처리) |
-| 부모님 거리 맞추기(보정) | 있음 | `calibrateNow`, 설정 `_EyeGuardCard` |
+| 부모님 거리 맞추기(보정) | 있음 | `calibrateNow` + 경고 거리 선택(`EyeGuard.tooCloseCm`, 풀림 = +4cm), 설정 `_EyeGuardCard` |
 | 덮개 "조금 더 멀리서 봐요" | 있음 | `widgets/eye_guard_overlay.dart` |
-| 하루 놀이 시간 (제한 없음·10·15·20·30·45·60분), "오늘은 여기까지!", 부모 확인 후 +15분, 다음 날 리셋 | **없음** | |
-| 눈 쉬기 10/20분(기본 10) → 20초 "창밖 먼 곳을 봐요", 산 그림 + 줄어드는 고리, 5분 이상 안 보면 쉰 것으로 | **없음** | |
+| 하루 놀이 시간 (제한 없음·10·15·20·30·45·60분), "오늘은 여기까지!", 부모 확인 후 +15분, 다음 날 리셋 | 있음 | 순수 로직 `services/play_clock.dart` `PlayClock`(시계 주입), 덮개 `widgets/play_guard_overlay.dart`(`app.dart`에서 전체 화면 위). 논 시간은 저장(30초마다·백그라운드 갈 때) |
+| 눈 쉬기 10/20분(기본 10) → 20초 "창밖 먼 곳을 봐요", 산 그림 + 줄어드는 고리, 5분 이상 안 보면 쉰 것으로 | 있음 | `PlayClock` + `EyeBreakCard`(`WindowViewPainter`, `ShrinkingRingPainter`, 공용 20fps 시계). 백그라운드 5분 이상이면 쉰 것. "오늘은 여기까지"가 20초 넘게 떠 있어도 쉰 것 |
 
 ## 8. 저장과 백업
 
 | 사양 | 상태 | 메모 |
 |---|---|---|
-| 기기 안에만 저장, 버전 번호 + 마이그레이션 | 있음 | `services/save_data.dart` v5, `migrate()` v0→v5, `services/storage_service.dart` (직전 값 백업 키) |
+| 기기 안에만 저장, 버전 번호 + 마이그레이션 | 있음 | `services/save_data.dart` **v6**. `migrate()` = 버전 단계 목록 `SaveData.steps`(n→n+1) + 매번 도는 멱등 정리 단계 `SaveData.repairs`(트랙 D 탈것 정리 자리). `services/storage_service.dart` (직전 값 백업 키) |
 | 없어진 탈것 스티커를 새 탈것으로 옮김 | 부분 | v3→v4 색깔별 탈것 통합은 있음. 자전거·킥보드 → 기차·열기구는 없음 |
-| 'ALOK1-' 백업 문자열 복사/붙여 넣기 복구 | **없음** | `SaveData.encode()` 재사용 가능 |
+| 'ALOK1-' 백업 문자열 복사/붙여 넣기 복구 | 있음 | `services/backup_code.dart`: `ALOK1-<base64url JSON>-<FNV-1a 체크섬>`, 버전 검사(새 버전 거절·예전 버전 마이그레이션), 띄어쓰기 무시, 잘못된 글자는 이유와 함께 거절. 카메라 보정·오늘 논 시간은 빼고 백업 |
 
 ## 9. UI/UX 원칙 1~9
 
