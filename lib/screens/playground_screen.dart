@@ -54,8 +54,13 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> with ScreenMusic {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     return LandscapePage(
-      background: const CustomPaint(
-        painter: PlaygroundBackgroundPainter(groundLevel: .5),
+      background: LayoutBuilder(
+        builder: (context, c) => CustomPaint(
+          size: c.biggest,
+          painter: PlaygroundBackgroundPainter(
+            groundLevel: PlaygroundBackgroundPainter.groundFor(c.biggest),
+          ),
+        ),
       ),
       child: Column(
         children: [
@@ -74,17 +79,7 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> with ScreenMusic {
                 const Flexible(
                   child: FitBox(
                     alignment: Alignment.centerLeft,
-                    child: CreamCard(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 8,
-                      ),
-                      radius: 26,
-                      child: Text(
-                        '놀이터',
-                        style: TextStyle(fontSize: 28, color: Palette.text),
-                      ),
-                    ),
+                    child: TitleChip('놀이터'),
                   ),
                 ),
                 const Spacer(),
@@ -160,7 +155,6 @@ class PlaygroundRide extends StatelessWidget {
   final VoidCallback onTap;
 
   static const _starRow = 24.0;
-  static const _tagH = 44.0;
 
   @override
   Widget build(BuildContext context) => Pressable(
@@ -169,7 +163,9 @@ class PlaygroundRide extends StatelessWidget {
     child: LayoutBuilder(
       builder: (context, c) {
         // 기구는 정사각형 칸에 그리고, 별은 기구 바로 위에 단다
-        final room = c.maxHeight - _starRow - _tagH - 4;
+        // 이름표는 넓은 화면에서 조금 더 크게
+        final tagH = (c.maxWidth * .26).clamp(44.0, 56.0).toDouble();
+        final room = c.maxHeight - _starRow - tagH - 4;
         final art = room.clamp(0.0, c.maxWidth * 1.1);
         return Column(
           mainAxisAlignment: MainAxisAlignment.end,
@@ -197,7 +193,7 @@ class PlaygroundRide extends StatelessWidget {
               child: CustomPaint(painter: EquipmentPainter(kind)),
             ),
             const SizedBox(height: 4),
-            RideNameTag(kind: kind),
+            RideNameTag(kind: kind, height: tagH),
           ],
         );
       },
@@ -207,23 +203,19 @@ class PlaygroundRide extends StatelessWidget {
 
 /// 그림 이름표: 놀이를 나타내는 작은 그림 + 놀이 이름
 class RideNameTag extends StatelessWidget {
-  const RideNameTag({super.key, required this.kind});
+  const RideNameTag({super.key, required this.kind, this.height = 44});
   final GameKind kind;
+  final double height;
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 44,
-    padding: const EdgeInsets.symmetric(horizontal: 6),
+    height: height,
+    padding: const EdgeInsets.symmetric(horizontal: Gaps.sm),
     decoration: BoxDecoration(
       color: kind.tint,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(height / 2),
       border: Border.all(color: Colors.white, width: 3),
-      boxShadow: [
-        BoxShadow(
-          color: kind.accent.withValues(alpha: .55),
-          offset: const Offset(0, 4),
-        ),
-      ],
+      boxShadow: Depth.flat(kind.accent.withValues(alpha: .55)),
     ),
     child: FitBox(
       child: Row(
@@ -236,7 +228,10 @@ class RideNameTag extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             kind.title,
-            style: const TextStyle(fontSize: 18, color: Palette.text),
+            style: const TextStyle(
+              fontSize: TextSizes.body,
+              color: Palette.text,
+            ),
           ),
         ],
       ),

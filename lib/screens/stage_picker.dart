@@ -12,6 +12,7 @@ import '../games/game_entry.dart';
 import '../services/game_state.dart';
 import '../widgets/common.dart';
 import '../widgets/paged_grid.dart';
+import '../widgets/season_icon.dart';
 
 /// 단계 고르기. 카드는 화면에 맞춰 크기를 고르고, 다 안 들어가면 큰 화살표로 한 쪽씩 넘긴다
 /// (옆으로 밀기 없음). 글자 없이도 고를 수 있게 카드마다 그 단계의 문제 그림과 계절 아이콘을 그리고,
@@ -70,17 +71,7 @@ class _StagePickerState extends State<StagePicker> {
               Flexible(
                 child: FitBox(
                   alignment: Alignment.centerLeft,
-                  child: CreamCard(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 22,
-                      vertical: 8,
-                    ),
-                    radius: 26,
-                    child: Text(
-                      game.title,
-                      style: const TextStyle(fontSize: 28, color: Palette.text),
-                    ),
-                  ),
+                  child: TitleChip(game.title),
                 ),
               ),
               const Spacer(),
@@ -93,7 +84,7 @@ class _StagePickerState extends State<StagePicker> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: Gaps.md),
           Expanded(
             child: PagedGrid(
               itemCount: count,
@@ -102,7 +93,7 @@ class _StagePickerState extends State<StagePicker> {
               minCellHeight: 120,
               maxCellWidth: 320,
               maxRows: 2,
-              gap: 14,
+              gap: Gaps.lg,
               itemBuilder: (context, i) {
                 final id = i + 1;
                 return ShakeOnChange(
@@ -191,97 +182,88 @@ class _StageCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Pressable(
-    onTap: onTap,
-    semanticLabel: '$id단계${open ? '' : ' 아직 열리지 않음'}',
-    child: Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Palette.cream,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: highlight ? Palette.yellow : Colors.white,
-          width: highlight ? 5 : 3,
-        ),
-        boxShadow: const [
-          BoxShadow(color: Palette.creamDeep, offset: Offset(0, 6)),
-          BoxShadow(
-            color: Palette.panelShadow,
-            blurRadius: 14,
-            offset: Offset(0, 8),
+  Widget build(BuildContext context) {
+    final season = seasonForStage(id);
+    final face = open ? SeasonIcon.tintOf(season) : const Color(0xFFF4EFE6);
+    return Pressable(
+      onTap: onTap,
+      semanticLabel: '$id단계${open ? '' : ' 아직 열리지 않음'}',
+      child: Container(
+        padding: const EdgeInsets.all(Gaps.md),
+        decoration: BoxDecoration(
+          color: face,
+          borderRadius: BorderRadius.circular(Radii.xl),
+          border: Border.all(
+            color: highlight ? Palette.yellow : Colors.white,
+            width: highlight ? 5 : 3,
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          FitBox(
-            alignment: Alignment.centerLeft,
-            child: SizedBox(
-              width: 160,
-              child: Row(
-                children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: open ? Palette.pinkSoft : Palette.creamDeep,
-                      shape: BoxShape.circle,
-                    ),
-                    child: open
-                        ? Text(
-                            '$id',
-                            style: const TextStyle(
-                              fontSize: 32,
-                              color: Color(0xFFE0607E),
+          boxShadow: [
+            BoxShadow(
+              color: highlight ? Palette.coinDeep : Palette.creamDeep,
+              offset: const Offset(0, Depth.edge),
+            ),
+            Depth.softShadow,
+          ],
+        ),
+        child: Column(
+          children: [
+            FitBox(
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: 160,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: open ? Colors.white : Palette.creamDeep,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: open
+                              ? SeasonIcon.colorOf(season).withValues(alpha: .6)
+                              : Colors.transparent,
+                          width: 3,
+                        ),
+                      ),
+                      child: open
+                          ? Text(
+                              '$id',
+                              style: const TextStyle(
+                                fontSize: 32,
+                                color: Color(0xFFE0607E),
+                                height: 1.1,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.lock_rounded,
+                              size: 28,
+                              color: Palette.textSoft,
                             ),
-                          )
-                        : const Icon(
-                            Icons.lock_rounded,
-                            size: 28,
-                            color: Palette.textSoft,
-                          ),
-                  ),
-                  const Spacer(),
-                  if (cleared) const StarIcon(size: 40),
-                  const SizedBox(width: 4),
-                  _season(),
-                ],
+                    ),
+                    const Spacer(),
+                    if (cleared) const StarIcon(size: 40),
+                    const SizedBox(width: Gaps.xs),
+                    // 단계마다 계절이 바뀐다 (배경과 음악도 그 계절)
+                    SeasonIcon(season, size: 34, dim: !open),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Expanded(
-            child: Opacity(
-              opacity: open ? 1 : .4,
-              // 카드가 커지면 그림도 같이 키운다 (1280 화면에서도 작아 보이지 않게)
-              child: StageArtBox(child: art),
+            const SizedBox(height: Gaps.sm),
+            Expanded(
+              child: Opacity(
+                opacity: open ? 1 : .4,
+                // 카드가 커지면 그림도 같이 키운다 (1280 화면에서도 작아 보이지 않게)
+                child: StageArtBox(child: art),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-
-  /// 단계마다 계절이 바뀐다 (배경과 음악도 그 계절). 머리줄 오른쪽 끝에 둔다.
-  Widget _season() => Icon(
-    switch (seasonForStage(id)) {
-      Season.spring => Icons.local_florist_rounded,
-      Season.summer => Icons.wb_sunny_rounded,
-      Season.autumn => Icons.eco_rounded,
-      Season.winter => Icons.ac_unit_rounded,
-    },
-    size: 30,
-    color: open
-        ? switch (seasonForStage(id)) {
-            Season.spring => const Color(0xFFF59AB5),
-            Season.summer => const Color(0xFFFFB13B),
-            Season.autumn => const Color(0xFFE07A3F),
-            Season.winter => const Color(0xFF6FB7E8),
-          }
-        : Palette.creamDeep,
-    semanticLabel: seasonForStage(id).ko,
-  );
+    );
+  }
 }
 
 class _NumberStageArt extends StatelessWidget {
