@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:alokdalok/app.dart';
 import 'package:alokdalok/games/color_game/color_game_screen.dart';
 import 'package:alokdalok/games/number_game/number_game_screen.dart';
+import 'package:alokdalok/screens/bag_screen.dart';
+import 'package:alokdalok/screens/nickname_screen.dart';
 import 'package:alokdalok/screens/playground_screen.dart';
 import 'package:alokdalok/screens/settings_screen.dart';
 import 'package:alokdalok/screens/zodiac_picker_screen.dart';
@@ -59,7 +61,9 @@ void main() {
     'garage': () => const GarageScreen(),
     'shop': () => const ShopScreen(startWithVehicles: true),
     'settings': () => const SettingsScreen(),
-    'picker': () => const ZodiacPickerScreen(),
+    'picker': () => const ZodiacPickerScreen(onboarding: true),
+    'nickname': () => const NicknameScreen(onboarding: true),
+    'bag': () => const BagScreen(),
   };
   for (final size in const [Size(568, 320), Size(844, 390), Size(1280, 800)]) {
     for (final e in pages.entries) {
