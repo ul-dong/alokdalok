@@ -11,10 +11,11 @@ import 'package:alokdalok/services/game_state.dart';
 import 'package:alokdalok/services/save_data.dart';
 import 'package:alokdalok/services/storage_service.dart';
 import 'package:alokdalok/shop/shop_screen.dart';
-import 'package:alokdalok/vehicle/fit_grid.dart';
 import 'package:alokdalok/vehicle/garage_screen.dart';
 import 'package:alokdalok/vehicle/vehicle_painter.dart';
 import 'package:alokdalok/widgets/common.dart';
+import 'package:alokdalok/widgets/paged_grid.dart';
+import 'package:alokdalok/services/backup_code.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -244,6 +245,20 @@ void main() {
       }
     });
 
+    test('ALOK1- 백업 글자로 복구할 때도 옮긴다', () {
+      final json = oldSave(5);
+      final body = base64Url
+          .encode(utf8.encode(jsonEncode(json)))
+          .replaceAll('=', '');
+      final text = '${BackupCode.prefix}$body-${BackupCode.checksum(body)}';
+      final d = BackupCode.decode(text).data!;
+      expect(d.ownsVehicle('train'), isTrue);
+      expect(d.ownsVehicle('balloon'), isTrue);
+      expect(d.ride, 'train');
+      expect(d.stickers['train']!.length, 2);
+      expect(d.canPaint('train', 'paint_red'), isTrue);
+    });
+
     test('타고 있던 킥보드는 열기구로, 손상된 값은 버린다', () {
       final d = SaveData.decode(
         jsonEncode({
@@ -438,8 +453,8 @@ void main() {
           (v) => pressable(v.name).evaluate().isNotEmpty,
         );
         if (!all) {
-          expect(pressable('다음 탈것'), findsOneWidget);
-          await t.tap(pressable('다음 탈것'));
+          expect(pressable('다음 쪽'), findsOneWidget);
+          await t.tap(pressable('다음 쪽'));
           await settle(t, 300);
           expect(t.takeException(), isNull);
         }
@@ -474,7 +489,7 @@ void main() {
         await settle(t);
         await t.tap(pressable('탈것'));
         await settle(t, 300);
-        expect(find.byType(FitGrid), findsOneWidget);
+        expect(find.byType(PagedGrid), findsWidgets);
         for (final v in Vehicles.all) {
           final r = t.getRect(pressable(v.name));
           expect(

@@ -3,7 +3,9 @@ import '../character/zodiac.dart';
 import '../data/game_objects.dart';
 import '../data/item_catalog.dart';
 import '../data/vehicles.dart';
+import '../data/game_kinds.dart';
 import '../games/common/korean_numbers.dart';
+import 'game_state.dart';
 
 /// 녹음 음성 팩에 들어가는 모든 문장 조각.
 ///
@@ -42,6 +44,33 @@ class VoiceLines {
     '바르게 앉아서 봐요.',
     '화면을 똑바로 봐 주세요.',
     '잘했어요! 다시 놀아요.',
+    // 놀이 시간·눈 쉬기·부모 확인
+    '오늘은 여기까지!',
+    '내일 또 만나요.',
+    '창밖 먼 곳을 봐요.',
+    '잘 쉬었어요! 다시 놀아요.',
+    '부모님을 불러 주세요.',
+    '15분 더 놀 수 있어요.',
+    // 모양·크기·짝 맞추기 놀이
+    '모양 놀이를 해 볼까요?',
+    '크기 놀이를 해 볼까요?',
+    '짝 맞추기를 해 볼까요?',
+    '다시 찾아볼까요?',
+    '똑같은 모양을 찾아볼까요?',
+    '똑같은 그림 두 장을 찾아볼까요?',
+    '똑같은',
+    '똑같아요!',
+    '가장',
+    // 화면과 버튼 이름 (누르면 말해 준다)
+    '놀이터 가기',
+    '내 캐릭터',
+    '꾸미기 상점',
+    '집으로',
+    '뒤로',
+    '다시 듣기',
+    '놀이터에 왔어요!',
+    '어디에서 놀까요?',
+    '꾹 누르고 있어요.',
   ];
 
   static String _subject(String w) => '$w${hasBatchim(w) ? '이' : '가'}';
@@ -81,6 +110,29 @@ class VoiceLines {
         ..add('${_object(c.name)} 찾아볼까요?');
     }
 
+    // 모양 놀이: 동그라미! / 동그라미를 / 이건 동그라미예요.
+    for (final sh in ShapeKind.values) {
+      out
+        ..add('${sh.ko}!')
+        ..add(sh.object)
+        ..add(sh.thisIs);
+    }
+
+    // 크기 놀이: 큰 사과를 / 작은 오리를 (+ "가장")
+    for (final a in SizeAsk.values) {
+      for (final k in ObjectKind.values) {
+        out.add('${a.adjective} ${k.object}');
+      }
+    }
+
+    // 짝 맞추기: 사과! / 빨간 사과! (같은 물건 다른 색 단계)
+    for (final k in ObjectKind.values) {
+      out.add('${k.ko}!');
+      for (final c in GameColor.extended) {
+        out.add('${c.adjective} ${k.ko}!');
+      }
+    }
+
     // 상점: 아이템·탈것 이름
     for (final i in ItemCatalog.all) {
       out.add(i.name);
@@ -100,6 +152,13 @@ class VoiceLines {
     // 친구 고르기
     for (final z in Zodiac.values) {
       out.add(z.hello);
+    }
+
+    // 놀이터 기구: "미끄럼틀! 숫자 놀이를 해 볼까요?"
+    for (final g in GameKind.values) {
+      out
+        ..add('${g.equipment}!')
+        ..add(g.invite.substring(g.equipment.length + 2));
     }
 
     // 이름을 비워 두면 지어 주는 이름 ("별이, 반가워!")

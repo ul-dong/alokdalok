@@ -3,23 +3,25 @@ import 'package:flutter/material.dart';
 import '../character/character_view.dart';
 import '../character/zodiac.dart';
 import '../core/palette.dart';
-import '../data/game_objects.dart';
-import '../games/common/object_art.dart';
 import '../games/common/scene_game.dart';
 import '../services/game_state.dart';
 import '../shop/shop_screen.dart';
 import '../widgets/common.dart';
-import '../data/vehicles.dart';
-import '../vehicle/garage_screen.dart';
-import '../vehicle/vehicle_painter.dart';
-import 'bag_screen.dart';
+import '../widgets/parental_gate.dart';
 import 'character_screen.dart';
+import 'playground_art.dart';
+import 'playground_screen.dart';
 import 'settings_screen.dart';
-import 'stage_picker.dart';
 
-/// 메인 화면 (가로). 왼쪽에 내 캐릭터, 오른쪽에 큰 그림 메뉴.
+/// 메인 화면 (가로). 왼쪽에 내 캐릭터, 오른쪽에 큰 버튼 세 개
+/// (놀이터 가기 · 내 캐릭터 · 꾸미기 상점). 구석의 작은 톱니바퀴는 부모 확인을 거쳐 설정으로.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  static const playgroundLabel = '놀이터 가기';
+  static const characterLabel = '내 캐릭터';
+  static const shopLabel = '꾸미기 상점';
+  static const settingsLabel = '설정';
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -47,6 +49,11 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
 
   void _go(Widget page) => Navigator.of(context).push(softRoute(page));
 
+  /// 톱니바퀴: 부모 확인을 거쳐 설정으로
+  Future<void> _openSettings() async {
+    if (await confirmParent(context) && mounted) _go(const SettingsScreen());
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
@@ -56,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
         background: const SceneBackground(groundLevel: .8),
         child: Row(
           children: [
-            // 왼쪽: 캐릭터
+            // 왼쪽: 구석의 작은 톱니바퀴 + 내 캐릭터
             Expanded(
               flex: 4,
               child: Column(
@@ -65,9 +72,9 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                     children: [
                       RoundIconButton(
                         icon: Icons.settings_rounded,
-                        label: '설정',
+                        label: HomeScreen.settingsLabel,
                         size: 60,
-                        onTap: () => _go(const SettingsScreen()),
+                        onTap: _openSettings,
                       ),
                       const Spacer(),
                     ],
@@ -108,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
               ),
             ),
             const SizedBox(width: 14),
-            // 오른쪽: 메뉴
+            // 오른쪽: 큰 버튼 세 개 (놀이터 가기 · 내 캐릭터 · 꾸미기 상점)
             Expanded(
               flex: 6,
               child: Column(
@@ -132,34 +139,15 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                   const SizedBox(height: 12),
                   Expanded(
                     flex: 3,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _MenuTile(
-                            label: '숫자 놀이',
-                            color: const Color(0xFFFFD9E3),
-                            edge: const Color(0xFFF2B4C6),
-                            art: const _NumberArt(),
-                            onTap: () {
-                              state.audio.say('숫자 놀이를 해 볼까요?');
-                              _go(const StagePicker(game: GameKind.number));
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: _MenuTile(
-                            label: '색깔 놀이',
-                            color: const Color(0xFFD6F2E4),
-                            edge: const Color(0xFFA9DCC2),
-                            art: const _ColorArt(),
-                            onTap: () {
-                              state.audio.say('색깔 놀이를 해 볼까요?');
-                              _go(const StagePicker(game: GameKind.color));
-                            },
-                          ),
-                        ),
-                      ],
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: _MenuTile(
+                        label: HomeScreen.playgroundLabel,
+                        color: const Color(0xFFD6F2E4),
+                        edge: const Color(0xFFA9DCC2),
+                        art: const _PlaygroundArt(),
+                        onTap: () => _go(const PlaygroundScreen()),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -169,41 +157,21 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                       children: [
                         Expanded(
                           child: _MenuTile(
-                            label: '내 캐릭터',
+                            label: HomeScreen.characterLabel,
                             color: const Color(0xFFDCEEFB),
                             edge: const Color(0xFFAFD3EE),
                             art: _FaceArt(zodiac: state.zodiac),
                             onTap: () => _go(const CharacterScreen()),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: _MenuTile(
-                            label: '꾸미기 상점',
+                            label: HomeScreen.shopLabel,
                             color: const Color(0xFFFFF0C4),
                             edge: const Color(0xFFF0D88A),
                             art: const _ShopArt(),
                             onTap: () => _go(const ShopScreen()),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _MenuTile(
-                            label: '내 가방',
-                            color: const Color(0xFFE9E1F7),
-                            edge: const Color(0xFFC9BCE6),
-                            art: const _BagArt(),
-                            onTap: () => _go(const BagScreen()),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _MenuTile(
-                            label: '탈것 꾸미기',
-                            color: const Color(0xFFFFE1EA),
-                            edge: const Color(0xFFF2B5C8),
-                            art: const _CarArt(),
-                            onTap: () => _go(const GarageScreen()),
                           ),
                         ),
                       ],
@@ -273,6 +241,7 @@ class _MenuTile extends StatelessWidget {
   Widget build(BuildContext context) => Pressable(
     onTap: onTap,
     semanticLabel: label,
+    speak: label,
     child: Container(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
       decoration: BoxDecoration(
@@ -304,45 +273,26 @@ class _MenuTile extends StatelessWidget {
   );
 }
 
-class _NumberArt extends StatelessWidget {
-  const _NumberArt();
+/// 놀이터 가기 그림: 미끄럼틀과 그네
+class _PlaygroundArt extends StatelessWidget {
+  const _PlaygroundArt();
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      for (var i = 1; i <= 3; i++)
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$i',
-              style: const TextStyle(
-                fontSize: 34,
-                color: Color(0xFFE0607E),
-                height: 1,
-              ),
+  Widget build(BuildContext context) => SizedBox(
+    // 큰 화면에서는 크게, 작은 화면에서는 FitBox가 줄인다
+    width: 480,
+    height: 200,
+    child: Row(
+      children: [
+        for (final k in const [GameKind.number, GameKind.color, GameKind.size])
+          Expanded(
+            child: CustomPaint(
+              size: Size.infinite,
+              painter: EquipmentPainter(k),
             ),
-            ObjectIcon(ObjectKind.apple, size: 40 + i * 2.0),
-          ],
-        ),
-    ],
-  );
-}
-
-class _ColorArt extends StatelessWidget {
-  const _ColorArt();
-
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      for (final c in const [GameColor.red, GameColor.yellow, GameColor.blue])
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: ObjectIcon(ObjectKind.balloon, color: c.color, size: 58),
-        ),
-    ],
+          ),
+      ],
+    ),
   );
 }
 
@@ -372,48 +322,5 @@ class _ShopArt extends StatelessWidget {
       Icon(Icons.checkroom_rounded, size: 64, color: Color(0xFFD9A43A)),
       Positioned(right: -10, bottom: -4, child: CoinIcon(size: 30)),
     ],
-  );
-}
-
-class _BagArt extends StatelessWidget {
-  const _BagArt();
-
-  @override
-  Widget build(BuildContext context) => const Stack(
-    clipBehavior: Clip.none,
-    children: [
-      Icon(Icons.backpack_rounded, size: 64, color: Color(0xFFF2826F)),
-      Positioned(right: -10, bottom: -4, child: StarIcon(size: 28)),
-    ],
-  );
-}
-
-/// 탈것 꾸미기 타일 그림: 별·하트 스티커가 붙은 빨간 자동차
-class _CarArt extends StatelessWidget {
-  const _CarArt();
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 120,
-    height: 80,
-    child: CustomPaint(
-      painter: VehiclePainter(
-        vehicle: Vehicles.byId('car')!,
-        stickers: const [
-          PlacedSticker(
-            kind: StickerKind.star,
-            color: 0xFFFFCF4D,
-            x: .3,
-            y: .62,
-          ),
-          PlacedSticker(
-            kind: StickerKind.heart,
-            color: 0xFFF58BB0,
-            x: .62,
-            y: .66,
-          ),
-        ],
-      ),
-    ),
   );
 }

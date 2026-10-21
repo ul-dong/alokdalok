@@ -10,11 +10,11 @@ import '../data/vehicles.dart';
 import '../games/common/scene_game.dart';
 import '../services/audio_service.dart';
 import '../services/game_state.dart';
-import '../vehicle/fit_grid.dart';
 import '../vehicle/garage_screen.dart';
 import '../vehicle/ride_view.dart';
 import '../vehicle/vehicle_painter.dart';
 import '../widgets/common.dart';
+import '../widgets/paged_grid.dart';
 import 'item_widgets.dart';
 
 /// 꾸미기 상점. 테마(로봇·공주·소방관·경찰·군인·원시인)와 탈것을 고른다.
@@ -214,10 +214,12 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
   }
 
   // 탈것 7종이 한 화면에 모두 보이게 (밀어서 보기 없음)
-  Widget _vehicleGrid(GameState state) => FitGrid(
-    count: Vehicles.all.length,
-    aspect: 1.3,
-    maxWidth: 200,
+  Widget _vehicleGrid(GameState state) => PagedGrid(
+    itemCount: Vehicles.all.length,
+    minCellWidth: 64,
+    minCellHeight: 48,
+    maxCellWidth: 200,
+    maxCellHeight: 154,
     itemBuilder: (_, i) {
       final v = Vehicles.all[i];
       final owned = state.ownsVehicle(v.id);

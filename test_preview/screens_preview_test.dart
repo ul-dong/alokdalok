@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:alokdalok/app.dart';
 import 'package:alokdalok/games/color_game/color_game_screen.dart';
 import 'package:alokdalok/games/number_game/number_game_screen.dart';
+import 'package:alokdalok/screens/playground_screen.dart';
 import 'package:alokdalok/screens/settings_screen.dart';
 import 'package:alokdalok/screens/zodiac_picker_screen.dart';
 import 'package:alokdalok/screens/stage_picker.dart';
@@ -30,10 +31,17 @@ Future<GameState> st() async {
     (StickerKind.heart, .55, .66),
     (StickerKind.flower, .78, .64),
   ]) {
-    await s.addSticker('airplane', PlacedSticker(kind: k, color: 0xFFFFCF4D, x: x, y: y));
+    await s.addSticker(
+      'airplane',
+      PlacedSticker(kind: k, color: 0xFFFFCF4D, x: x, y: y),
+    );
   }
   for (var id = 1; id <= 4; id++) {
     await s.completeSession(GameKind.number, id);
+  }
+  for (var id = 1; id <= 2; id++) {
+    await s.completeSession(GameKind.color, id);
+    await s.completeSession(GameKind.shape, id);
   }
   return s;
 }
@@ -42,6 +50,9 @@ void main() {
   final pages = <String, Widget Function()>{
     'home': () => const SizedBox(),
     'stages': () => const StagePicker(game: GameKind.number),
+    'stages_shape': () => const StagePicker(game: GameKind.shape),
+    'stages_match': () => const StagePicker(game: GameKind.match),
+    'playground': () => const PlaygroundScreen(),
     'number': () => NumberGameScreen(stageId: 8, random: Random(5)),
     'number5': () => NumberGameScreen(stageId: 5, random: Random(2)),
     'color5': () => const ColorGameScreen(stageId: 5),
@@ -59,12 +70,22 @@ void main() {
         await t.pumpWidget(
           e.key == 'home'
               ? AlokdalokApp(state: s)
-              : AppScope(state: s, child: MaterialApp(debugShowCheckedModeBanner: false, home: e.value())),
+              : AppScope(
+                  state: s,
+                  child: MaterialApp(
+                    debugShowCheckedModeBanner: false,
+                    theme: ThemeData(fontFamily: 'Jua'),
+                    home: e.value(),
+                  ),
+                ),
         );
         for (var i = 0; i < 15; i++) {
           await t.pump(const Duration(milliseconds: 100));
         }
-        await expectLater(find.byType(MaterialApp).first, matchesGoldenFile('shots/${e.key}_${size.width.toInt()}.png'));
+        await expectLater(
+          find.byType(MaterialApp).first,
+          matchesGoldenFile('shots/${e.key}_${size.width.toInt()}.png'),
+        );
         await t.pumpWidget(const SizedBox());
       });
     }

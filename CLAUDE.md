@@ -38,6 +38,11 @@ $F analyze
 - 터치 칸 60~72px 이상, 옆으로 밀기(가로 스크롤) 대신 큰 화살표로 쪽 넘기기, 짧은 페이드 전환, 애니메이션은 공용 20fps 시계(`lib/core/slow_clock.dart`).
 - 저장 형식이 바뀌면 `SaveData.currentVersion`을 올리고 `SaveData.migrate()`에 단계 추가 + 테스트.
 
+## 빌드
+
+- **웹:** `tool/build_web.sh`로 빌드한다 (`flutter build web`만 하면 오프라인 서비스 워커 목록 `offline_files.json`이 빠진다).
+- **iOS 시뮬레이터:** ML Kit에 arm64 시뮬레이터 조각이 없어서, `pod install` 때 `tool/ios/mlkit_sim_slices.py`가 만드는 `ios/Pods/MLKitSim` 사본으로 처리한다 (`ios/Podfile` post_install). arm64를 빼는(EXCLUDED_ARCHS) 방식은 iOS 27 시뮬레이터에서 실행되지 않는다.
+
 ## 커밋
 
 - 메시지는 한국어 요약 한 줄(무엇을 했는지, 예: `숫자 놀이: 보기에 주사위 발자국 추가`), 필요하면 빈 줄 뒤 본문.

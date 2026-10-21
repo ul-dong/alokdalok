@@ -76,15 +76,12 @@ void main() {
         await settle(t);
         expect(t.takeException(), isNull);
         expect(find.textContaining('별이', findRichText: true), findsOneWidget);
-        for (final label in [
-          '숫자 놀이',
-          '색깔 놀이',
-          '내 캐릭터',
-          '꾸미기 상점',
-          '내 가방',
-          '탈것 꾸미기',
-        ]) {
+        // 홈에는 큰 버튼 세 개만 (놀이터 가기 · 내 캐릭터 · 꾸미기 상점)
+        for (final label in ['놀이터 가기', '내 캐릭터', '꾸미기 상점']) {
           expect(find.text(label), findsOneWidget, reason: label);
+        }
+        for (final label in ['숫자 놀이', '색깔 놀이', '내 가방', '탈것 꾸미기']) {
+          expect(find.text(label), findsNothing, reason: label);
         }
       },
     );
@@ -172,7 +169,7 @@ void main() {
     expect(Nickname.randomPool, contains(s.nickname));
     expect(s.nicknameChosen, isTrue);
     expect(find.textContaining(s.nickname, findRichText: true), findsOneWidget);
-    expect(find.text('숫자 놀이'), findsOneWidget);
+    expect(find.text('놀이터 가기'), findsOneWidget);
     expect(t.takeException(), isNull);
   });
 
@@ -182,7 +179,7 @@ void main() {
     await t.pumpWidget(AlokdalokApp(state: s));
     await settle(t);
     expect(find.text('화면을 옆으로 돌려 주세요'), findsOneWidget);
-    expect(find.text('숫자 놀이'), findsNothing);
+    expect(find.text('놀이터 가기'), findsNothing);
   });
 
   for (final n in List.generate(10, (i) => i + 1)) {
@@ -363,7 +360,7 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('상점: 탈것 탭에서 자동차를 사서 타고, 테마 탭은 옆으로 밀린다', (t) async {
+  testWidgets('상점: 탈것 탭에서 자동차를 사서 타고, 테마 탭은 화살표로 넘긴다', (t) async {
     await setSize(t, const Size(844, 390));
     final s = await makeState();
     for (var i = 0; i < 20; i++) {
@@ -374,15 +371,20 @@ void main() {
     for (final label in ['탈것', '로봇', '공주']) {
       expect(pressable(label), findsOneWidget, reason: label);
     }
-    // 뒤쪽 테마는 옆으로 밀어서 보인다
-    await t.drag(find.byType(ThemeTabs), const Offset(-2000, 0));
-    await settle(t, 300);
+    // 뒤쪽 테마는 큰 화살표로 한 쪽씩 넘겨서 본다 (옆으로 밀기 없음)
+    final tabs = find.byType(ThemeTabs);
+    for (var i = 0; i < 10 && pressable('발레리나').evaluate().isEmpty; i++) {
+      await t.tap(find.descendant(of: tabs, matching: pressable('다음 쪽')));
+      await settle(t, 300);
+    }
     expect(pressable('발레리나'), findsOneWidget);
     await t.tap(pressable('발레리나'));
     await settle(t, 300);
     expect(pressable('발레 튀튀, 코인 40개'), findsOneWidget);
-    await t.drag(find.byType(ThemeTabs), const Offset(2000, 0));
-    await settle(t, 300);
+    for (var i = 0; i < 10 && pressable('탈것').evaluate().isEmpty; i++) {
+      await t.tap(find.descendant(of: tabs, matching: pressable('앞 쪽')));
+      await settle(t, 300);
+    }
     await t.tap(pressable('탈것'));
     await settle(t, 300);
     await t.tap(pressable('자동차, 코인 40개'));

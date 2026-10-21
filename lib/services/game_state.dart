@@ -9,11 +9,34 @@ import '../data/item_catalog.dart';
 import '../data/stages.dart';
 import '../data/vehicles.dart';
 import 'audio_service.dart';
+import 'backup_code.dart';
 import 'eye_guard.dart';
+import 'play_clock.dart';
 import 'save_data.dart';
 import 'storage_service.dart';
 
-enum GameKind { number, color }
+/// 놀이 종류. 이 값 하나로 단계 고르기·놀이 화면을 연다 (`games/game_entry.dart`).
+enum GameKind { number, color, shape, size, match }
+
+extension GameKindInfo on GameKind {
+  /// 화면에 쓰는 이름 (부모님용 보조 글자)
+  String get title => switch (this) {
+    GameKind.number => '숫자 놀이',
+    GameKind.color => '색깔 놀이',
+    GameKind.shape => '모양 놀이',
+    GameKind.size => '크기 놀이',
+    GameKind.match => '짝 맞추기',
+  };
+
+  /// 단계 수
+  int get stageCount => switch (this) {
+    GameKind.number => Stages.number.length,
+    GameKind.color => Stages.color.length,
+    GameKind.shape => Stages.shape.length,
+    GameKind.size => Stages.size.length,
+    GameKind.match => Stages.match.length,
+  };
+}
 
 enum PurchaseResult { ok, alreadyOwned, notEnoughCoins, unknownItem }
 
@@ -38,14 +61,22 @@ class SessionReward {
 
 /// 앱 전체 상태. 화면은 이 객체만 바라보고, 저장은 이 객체가 책임진다.
 class GameState extends ChangeNotifier {
-  GameState({required this.storage, required this.audio, EyeGuard? eyeGuard})
-    : eye = eyeGuard ?? EyeGuard();
+  GameState({
+    required this.storage,
+    required this.audio,
+    EyeGuard? eyeGuard,
+    DateTime Function()? now,
+  }) : eye = eyeGuard ?? EyeGuard(),
+       play = PlayClock(now: now);
 
   final StorageService storage;
   final AudioService audio;
 
   /// 눈 지킴이 (화면 거리·자세)
   final EyeGuard eye;
+
+  /// 하루 놀이 시간·눈 쉬기 시계
+  final PlayClock play;
 
   SaveData _d = SaveData.initial();
   bool _loaded = false;
@@ -62,19 +93,43 @@ class GameState extends ChangeNotifier {
   bool get sfxOn => _d.sfxOn;
   int get sessionsPlayed => _d.sessionsPlayed;
 
-  int unlockedStage(GameKind g) =>
-      g == GameKind.number ? _d.numberStageUnlocked : _d.colorStageUnlocked;
-  Set<int> clearedStages(GameKind g) => Set.unmodifiable(
-    g == GameKind.number ? _d.numberStageCleared : _d.colorStageCleared,
-  );
-  int stageCount(GameKind g) =>
-      g == GameKind.number ? Stages.number.length : Stages.color.length;
+  int unlockedStage(GameKind g) => switch (g) {
+    GameKind.number => _d.numberStageUnlocked,
+    GameKind.color => _d.colorStageUnlocked,
+    GameKind.shape => _d.shapeStageUnlocked,
+    GameKind.size => _d.sizeStageUnlocked,
+    GameKind.match => _d.matchStageUnlocked,
+  };
+  Set<int> clearedStages(GameKind g) => Set.unmodifiable(_cleared(g));
+  int stageCount(GameKind g) => g.stageCount;
+
+  Set<int> _cleared(GameKind g) => switch (g) {
+    GameKind.number => _d.numberStageCleared,
+    GameKind.color => _d.colorStageCleared,
+    GameKind.shape => _d.shapeStageCleared,
+    GameKind.size => _d.sizeStageCleared,
+    GameKind.match => _d.matchStageCleared,
+  };
+
+  void _setUnlocked(GameKind g, int stage) => switch (g) {
+    GameKind.number => _d.numberStageUnlocked = stage,
+    GameKind.color => _d.colorStageUnlocked = stage,
+    GameKind.shape => _d.shapeStageUnlocked = stage,
+    GameKind.size => _d.sizeStageUnlocked = stage,
+    GameKind.match => _d.matchStageUnlocked = stage,
+  };
 
   bool owns(String itemId) => _d.owned.contains(itemId);
 
   Future<void> load() async {
     _d = await storage.load();
     _applyAudio();
+    _applySafety();
+    play.restore(
+      day: _d.playDay,
+      usedSeconds: _d.playSeconds,
+      bonusMinutes: _d.playBonusMin,
+    );
     eye.calibration = _d.eyeCalibration;
     if (_d.eyeGuardOn && eye.supported) unawaited(eye.start());
     _loaded = true;
@@ -91,6 +146,13 @@ class GameState extends ChangeNotifier {
     audio.sfxOn = _d.sfxOn;
     audio.voiceStyle = _d.voiceStyle;
     audio.musicOn = _d.musicOn;
+  }
+
+  void _applySafety() {
+    eye.tooCloseCm = _d.eyeDistanceCm.toDouble();
+    play
+      ..limitMinutes = _d.playLimitMin
+      ..breakMinutes = _d.eyeBreakMin;
   }
 
   bool get musicOn => _d.musicOn;
@@ -174,20 +236,14 @@ class GameState extends ChangeNotifier {
   /// 한 판 완료 보상과 다음 단계 열기.
   Future<SessionReward> completeSession(GameKind game, int stageId) async {
     final firstPlay = _d.sessionsPlayed == 0 ? Economy.firstPlayBonus : 0;
-    final cleared = game == GameKind.number
-        ? _d.numberStageCleared
-        : _d.colorStageCleared;
+    final cleared = _cleared(game);
     final newStage = cleared.contains(stageId) ? 0 : Economy.newStageBonus;
     cleared.add(stageId);
 
     int? unlocked;
     final next = stageId + 1;
     if (next <= stageCount(game) && unlockedStage(game) < next) {
-      if (game == GameKind.number) {
-        _d.numberStageUnlocked = next;
-      } else {
-        _d.colorStageUnlocked = next;
-      }
+      _setUnlocked(game, next);
       unlocked = next;
     }
 
@@ -352,11 +408,130 @@ class GameState extends ChangeNotifier {
     await _commit();
   }
 
+  // ---------- 아이 안전 (부모님 설정) ----------
+
+  int get eyeDistanceCm => _d.eyeDistanceCm;
+  int get playLimitMin => _d.playLimitMin;
+  int get eyeBreakMin => _d.eyeBreakMin;
+  bool get parentGateOn => _d.parentGateOn;
+
+  /// 눈 보호 거리 (cm). 선택지에 없는 값은 무시.
+  Future<void> setEyeDistance(int cm) async {
+    if (!SafetyRules.eyeDistanceChoices.contains(cm)) return;
+    _d.eyeDistanceCm = cm;
+    _applySafety();
+    await _commit();
+  }
+
+  /// 하루 놀이 시간 (분, 0 = 제한 없음). 선택지에 없는 값은 무시.
+  Future<void> setPlayLimit(int minutes) async {
+    if (!SafetyRules.limitChoices.contains(minutes)) return;
+    _d.playLimitMin = minutes;
+    _applySafety();
+    await _commit();
+  }
+
+  /// 눈 쉬기 간격 (분). 선택지에 없는 값은 무시.
+  Future<void> setEyeBreak(int minutes) async {
+    if (!SafetyRules.breakChoices.contains(minutes)) return;
+    _d.eyeBreakMin = minutes;
+    _applySafety();
+    await _commit();
+  }
+
+  Future<void> setParentGate(bool on) async {
+    _d.parentGateOn = on;
+    await _commit();
+  }
+
+  /// 지금 놀이를 막고 있는 것 (놀이 시간 끝 / 눈 쉬기)
+  PlayBlock get playBlock => play.block;
+
+  int _savedPlaySeconds = 0;
+
+  /// 1초마다 부른다 (덮개 위젯). 막는 상태가 바뀌면 화면에 알리고,
+  /// 논 시간은 30초마다 저장한다.
+  void tickPlay() {
+    final changed = play.tick();
+    _syncPlay(force: changed);
+    if (changed) notifyListeners();
+  }
+
+  /// 앱이 뒤로 갔다 / 돌아왔다
+  void pausePlay() {
+    play.pause();
+    _syncPlay(force: true);
+  }
+
+  void resumePlay() {
+    if (play.resume()) notifyListeners();
+    _syncPlay();
+  }
+
+  /// 부모 확인 뒤 15분 더 놀기
+  Future<void> extendPlay() async {
+    play.extend();
+    _syncPlay(force: true);
+    notifyListeners();
+  }
+
+  /// 오늘 논 기록을 저장값에 옮기고, 많이 바뀌었으면(또는 [force]) 저장한다.
+  /// 화면 전체를 다시 그리지 않도록 알리지 않고 저장만 한다.
+  void _syncPlay({bool force = false}) {
+    final secs = play.used.inSeconds;
+    final changed =
+        _d.playDay != play.day || _d.playBonusMin != play.bonusMinutes;
+    _d
+      ..playDay = play.day
+      ..playSeconds = secs
+      ..playBonusMin = play.bonusMinutes;
+    if (force || changed || (secs - _savedPlaySeconds).abs() >= 30) {
+      _savedPlaySeconds = secs;
+      unawaited(storage.save(_d));
+    }
+  }
+
+  // ---------- 백업 ----------
+
+  /// 다른 기기로 옮기는 'ALOK1-' 백업 글자
+  String exportBackup() => BackupCode.encode(_d);
+
+  /// 백업 글자로 복구한다. 잘못된 글자면 아무것도 바꾸지 않고 이유를 돌려준다.
+  Future<BackupError?> restoreBackup(String text) async {
+    final r = BackupCode.decode(text);
+    final data = r.data;
+    if (data == null) return r.error;
+    // 이 기기에만 맞는 값(카메라 보정, 오늘 논 시간)은 지금 기기 것을 그대로 쓴다
+    data
+      ..eyeCalibration = _d.eyeCalibration
+      ..playDay = _d.playDay
+      ..playSeconds = _d.playSeconds
+      ..playBonusMin = _d.playBonusMin;
+    _d = data;
+    _applyAudio();
+    _applySafety();
+    _applyEyeRunning();
+    await _commit();
+    return null;
+  }
+
+  /// 저장값의 눈 보호 켜짐/꺼짐에 맞춰 카메라를 켜거나 끈다
+  void _applyEyeRunning() {
+    eye.calibration = _d.eyeCalibration;
+    if (_d.eyeGuardOn && eye.supported && !eye.running) {
+      unawaited(eye.start());
+    } else if (!_d.eyeGuardOn && eye.running) {
+      unawaited(eye.stop());
+    }
+  }
+
   /// 부모용: 모든 진행 기록 지우기
   Future<void> resetAll() async {
     await storage.clear();
     _d = SaveData.initial();
     _applyAudio();
+    _applySafety();
+    _applyEyeRunning();
     await _commit();
   }
 }

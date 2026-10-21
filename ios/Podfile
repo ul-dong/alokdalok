@@ -1,5 +1,5 @@
-# Uncomment this line to define a global platform for your project
-# platform :ios, '15.0'
+# google_mlkit_face_detection 0.15 (GoogleMLKit/FaceDetection 9 / MLKitVision 10) 이 iOS 15.5 이상을 요구한다.
+platform :ios, '15.5'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -36,8 +36,44 @@ target 'Runner' do
   end
 end
 
+# ML Kit 은 시뮬레이터용으로 x86_64 조각만 있고, iOS 27 시뮬레이터는 x86_64(Rosetta) 앱을 못 돌린다.
+# 그래서 pod install 때 실기기용 arm64 조각을 '시뮬레이터'로 표시한 사본을 Pods/MLKitSim 에 만들고
+# (tool/ios/mlkit_sim_slices.py), 시뮬레이터 빌드에서만 그 폴더를 먼저 찾게 한다. 실기기 빌드는 원본 그대로.
+MLKIT_BINARY_PODS = %w[MLImage MLKitCommon MLKitVision MLKitFaceDetection]
+MLKIT_SIM_DIR = '"${PODS_ROOT}/MLKitSim"'
+
 post_install do |installer|
+  pods_root = installer.sandbox.root.to_s
+  script = File.expand_path('../tool/ios/mlkit_sim_slices.py', __dir__)
+  system('python3', script, pods_root, File.join(pods_root, 'MLKitSim'), *MLKIT_BINARY_PODS) or
+    raise 'ML Kit 시뮬레이터 조각 만들기 실패 (tool/ios/mlkit_sim_slices.py)'
+
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      # 모든 Pod 의 최소 버전을 앱과 같게 맞춘다 (경고·링크 오류 방지).
+      if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 15.5
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.5'
+      end
+      # ML Kit podspec 의 'arm64 시뮬레이터 제외'를 덮어쓴다 (i386 만 제외, Flutter 기본값과 같음).
+      config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'i386'
+      key = 'FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*]'
+      config.build_settings[key] = "#{MLKIT_SIM_DIR} #{config.build_settings[key] || '$(inherited)'}"
+    end
+  end
+
+  # 앱(Runner)이 쓰는 Pods-Runner 설정에도 같은 규칙을 넣는다.
+  installer.aggregate_targets.each do |target|
+    target.xcconfigs.each do |config_name, xcconfig|
+      # ML Kit podspec 이 앱에 넣는 'arm64 시뮬레이터 제외'를 뺀다 (위의 사본이 있으므로 필요 없음).
+      excluded = 'EXCLUDED_ARCHS[sdk=iphonesimulator*]'
+      if xcconfig.attributes[excluded]
+        rest = xcconfig.attributes[excluded].split - ['arm64']
+        rest.empty? ? xcconfig.attributes.delete(excluded) : xcconfig.attributes[excluded] = rest.join(' ')
+      end
+      paths = xcconfig.attributes['FRAMEWORK_SEARCH_PATHS']
+      xcconfig.attributes['FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*]'] = "#{MLKIT_SIM_DIR} #{paths}" if paths
+      xcconfig.save_as(target.xcconfig_path(config_name))
+    end
   end
 end

@@ -30,6 +30,7 @@ Route<T> softRoute<T>(Widget page) => PageRouteBuilder<T>(
 );
 
 /// 누르면 살짝 눌리는 버튼. 탭 효과음 포함. 최소 72dp.
+/// [speak]가 있으면 누를 때 그 이름을 말한다 (녹음이 없는 말은 기기 음성으로).
 class Pressable extends StatefulWidget {
   const Pressable({
     super.key,
@@ -38,6 +39,7 @@ class Pressable extends StatefulWidget {
     this.sound = Sfx.tap,
     this.semanticLabel,
     this.enabled = true,
+    this.speak,
   });
 
   final Widget child;
@@ -45,6 +47,9 @@ class Pressable extends StatefulWidget {
   final Sfx? sound;
   final String? semanticLabel;
   final bool enabled;
+
+  /// 누를 때 말할 이름 (null이면 말하지 않는다)
+  final String? speak;
 
   @override
   State<Pressable> createState() => _PressableState();
@@ -67,9 +72,9 @@ class _PressableState extends State<Pressable> {
         onTapUp: active ? (_) => setState(() => _down = false) : null,
         onTap: active
             ? () {
-                if (widget.sound != null) {
-                  AppScope.read(context).audio.play(widget.sound!);
-                }
+                final audio = AppScope.read(context).audio;
+                if (widget.sound != null) audio.play(widget.sound!);
+                if (widget.speak != null) audio.say(widget.speak!);
                 widget.onTap!();
               }
             : null,
@@ -191,6 +196,7 @@ class RoundIconButton extends StatelessWidget {
     this.size = 72,
     this.label,
     this.color = Palette.cream,
+    this.speakLabel = false,
   });
 
   final IconData icon;
@@ -199,10 +205,14 @@ class RoundIconButton extends StatelessWidget {
   final String? label;
   final Color color;
 
+  /// 누르면 [label]을 말한다
+  final bool speakLabel;
+
   @override
   Widget build(BuildContext context) => Pressable(
     onTap: onTap,
     semanticLabel: label,
+    speak: speakLabel ? label : null,
     child: Container(
       width: size,
       height: size,

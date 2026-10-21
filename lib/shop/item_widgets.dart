@@ -4,8 +4,10 @@ import '../character/item_thumb.dart';
 import '../core/palette.dart';
 import '../data/item_catalog.dart';
 import '../widgets/common.dart';
+import '../widgets/paged_grid.dart';
 
-/// 테마 탭 (탈것 + 옷 테마들, 옆으로 밀어서 더 보기). null이 탈것 탭.
+/// 테마 탭 (탈것 + 옷 테마들). null이 탈것 탭.
+/// 옆으로 밀기 대신, 다 안 들어가면 큰 화살표로 한 쪽씩 넘긴다.
 class ThemeTabs extends StatelessWidget {
   const ThemeTabs({
     super.key,
@@ -23,70 +25,65 @@ class ThemeTabs extends StatelessWidget {
     final tabs = <OutfitTheme?>[if (showVehicles) null, ...OutfitTheme.values];
     return SizedBox(
       height: 78,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          for (final t in tabs)
-            SizedBox(
-              width: 76,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2.5),
-                child: Pressable(
-                  onTap: () => onSelect(t),
-                  semanticLabel: t?.label ?? '탈것',
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      color: t == selected ? Palette.yellowSoft : Palette.cream,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: t == selected ? Palette.yellow : Colors.white,
-                        width: 4,
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Palette.creamDeep,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: FitBox(
-                            child: t == null
-                                ? const SizedBox(
-                                    width: 60,
-                                    height: 40,
-                                    child: Icon(
-                                      Icons.directions_car_rounded,
-                                      size: 40,
-                                      color: Color(0xFFF26B5E),
-                                    ),
-                                  )
-                                : ItemThumb(
-                                    item: ItemCatalog.byId(t.sampleId)!,
-                                    size: 46,
-                                  ),
-                          ),
-                        ),
-                        FitBox(
-                          child: Text(
-                            t?.label ?? '탈것',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Palette.text,
+      child: PagedGrid(
+        itemCount: tabs.length,
+        initialIndex: tabs.indexOf(selected).clamp(0, tabs.length - 1),
+        minCellWidth: 72,
+        minCellHeight: 72,
+        maxCellWidth: 92,
+        maxRows: 1,
+        gap: 5,
+        arrowSize: 64,
+        itemBuilder: (context, i) {
+          final t = tabs[i];
+          return Pressable(
+            onTap: () => onSelect(t),
+            semanticLabel: t?.label ?? '탈것',
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              decoration: BoxDecoration(
+                color: t == selected ? Palette.yellowSoft : Palette.cream,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: t == selected ? Palette.yellow : Colors.white,
+                  width: 4,
+                ),
+                boxShadow: const [
+                  BoxShadow(color: Palette.creamDeep, offset: Offset(0, 4)),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: FitBox(
+                      child: t == null
+                          ? const SizedBox(
+                              width: 60,
+                              height: 40,
+                              child: Icon(
+                                Icons.directions_car_rounded,
+                                size: 40,
+                                color: Color(0xFFF26B5E),
+                              ),
+                            )
+                          : ItemThumb(
+                              item: ItemCatalog.byId(t.sampleId)!,
+                              size: 46,
                             ),
-                          ),
-                        ),
-                      ],
                     ),
                   ),
-                ),
+                  FitBox(
+                    child: Text(
+                      t?.label ?? '탈것',
+                      style: const TextStyle(fontSize: 15, color: Palette.text),
+                    ),
+                  ),
+                ],
               ),
             ),
-        ],
+          );
+        },
       ),
     );
   }

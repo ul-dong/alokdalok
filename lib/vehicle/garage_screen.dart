@@ -11,6 +11,7 @@ import '../services/game_state.dart';
 import '../shop/item_widgets.dart';
 import '../shop/shop_screen.dart';
 import '../widgets/common.dart';
+import '../widgets/paged_grid.dart';
 import 'ride_view.dart';
 import 'sticker_art.dart';
 import 'vehicle_painter.dart';
@@ -182,66 +183,39 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
   /// 가진 탈것 고르기. 모두 들어가면 한 줄로, 아니면 큰 화살표로 하나씩 넘긴다 (밀어서 보기 없음).
   Widget _chooser(GameState state, List<Vehicle> mine) {
     if (mine.isEmpty) return const SizedBox();
-    Widget chip(Vehicle m, double w) => Pressable(
-      onTap: () => _pickVehicle(state, m),
-      semanticLabel: m.name,
-      child: Container(
-        width: w,
-        height: 56,
-        decoration: BoxDecoration(
-          color: Palette.cream,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: m.id == vehicleId ? Palette.yellow : Colors.white,
-            width: 4,
-          ),
-        ),
-        child: CustomPaint(
-          painter: VehiclePainter(
-            vehicle: m,
-            paint: state.paintOf(m.id),
-            stickers: state.stickersOf(m.id),
-          ),
-        ),
-      ),
-    );
-    return LayoutBuilder(
-      builder: (context, c) {
-        const chipW = 76.0, gap = 8.0;
-        if (mine.length * (chipW + gap) <= c.maxWidth) {
-          return Row(
-            children: [
-              for (final m in mine)
-                Padding(
-                  padding: const EdgeInsets.only(right: gap),
-                  child: chip(m, chipW),
-                ),
-            ],
-          );
-        }
-        final i = max(0, mine.indexWhere((m) => m.id == vehicleId));
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            RoundIconButton(
-              icon: Icons.chevron_left_rounded,
-              label: '앞 탈것',
-              size: 56,
-              onTap: () => _pickVehicle(
-                state,
-                mine[(i - 1 + mine.length) % mine.length],
+    // 모두 들어가면 한 줄로, 아니면 공용 큰 화살표(PagedGrid)로 쪽을 넘긴다
+    return PagedGrid(
+      itemCount: mine.length,
+      initialIndex: max(0, mine.indexWhere((m) => m.id == vehicleId)),
+      minCellWidth: 76,
+      minCellHeight: 56,
+      maxCellWidth: 84,
+      maxCellHeight: 56,
+      maxRows: 1,
+      gap: 8,
+      arrowSize: 56,
+      itemBuilder: (context, i) {
+        final m = mine[i];
+        return Pressable(
+          onTap: () => _pickVehicle(state, m),
+          semanticLabel: m.name,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Palette.cream,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: m.id == vehicleId ? Palette.yellow : Colors.white,
+                width: 4,
               ),
             ),
-            const SizedBox(width: gap),
-            chip(mine[i], min(110.0, max(chipW, c.maxWidth - 2 * (56 + gap)))),
-            const SizedBox(width: gap),
-            RoundIconButton(
-              icon: Icons.chevron_right_rounded,
-              label: '다음 탈것',
-              size: 56,
-              onTap: () => _pickVehicle(state, mine[(i + 1) % mine.length]),
+            child: CustomPaint(
+              painter: VehiclePainter(
+                vehicle: m,
+                paint: state.paintOf(m.id),
+                stickers: state.stickersOf(m.id),
+              ),
             ),
-          ],
+          ),
         );
       },
     );

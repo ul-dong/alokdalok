@@ -7,11 +7,11 @@ import '../data/item_catalog.dart';
 import '../games/common/scene_game.dart';
 import '../data/vehicles.dart';
 import '../shop/item_widgets.dart';
-import '../vehicle/fit_grid.dart';
 import '../vehicle/garage_screen.dart';
 import '../vehicle/vehicle_painter.dart';
 import '../shop/shop_screen.dart';
 import '../widgets/common.dart';
+import '../widgets/paged_grid.dart';
 import 'nickname_screen.dart';
 import 'zodiac_picker_screen.dart';
 
@@ -193,6 +193,7 @@ class _CharacterScreenState extends State<CharacterScreen> with ScreenMusic {
                               owned: true,
                               equipped: on,
                               onTap: () {
+                                state.audio.say(item.name);
                                 state.toggleEquip(item.id);
                                 if (!on) setState(() => cheer++);
                               },
@@ -245,9 +246,12 @@ class _VehicleShelfState extends State<_VehicleShelf> {
       children: [
         Expanded(
           // 가진 탈것이 한 화면에 모두 들어가게 (밀어서 보기 없음)
-          child: FitGrid(
-            count: vehicles.length,
-            aspect: 1.4,
+          child: PagedGrid(
+            itemCount: vehicles.length,
+            minCellWidth: 64,
+            minCellHeight: 48,
+            maxCellWidth: 220,
+            maxCellHeight: 160,
             itemBuilder: (context, i) {
               final v = vehicles[i];
               return _VehicleCard(
