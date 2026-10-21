@@ -7,6 +7,7 @@ import 'package:alokdalok/services/game_state.dart';
 import 'package:alokdalok/services/storage_service.dart';
 import 'package:alokdalok/widgets/common.dart';
 import 'package:alokdalok/widgets/parental_gate.dart';
+import 'package:alokdalok/core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -98,7 +99,7 @@ void main() {
           state: s,
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
-            theme: ThemeData(fontFamily: 'Jua'),
+            theme: buildAppTheme(),
             home: Builder(
               builder: (c) {
                 ctx = c;
@@ -129,7 +130,7 @@ void main() {
           state: s,
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
-            theme: ThemeData(fontFamily: 'Jua'),
+            theme: buildAppTheme(),
             home: const SettingsScreen(),
           ),
         ),

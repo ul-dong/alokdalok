@@ -8,6 +8,7 @@ import 'package:alokdalok/screens/stage_picker.dart';
 import 'package:alokdalok/services/audio_service.dart';
 import 'package:alokdalok/services/game_state.dart';
 import 'package:alokdalok/widgets/common.dart';
+import 'package:alokdalok/core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -41,6 +42,7 @@ void main() {
               state: s,
               child: MaterialApp(
                 debugShowCheckedModeBanner: false,
+                theme: buildAppTheme(),
                 home: gameScreen(kind, stage, random: Random(stage * 7)),
               ),
             ),
@@ -91,6 +93,7 @@ void main() {
           state: s,
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
+            theme: buildAppTheme(),
             home: StagePicker(game: kind),
           ),
         ),

@@ -16,6 +16,7 @@ import 'package:alokdalok/shop/shop_screen.dart';
 import 'package:alokdalok/vehicle/garage_screen.dart';
 import 'package:alokdalok/data/vehicles.dart';
 import 'package:alokdalok/widgets/common.dart';
+import 'package:alokdalok/core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -78,7 +79,7 @@ void main() {
                   state: s,
                   child: MaterialApp(
                     debugShowCheckedModeBanner: false,
-                    theme: ThemeData(fontFamily: 'Jua'),
+                    theme: buildAppTheme(),
                     home: e.value(),
                   ),
                 ),

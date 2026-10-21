@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:alokdalok/games/common/stamp.dart';
 import 'package:alokdalok/games/number_game/number_game_screen.dart';
+import 'package:alokdalok/core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:alokdalok/widgets/common.dart';
@@ -18,6 +19,7 @@ void main() {
         state: s,
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
+          theme: buildAppTheme(),
           home: NumberGameScreen(stageId: stage, random: Random(3)),
         ),
       ));

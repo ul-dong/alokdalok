@@ -13,6 +13,7 @@ import 'package:alokdalok/services/save_data.dart';
 import 'package:alokdalok/services/storage_service.dart';
 import 'package:alokdalok/shop/shop_screen.dart';
 import 'package:alokdalok/widgets/common.dart';
+import 'package:alokdalok/core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -41,7 +42,7 @@ Widget _app(GameState s, Widget home) => AppScope(
   state: s,
   child: MaterialApp(
     debugShowCheckedModeBanner: false,
-    theme: ThemeData(fontFamily: 'Jua'),
+    theme: buildAppTheme(),
     home: home,
   ),
 );

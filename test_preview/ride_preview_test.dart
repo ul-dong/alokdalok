@@ -2,6 +2,7 @@ import 'package:alokdalok/character/zodiac.dart';
 import 'package:alokdalok/data/item_catalog.dart';
 import 'package:alokdalok/data/vehicles.dart';
 import 'package:alokdalok/vehicle/vehicle_painter.dart';
+import 'package:alokdalok/core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -16,6 +17,7 @@ void main() {
       await t.pumpWidget(
         MaterialApp(
           debugShowCheckedModeBanner: false,
+          theme: buildAppTheme(),
           home: RepaintBoundary(
             child: Container(
               color: const Color(0xFFE6F4FC),
@@ -66,6 +68,7 @@ void main() {
       await t.pumpWidget(
         MaterialApp(
           debugShowCheckedModeBanner: false,
+          theme: buildAppTheme(),
           home: RepaintBoundary(
             child: Container(
               color: const Color(0xFFE6F4FC),

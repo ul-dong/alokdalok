@@ -1,6 +1,7 @@
 import 'package:alokdalok/character/animal_painter.dart';
 import 'package:alokdalok/character/zodiac.dart';
 import 'package:alokdalok/data/item_catalog.dart';
+import 'package:alokdalok/core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -11,6 +12,7 @@ void main() {
     final themes = OutfitTheme.values.skip(6).toList();
     await t.pumpWidget(MaterialApp(
       debugShowCheckedModeBanner: false,
+      theme: buildAppTheme(),
       home: RepaintBoundary(
         child: Container(
           color: const Color(0xFFE6F4FC),

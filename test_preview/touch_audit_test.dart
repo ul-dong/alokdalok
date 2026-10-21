@@ -11,6 +11,7 @@ import 'package:alokdalok/services/storage_service.dart';
 import 'package:alokdalok/shop/shop_screen.dart';
 import 'package:alokdalok/vehicle/garage_screen.dart';
 import 'package:alokdalok/widgets/common.dart';
+import 'package:alokdalok/core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -37,7 +38,7 @@ void main() {
         await s.rewardCorrect(firstTry: true);
       }
       await s.buyVehicle('car');
-      await t.pumpWidget(e.key == 'home' ? AlokdalokApp(state: s) : AppScope(state: s, child: MaterialApp(home: e.value())));
+      await t.pumpWidget(e.key == 'home' ? AlokdalokApp(state: s) : AppScope(state: s, child: MaterialApp(theme: buildAppTheme(), home: e.value())));
       for (var i = 0; i < 10; i++) {
         await t.pump(const Duration(milliseconds: 100));
       }

@@ -44,3 +44,103 @@ class Palette {
   static const catCheek = Color(0xFFF7A3B5);
   static const catEye = Color(0xFF3E2A20);
 }
+
+// ───────────────────────── 디자인 토큰 ─────────────────────────
+// 화면마다 제각각이던 모서리·간격·글자 크기·그림자를 여기 한 곳에서 정한다.
+// 새 화면을 만들 때는 숫자를 직접 쓰지 말고 이 값을 쓴다.
+
+/// 모서리 반경
+class Radii {
+  Radii._();
+
+  /// 작은 칩·배지 안쪽
+  static const sm = 14.0;
+
+  /// 작은 카드·이름표·입력칸
+  static const md = 20.0;
+
+  /// 보통 카드 (놀이 보기, 상점 칸)
+  static const lg = 24.0;
+
+  /// 큰 패널 (문제 카드, 메뉴 타일)
+  static const xl = 30.0;
+}
+
+/// 간격 (4의 배수)
+class Gaps {
+  Gaps._();
+
+  static const xs = 4.0;
+  static const sm = 8.0;
+  static const md = 12.0;
+  static const lg = 16.0;
+  static const xl = 24.0;
+}
+
+/// 글자 크기 단계 (Jua 한 가지 굵기라 크기로만 위계를 만든다)
+class TextSizes {
+  TextSizes._();
+
+  /// 부모님용 작은 설명
+  static const caption = 14.0;
+
+  /// 보조 설명
+  static const small = 16.0;
+
+  /// 본문·작은 버튼
+  static const body = 18.0;
+
+  /// 버튼 글자
+  static const button = 20.0;
+
+  /// 큰 버튼·카드 이름
+  static const label = 22.0;
+
+  /// 화면 제목 (작은 화면)
+  static const title = 24.0;
+
+  /// 화면 제목·질문
+  static const heading = 28.0;
+
+  /// 코인·별 숫자
+  static const number = 30.0;
+
+  /// 축하 문구
+  static const hero = 36.0;
+}
+
+/// 입체감 (눌릴 것 같은 버튼: 아래로 두께 + 부드러운 바닥 그림자)
+class Depth {
+  Depth._();
+
+  /// 버튼·카드 아래 두께 (px)
+  static const edge = 6.0;
+
+  /// 작은 칩의 두께
+  static const edgeSmall = 4.0;
+
+  /// 눌렸을 때 내려가는 거리
+  static const press = 3.0;
+
+  /// 바닥에 번지는 그림자
+  static const softShadow = BoxShadow(
+    color: Palette.panelShadow,
+    blurRadius: 14,
+    offset: Offset(0, 8),
+  );
+
+  /// 색이 있는 면의 두께 색 (같은 색을 조금 어둡게)
+  static Color edgeOf(Color face) =>
+      Color.lerp(face, const Color(0xFF6B4A35), .22)!;
+
+  /// 두께 + 바닥 그림자
+  static List<BoxShadow> raised(Color edgeColor, {double depth = edge}) => [
+    BoxShadow(color: edgeColor, offset: Offset(0, depth)),
+    softShadow,
+  ];
+
+  /// 두께만 (겹친 카드 안쪽처럼 그림자가 번지면 지저분한 곳)
+  static List<BoxShadow> flat(Color edgeColor, {double depth = edgeSmall}) => [
+    BoxShadow(color: edgeColor, offset: Offset(0, depth)),
+  ];
+}

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'core/palette.dart';
+import 'core/app_theme.dart';
 import 'screens/zodiac_picker_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/game_state.dart';
@@ -21,21 +21,7 @@ class AlokdalokApp extends StatelessWidget {
       child: MaterialApp(
         title: '알록달록 꼬마 놀이터',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          fontFamily: 'Jua',
-          scaffoldBackgroundColor: Palette.skyBottom,
-          // 화면 전환은 짧은 페이드 (눈이 피로한 미끄러짐·번쩍임 없이)
-          pageTransitionsTheme: fadePageTransitions,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Palette.pink,
-            surface: Palette.cream,
-          ),
-          textTheme: const TextTheme().apply(
-            bodyColor: Palette.text,
-            displayColor: Palette.text,
-          ),
-        ),
+        theme: buildAppTheme(),
         // 글자 크기 설정이 너무 크면 버튼이 깨지므로 1.3배까지만 따른다
         builder: (context, child) {
           final mq = MediaQuery.of(context);

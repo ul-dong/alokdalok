@@ -79,14 +79,29 @@ class _PressableState extends State<Pressable> {
                 widget.onTap!();
               }
             : null,
-        child: AnimatedScale(
-          scale: _down ? .94 : 1,
-          duration: const Duration(milliseconds: 90),
-          child: widget.child,
-        ),
+        child: PressDown(down: _down, child: widget.child),
       ),
     );
   }
+}
+
+/// 눌렸을 때 모든 버튼이 똑같이 반응하게: 살짝 작아지며 두께만큼 아래로 내려간다.
+class PressDown extends StatelessWidget {
+  const PressDown({super.key, required this.down, required this.child});
+  final bool down;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(end: down ? 1 : 0),
+    duration: const Duration(milliseconds: 90),
+    curve: Curves.easeOut,
+    builder: (_, t, child) => Transform.translate(
+      offset: Offset(0, Depth.press * t),
+      child: Transform.scale(scale: 1 - .05 * t, child: child),
+    ),
+    child: child,
+  );
 }
 
 /// 놀이 화면의 물건(세는 물건, 견본 그림)을 누르면 이름을 말해 준다. (사양 UI 원칙 1)
@@ -128,11 +143,7 @@ class _SayNameState extends State<SayName> {
       onTap: widget.enabled
           ? () => AppScope.read(context).audio.say(widget.name)
           : null,
-      child: AnimatedScale(
-        scale: _down ? .94 : 1,
-        duration: const Duration(milliseconds: 90),
-        child: widget.child,
-      ),
+      child: PressDown(down: _down, child: widget.child),
     ),
   );
 }
@@ -144,7 +155,7 @@ class CreamCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(18),
     this.color = Palette.cream,
-    this.radius = 32,
+    this.radius = Radii.xl,
   });
 
   final Widget child;
@@ -158,14 +169,8 @@ class CreamCard extends StatelessWidget {
     decoration: BoxDecoration(
       color: color,
       borderRadius: BorderRadius.circular(radius),
-      boxShadow: const [
-        BoxShadow(color: Palette.creamDeep, offset: Offset(0, 6)),
-        BoxShadow(
-          color: Palette.panelShadow,
-          blurRadius: 18,
-          offset: Offset(0, 10),
-        ),
-      ],
+      border: Border.all(color: Colors.white.withValues(alpha: .7), width: 2),
+      boxShadow: Depth.raised(Palette.creamDeep),
     ),
     child: child,
   );
@@ -217,11 +222,12 @@ class PillButton extends StatelessWidget {
           color: color,
           borderRadius: BorderRadius.circular(height / 2),
           border: Border.all(
-            color: glow ? Palette.yellow : edge,
+            color: glow ? Palette.yellow : Colors.white,
             width: glow ? 5 : 3,
           ),
           boxShadow: [
-            BoxShadow(color: edge, offset: const Offset(0, 6)),
+            BoxShadow(color: edge, offset: const Offset(0, Depth.edge)),
+            Depth.softShadow,
             if (glow)
               const BoxShadow(
                 color: Color(0x88FFD45C),
@@ -268,14 +274,11 @@ class RoundIconButton extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        boxShadow: const [
-          BoxShadow(color: Palette.creamDeep, offset: Offset(0, 5)),
-          BoxShadow(
-            color: Palette.panelShadow,
-            blurRadius: 10,
-            offset: Offset(0, 6),
-          ),
-        ],
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: Depth.raised(
+          color == Palette.cream ? Palette.creamDeep : Depth.edgeOf(color),
+          depth: 5,
+        ),
       ),
       child: Icon(icon, size: size * .48, color: Palette.text),
     ),
@@ -374,6 +377,41 @@ class _StarPainter extends CustomPainter {
   bool shouldRepaint(_StarPainter old) => old.color != color;
 }
 
+/// 상단 상태 칩(코인·별·발자국·화면 이름)의 공통 모양: 크림색 알약 + 흰 테두리 + 얇은 두께
+BoxDecoration chipDecoration({Color color = Palette.cream}) => BoxDecoration(
+  color: color,
+  borderRadius: BorderRadius.circular(100),
+  border: Border.all(color: Colors.white, width: 3),
+  boxShadow: Depth.raised(
+    color == Palette.cream ? Palette.creamDeep : Depth.edgeOf(color),
+    depth: 5,
+  ),
+);
+
+/// 화면 이름표 (놀이터, 숫자 놀이, 꾸미기 상점 …). 모든 화면에서 같은 모양.
+class TitleChip extends StatelessWidget {
+  const TitleChip(this.text, {super.key, this.height = 58});
+  final String text;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: height,
+    padding: const EdgeInsets.symmetric(horizontal: 22),
+    alignment: Alignment.center,
+    decoration: chipDecoration(),
+    child: Text(
+      text,
+      maxLines: 1,
+      style: const TextStyle(
+        fontSize: TextSizes.heading,
+        color: Palette.text,
+        height: 1.1,
+      ),
+    ),
+  );
+}
+
 /// 코인·별 개수 배지 (큰 숫자)
 class CountBadge extends StatelessWidget {
   const CountBadge({
@@ -393,18 +431,7 @@ class CountBadge extends StatelessWidget {
     child: Container(
       height: 58,
       padding: const EdgeInsets.fromLTRB(10, 6, 18, 6),
-      decoration: BoxDecoration(
-        color: Palette.cream,
-        borderRadius: BorderRadius.circular(29),
-        boxShadow: const [
-          BoxShadow(color: Palette.creamDeep, offset: Offset(0, 5)),
-          BoxShadow(
-            color: Palette.panelShadow,
-            blurRadius: 10,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
+      decoration: chipDecoration(),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -416,7 +443,7 @@ class CountBadge extends StatelessWidget {
             builder: (_, v, _) => Text(
               '${v.round()}',
               style: const TextStyle(
-                fontSize: 30,
+                fontSize: TextSizes.number,
                 color: Palette.text,
                 height: 1,
               ),
@@ -441,18 +468,7 @@ class PawProgress extends StatelessWidget {
     child: Container(
       height: 58,
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: Palette.cream,
-        borderRadius: BorderRadius.circular(29),
-        boxShadow: const [
-          BoxShadow(color: Palette.creamDeep, offset: Offset(0, 5)),
-          BoxShadow(
-            color: Palette.panelShadow,
-            blurRadius: 10,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
+      decoration: chipDecoration(),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
