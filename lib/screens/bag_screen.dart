@@ -36,7 +36,10 @@ class BagScreen extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           '내 가방',
-                          style: TextStyle(fontSize: 28, color: Palette.text),
+                          style: TextStyle(
+                            fontSize: TextSizes.heading,
+                            color: Palette.text,
+                          ),
                         ),
                       ),
                     ),
@@ -80,7 +83,7 @@ class BagScreen extends StatelessWidget {
                       Text(
                         '${mine.length} / ${ItemCatalog.all.length}',
                         style: const TextStyle(
-                          fontSize: 22,
+                          fontSize: TextSizes.label,
                           color: Palette.text,
                         ),
                       ),
@@ -94,7 +97,7 @@ class BagScreen extends StatelessWidget {
                               '놀이로 코인을 모아\n상점에서 골라 보세요',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: 22,
+                                fontSize: TextSizes.label,
                                 color: Palette.textSoft,
                               ),
                             ),

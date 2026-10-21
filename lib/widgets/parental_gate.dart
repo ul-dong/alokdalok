@@ -156,7 +156,10 @@ class _ParentalGateState extends State<ParentalGate> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   '부모님 확인',
-                  style: TextStyle(fontSize: 30, color: Palette.text),
+                  style: TextStyle(
+                    fontSize: TextSizes.number,
+                    color: Palette.text,
+                  ),
                 ),
               ),
             ),
@@ -205,7 +208,7 @@ class _ParentalGateState extends State<ParentalGate> {
           child: Text(
             _wrong ? '답이 달라요. 새 문제를 풀어 주세요.' : '두 수를 더한 답을 눌러 주세요.',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: TextSizes.body,
               color: _wrong ? const Color(0xFFD9536F) : Palette.textSoft,
             ),
           ),

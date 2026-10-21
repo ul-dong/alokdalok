@@ -122,7 +122,10 @@ class _HoldToConfirmState extends State<HoldToConfirm>
             const SizedBox(height: 4),
             Text(
               widget.label,
-              style: const TextStyle(fontSize: 22, color: Palette.text),
+              style: const TextStyle(
+                fontSize: TextSizes.label,
+                color: Palette.text,
+              ),
             ),
           ],
         ),

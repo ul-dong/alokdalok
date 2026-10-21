@@ -227,7 +227,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
         child: Container(
           decoration: BoxDecoration(
             color: Palette.cream,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(Radii.lg),
             border: Border.all(
               color: selectedVehicle?.id == v.id ? Palette.pink : Colors.white,
               width: selectedVehicle?.id == v.id ? 5 : 3,
@@ -271,7 +271,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                             Text(
                               '${v.price}',
                               style: const TextStyle(
-                                fontSize: 20,
+                                fontSize: TextSizes.button,
                                 color: Palette.coinDeep,
                               ),
                             ),
@@ -370,7 +370,10 @@ class _Hint extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             text,
-            style: const TextStyle(fontSize: 22, color: Palette.textSoft),
+            style: const TextStyle(
+              fontSize: TextSizes.label,
+              color: Palette.textSoft,
+            ),
           ),
         ],
       ),
@@ -399,7 +402,10 @@ class _ToggleButton extends StatelessWidget {
     semanticLabel: on ? onLabel : offLabel,
     child: Text(
       on ? onLabel : offLabel,
-      style: TextStyle(fontSize: 28, color: on ? Palette.text : Colors.white),
+      style: TextStyle(
+        fontSize: TextSizes.heading,
+        color: on ? Palette.text : Colors.white,
+      ),
     ),
   );
 }
@@ -435,7 +441,7 @@ class _PriceButton extends StatelessWidget {
                     child: Text(
                       '놀이하면서 코인을 모아요 ($coins/$price)',
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: TextSizes.body,
                         color: Palette.textSoft,
                       ),
                     ),

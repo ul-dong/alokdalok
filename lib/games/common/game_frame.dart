@@ -653,7 +653,10 @@ class CoinPop extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             '+$amount',
-            style: const TextStyle(fontSize: 30, color: Palette.coinDeep),
+            style: const TextStyle(
+              fontSize: TextSizes.number,
+              color: Palette.coinDeep,
+            ),
           ),
         ],
       ),

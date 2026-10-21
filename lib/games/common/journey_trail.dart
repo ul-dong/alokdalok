@@ -148,7 +148,7 @@ class _Bubble extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 20, color: Palette.text),
+        style: const TextStyle(fontSize: TextSizes.button, color: Palette.text),
       ),
     ),
   );
@@ -175,7 +175,7 @@ class _GoalBurst extends StatelessWidget {
         child: const FitBox(
           child: Text(
             '골인!',
-            style: TextStyle(fontSize: 22, color: Colors.white),
+            style: TextStyle(fontSize: TextSizes.label, color: Colors.white),
           ),
         ),
       ),

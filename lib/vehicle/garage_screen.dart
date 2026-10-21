@@ -224,7 +224,10 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
           const Text(
             '상점에서 탈것을 사면\n스티커를 붙이고 색칠할 수 있어요',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 22, color: Palette.textSoft),
+            style: TextStyle(
+              fontSize: TextSizes.label,
+              color: Palette.textSoft,
+            ),
           ),
           const SizedBox(height: 12),
           PillButton(
@@ -236,7 +239,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
             semanticLabel: '상점 가기',
             child: const Text(
               '상점 가기',
-              style: TextStyle(fontSize: 22, color: Palette.text),
+              style: TextStyle(fontSize: TextSizes.label, color: Palette.text),
             ),
           ),
         ],
@@ -277,7 +280,10 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
                   child: FitBox(
                     child: Text(
                       '오른쪽에서 색을 골라요',
-                      style: TextStyle(fontSize: 18, color: Palette.textSoft),
+                      style: TextStyle(
+                        fontSize: TextSizes.body,
+                        color: Palette.textSoft,
+                      ),
                     ),
                   ),
                 )
@@ -299,7 +305,10 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
                         SizedBox(width: 4),
                         Text(
                           '지우개',
-                          style: TextStyle(fontSize: 20, color: Palette.text),
+                          style: TextStyle(
+                            fontSize: TextSizes.button,
+                            color: Palette.text,
+                          ),
                         ),
                       ],
                     ),
@@ -326,7 +335,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
               child: Text(
                 riding ? '타는 중' : '탑승!',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: TextSizes.button,
                   color: riding ? Colors.white : Palette.text,
                 ),
               ),
@@ -362,7 +371,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
                     child: Text(
                       label,
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: TextSizes.label,
                         color: painting == paintMode
                             ? Colors.white
                             : Palette.text,
@@ -591,7 +600,7 @@ class _NeedCoins extends StatelessWidget {
                   child: Text(
                     '놀이하면서 코인을 모아요 ($coins/$price)',
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: TextSizes.small,
                       color: Palette.textSoft,
                     ),
                   ),

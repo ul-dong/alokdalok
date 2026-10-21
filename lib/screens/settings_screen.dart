@@ -577,7 +577,7 @@ class _HoldToResetState extends State<_HoldToReset> {
       height: 60,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(Radii.xl),
         border: Border.all(color: const Color(0xFFF0C9C9), width: 1.5),
       ),
       clipBehavior: Clip.antiAlias,

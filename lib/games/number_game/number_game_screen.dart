@@ -296,7 +296,7 @@ class _NumberGameScreenState extends State<NumberGameScreen> {
                       child: Text(
                         q.prompt,
                         style: const TextStyle(
-                          fontSize: 28,
+                          fontSize: TextSizes.heading,
                           color: Palette.text,
                         ),
                       ),

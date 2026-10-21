@@ -101,7 +101,7 @@ class _CharacterScreenState extends State<CharacterScreen> with ScreenMusic {
                                 Text(
                                   state.nickname,
                                   style: const TextStyle(
-                                    fontSize: 22,
+                                    fontSize: TextSizes.label,
                                     color: Palette.text,
                                   ),
                                 ),
@@ -139,7 +139,7 @@ class _CharacterScreenState extends State<CharacterScreen> with ScreenMusic {
                                 Text(
                                   state.zodiac.look.animal,
                                   style: const TextStyle(
-                                    fontSize: 22,
+                                    fontSize: TextSizes.label,
                                     color: Palette.text,
                                   ),
                                 ),
@@ -275,7 +275,10 @@ class _VehicleShelfState extends State<_VehicleShelf> {
                   child: FitBox(
                     child: Text(
                       '타고 싶은 걸 눌러요',
-                      style: TextStyle(fontSize: 22, color: Palette.textSoft),
+                      style: TextStyle(
+                        fontSize: TextSizes.label,
+                        color: Palette.textSoft,
+                      ),
                     ),
                   ),
                 )
@@ -302,7 +305,7 @@ class _VehicleShelfState extends State<_VehicleShelf> {
                           child: Text(
                             state.ride == picked.id ? '내리기' : '탑승!',
                             style: TextStyle(
-                              fontSize: 24,
+                              fontSize: TextSizes.title,
                               color: state.ride == picked.id
                                   ? Palette.text
                                   : Colors.white,
@@ -324,7 +327,10 @@ class _VehicleShelfState extends State<_VehicleShelf> {
                         child: const FitBox(
                           child: Text(
                             '꾸미기',
-                            style: TextStyle(fontSize: 24, color: Palette.text),
+                            style: TextStyle(
+                              fontSize: TextSizes.title,
+                              color: Palette.text,
+                            ),
                           ),
                         ),
                       ),
@@ -359,7 +365,7 @@ class _VehicleCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Palette.cream,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(Radii.md),
           border: Border.all(
             color: selected ? Palette.pink : Colors.white,
             width: selected ? 5 : 3,
@@ -409,7 +415,10 @@ class _Empty extends StatelessWidget {
         children: [
           const Text(
             '아직 없어요',
-            style: TextStyle(fontSize: 24, color: Palette.textSoft),
+            style: TextStyle(
+              fontSize: TextSizes.title,
+              color: Palette.textSoft,
+            ),
           ),
           const SizedBox(height: 12),
           PillButton(
@@ -424,7 +433,10 @@ class _Empty extends StatelessWidget {
                 SizedBox(width: 8),
                 Text(
                   '상점 가기',
-                  style: TextStyle(fontSize: 22, color: Palette.text),
+                  style: TextStyle(
+                    fontSize: TextSizes.label,
+                    color: Palette.text,
+                  ),
                 ),
               ],
             ),

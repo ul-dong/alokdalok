@@ -129,7 +129,7 @@ class ItemTile extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
         color: Palette.cream,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(Radii.lg),
         border: Border.all(
           color: selected ? Palette.pink : Colors.white,
           width: selected ? 5 : 3,
@@ -168,7 +168,7 @@ class ItemTile extends StatelessWidget {
                         Text(
                           '${item.price}',
                           style: const TextStyle(
-                            fontSize: 20,
+                            fontSize: TextSizes.button,
                             color: Palette.coinDeep,
                           ),
                         ),
@@ -227,7 +227,10 @@ class BuyDialog extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   name,
-                  style: const TextStyle(fontSize: 24, color: Palette.text),
+                  style: const TextStyle(
+                    fontSize: TextSizes.title,
+                    color: Palette.text,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -238,7 +241,7 @@ class BuyDialog extends StatelessWidget {
                     Text(
                       '$price개로 살까요?',
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: TextSizes.button,
                         color: Palette.textSoft,
                       ),
                     ),

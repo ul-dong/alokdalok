@@ -193,7 +193,7 @@ class _ParentContinueState extends State<_ParentContinue>
         alignment: Alignment.center,
         child: const Text(
           '부모님: 길게 눌러 계속하기',
-          style: TextStyle(fontSize: 18, color: Palette.textSoft),
+          style: TextStyle(fontSize: TextSizes.body, color: Palette.textSoft),
         ),
       ),
     ),

@@ -119,7 +119,7 @@ class _ZodiacPickerScreenState extends State<ZodiacPickerScreen> {
                         Text(
                           widget.onboarding ? '이 친구로 할래요' : '이 친구로 바꾸기',
                           style: const TextStyle(
-                            fontSize: 24,
+                            fontSize: TextSizes.title,
                             color: Colors.white,
                           ),
                         ),
@@ -161,7 +161,7 @@ class _ZodiacPickerScreenState extends State<ZodiacPickerScreen> {
                                 child: Text(
                                   label,
                                   style: TextStyle(
-                                    fontSize: 24,
+                                    fontSize: TextSizes.title,
                                     color: group == g
                                         ? Colors.white
                                         : Palette.text,
@@ -213,14 +213,14 @@ class _NamePlate extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
     decoration: BoxDecoration(
       color: Palette.cream,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(Radii.lg),
       boxShadow: const [
         BoxShadow(color: Palette.creamDeep, offset: Offset(0, 4)),
       ],
     ),
     child: Text(
       text,
-      style: const TextStyle(fontSize: 24, color: Palette.text),
+      style: const TextStyle(fontSize: TextSizes.title, color: Palette.text),
     ),
   );
 }
@@ -246,7 +246,7 @@ class ZodiacTile extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
         color: selected ? Palette.yellowSoft : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(Radii.md),
         border: Border.all(
           color: selected ? Palette.yellow : Palette.creamDeep,
           width: selected ? 5 : 3,
@@ -280,7 +280,10 @@ class ZodiacTile extends StatelessWidget {
           FitBox(
             child: Text(
               zodiac.look.animal,
-              style: const TextStyle(fontSize: 16, color: Palette.text),
+              style: const TextStyle(
+                fontSize: TextSizes.small,
+                color: Palette.text,
+              ),
             ),
           ),
           const SizedBox(height: 2),

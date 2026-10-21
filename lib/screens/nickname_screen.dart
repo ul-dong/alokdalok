@@ -142,7 +142,9 @@ class _NicknameScreenState extends State<NicknameScreen> {
                             decoration: InputDecoration(
                               hintText: '이름 쓰기',
                               errorText: _error,
-                              errorStyle: const TextStyle(fontSize: 16),
+                              errorStyle: const TextStyle(
+                                fontSize: TextSizes.small,
+                              ),
                               counterText: '',
                               filled: true,
                               fillColor: Colors.white,
@@ -151,7 +153,7 @@ class _NicknameScreenState extends State<NicknameScreen> {
                                 horizontal: 16,
                               ),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(Radii.lg),
                                 borderSide: BorderSide.none,
                               ),
                             ),
@@ -177,7 +179,7 @@ class _NicknameScreenState extends State<NicknameScreen> {
                               Text(
                                 '좋아요',
                                 style: TextStyle(
-                                  fontSize: 24,
+                                  fontSize: TextSizes.title,
                                   color: Colors.white,
                                 ),
                               ),
@@ -190,7 +192,10 @@ class _NicknameScreenState extends State<NicknameScreen> {
                     const Text(
                       '비워 두고 좋아요를 누르면 이름을 아무거나 지어 줘요',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Palette.textSoft),
+                      style: TextStyle(
+                        fontSize: TextSizes.small,
+                        color: Palette.textSoft,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     const _ParentNotice(),
@@ -224,7 +229,7 @@ class _ParentNotice extends StatelessWidget {
           child: Text(
             '부모님께: 실명이나 연락처 대신 별명을 써 주세요. 닉네임은 이 기기 안에만 저장되고 어디로도 보내지 않아요. (한글, 영문, 숫자 8글자까지)',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: TextSizes.caption,
               color: Palette.textSoft,
               height: 1.35,
             ),

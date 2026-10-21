@@ -225,7 +225,7 @@ class _ColorGameScreenState extends State<ColorGameScreen> {
                       child: Text(
                         q.prompt,
                         style: const TextStyle(
-                          fontSize: 28,
+                          fontSize: TextSizes.heading,
                           color: Palette.text,
                         ),
                       ),

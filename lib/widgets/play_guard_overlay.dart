@@ -194,7 +194,10 @@ class PlayLimitCard extends StatelessWidget {
                     const FitBox(
                       child: Text(
                         '내일 또 만나요',
-                        style: TextStyle(fontSize: 28, color: Palette.textSoft),
+                        style: TextStyle(
+                          fontSize: TextSizes.heading,
+                          color: Palette.textSoft,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 28),
@@ -206,7 +209,7 @@ class PlayLimitCard extends StatelessWidget {
                         child: const Text(
                           '부모님: 15분 더',
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: TextSizes.button,
                             color: Palette.textSoft,
                           ),
                         ),
