@@ -478,7 +478,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
         double fit(int cols, int rows, int colorRows) => min(
           (c.maxWidth - gap * (cols - 1)) / cols,
           min(
-            (c.maxHeight - gap * (rows + colorRows) - 8) /
+            (c.maxHeight - gap * (rows + colorRows - 1) - 8) /
                 (rows + colorRows * .9),
             (c.maxWidth - gap * (n / colorRows)) / (n / colorRows) / .9,
           ),
