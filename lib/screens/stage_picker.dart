@@ -25,6 +25,21 @@ class StagePicker extends StatefulWidget {
 
   static const lockedLine = '앞 단계를 먼저 놀아 볼까요?';
 
+  /// 카드 가장 좁은 폭 (좁으면 한 쪽에 카드를 덜 넣고 화살표로 넘긴다)
+  static const minCardWidth = 120.0;
+
+  /// 아래 골인 길 높이: 화면 높이의 약 17% (15~20%)
+  /// 잠긴 단계 그림을 회색으로 바꾸는 필터
+  static const lockedFilter = ColorFilter.matrix([
+    0.33, 0.33, 0.33, 0, 20, //
+    0.33, 0.33, 0.33, 0, 20, //
+    0.33, 0.33, 0.33, 0, 20, //
+    0, 0, 0, 1, 0, //
+  ]);
+
+  static double trailHeight(double screenHeight) =>
+      (screenHeight * .17).clamp(50.0, 140.0);
+
   @override
   State<StagePicker> createState() => _StagePickerState();
 }
@@ -89,7 +104,8 @@ class _StagePickerState extends State<StagePicker> {
             child: PagedGrid(
               itemCount: count,
               initialIndex: unlocked - 1,
-              minCellWidth: 110,
+              // 카드를 넉넉히 넓게: 문제 그림이 폭에 맞춰 커진다
+              minCellWidth: StagePicker.minCardWidth,
               minCellHeight: 120,
               maxCellWidth: 320,
               maxRows: 2,
@@ -112,11 +128,9 @@ class _StagePickerState extends State<StagePicker> {
           ),
           const SizedBox(height: 6),
           // 단계를 깰 때마다 내 친구가 앞으로! 다 깨면 골인 지점에 도착
+          // (화면 높이의 15~20%로 낮게 두어 카드 자리를 넓힌다)
           SizedBox(
-            height: (MediaQuery.sizeOf(context).height * .24).clamp(
-              60.0,
-              130.0,
-            ),
+            height: StagePicker.trailHeight(MediaQuery.sizeOf(context).height),
             child: JourneyTrail(
               total: count,
               done: cleared.length.clamp(0, count),
@@ -189,7 +203,7 @@ class _StageCard extends StatelessWidget {
       onTap: onTap,
       semanticLabel: '$id단계${open ? '' : ' 아직 열리지 않음'}',
       child: Container(
-        padding: const EdgeInsets.all(Gaps.md),
+        padding: const EdgeInsets.fromLTRB(Gaps.sm, Gaps.sm, Gaps.sm, Gaps.md),
         decoration: BoxDecoration(
           color: face,
           borderRadius: BorderRadius.circular(Radii.xl),
@@ -210,12 +224,12 @@ class _StageCard extends StatelessWidget {
             FitBox(
               alignment: Alignment.centerLeft,
               child: SizedBox(
-                width: 160,
+                width: 170,
                 child: Row(
                   children: [
                     Container(
-                      width: 56,
-                      height: 56,
+                      width: 52,
+                      height: 52,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: open ? Colors.white : Palette.creamDeep,
@@ -227,20 +241,16 @@ class _StageCard extends StatelessWidget {
                           width: 3,
                         ),
                       ),
-                      child: open
-                          ? Text(
-                              '$id',
-                              style: const TextStyle(
-                                fontSize: 32,
-                                color: Color(0xFFE0607E),
-                                height: 1.1,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.lock_rounded,
-                              size: 28,
-                              color: Palette.textSoft,
-                            ),
+                      child: Text(
+                        '$id',
+                        style: TextStyle(
+                          fontSize: 30,
+                          color: open
+                              ? const Color(0xFFE0607E)
+                              : Palette.textSoft,
+                          height: 1.1,
+                        ),
+                      ),
                     ),
                     const Spacer(),
                     if (cleared) const StarIcon(size: 40),
@@ -251,19 +261,98 @@ class _StageCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: Gaps.sm),
+            const SizedBox(height: Gaps.xs),
             Expanded(
-              child: Opacity(
-                opacity: open ? 1 : .4,
-                // 카드가 커지면 그림도 같이 키운다 (1280 화면에서도 작아 보이지 않게)
-                child: StageArtBox(child: art),
-              ),
+              // 카드가 커지면 그림도 같이 키운다 (1280 화면에서도 작아 보이지 않게)
+              child: open
+                  ? StageArtBox(child: art)
+                  : Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // 잠긴 단계: 그림을 회색으로 아주 흐리게, 그 위에 큰 자물쇠
+                        Opacity(
+                          opacity: .3,
+                          child: ColorFiltered(
+                            colorFilter: StagePicker.lockedFilter,
+                            child: StageArtBox(child: art),
+                          ),
+                        ),
+                        const Center(
+                          child: FractionallySizedBox(
+                            widthFactor: .7,
+                            heightFactor: .92,
+                            child: Center(child: BigLock()),
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
       ),
     );
   }
+}
+
+/// 잠긴 단계의 큰 자물쇠 (외곽선 없는 납작한 면: 고리 + 몸통 + 열쇠 구멍)
+class BigLock extends StatelessWidget {
+  const BigLock({super.key});
+
+  @override
+  Widget build(BuildContext context) => const AspectRatio(
+    aspectRatio: .82,
+    child: CustomPaint(painter: _LockPainter()),
+  );
+}
+
+class _LockPainter extends CustomPainter {
+  const _LockPainter();
+
+  static const body = Color(0xFFB9AC9B);
+  static const shackle = Color(0xFFCFC4B4);
+  static const hole = Color(0xFF8A7C6B);
+
+  @override
+  void paint(Canvas c, Size s) {
+    final w = s.width, h = s.height;
+    // 고리: 두꺼운 둥근 띠 (면으로 그린다)
+    final ring = Path()
+      ..addRRect(
+        RRect.fromLTRBR(w * .2, 0, w * .8, h * .62, Radius.circular(w * .3)),
+      )
+      ..addRRect(
+        RRect.fromLTRBR(
+          w * .34,
+          h * .14,
+          w * .66,
+          h * .7,
+          Radius.circular(w * .16),
+        ),
+      )
+      ..fillType = PathFillType.evenOdd;
+    c.drawPath(ring, Paint()..color = shackle);
+    // 몸통
+    c.drawRRect(
+      RRect.fromLTRBR(0, h * .4, w, h, Radius.circular(w * .2)),
+      Paint()..color = body,
+    );
+    // 열쇠 구멍
+    final kp = Paint()..color = hole;
+    c.drawCircle(Offset(w / 2, h * .64), w * .1, kp);
+    c.drawRRect(
+      RRect.fromLTRBR(
+        w * .45,
+        h * .66,
+        w * .55,
+        h * .84,
+        Radius.circular(w * .05),
+      ),
+      kp,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _NumberStageArt extends StatelessWidget {

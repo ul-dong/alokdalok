@@ -118,19 +118,44 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                       onTap: () => Navigator.of(context).pop(),
                     ),
                     const SizedBox(width: 10),
-                    const Expanded(
-                      child: FitBox(
-                        alignment: Alignment.centerLeft,
-                        child: _FlatChip(
-                          child: Text(
-                            '꾸미기 상점',
-                            maxLines: 1,
-                            style: TextStyle(
-                              fontSize: TextSizes.heading,
-                              color: Palette.text,
-                              height: 1.1,
+                    // 제목은 부모님용: 자리가 좁으면 빼고 코인만 둔다.
+                    // 코인은 왼쪽 위에 둔다: 오른쪽은 테마 탭과 물건 칸을 크게 쓰도록
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, c) => Row(
+                          children: [
+                            if (c.maxWidth >= 260)
+                              const Expanded(
+                                child: FitBox(
+                                  alignment: Alignment.centerLeft,
+                                  child: _FlatChip(
+                                    child: Text(
+                                      '꾸미기 상점',
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                        fontSize: TextSizes.heading,
+                                        color: Palette.text,
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              const Spacer(),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              flex: 0,
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: c.maxWidth - 8,
+                                ),
+                                child: FitBox(
+                                  child: _CoinChip(coins: state.coins),
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
                     ),
@@ -171,33 +196,6 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
             flex: 6,
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Semantics(
-                      label: '코인 ${state.coins}',
-                      child: _FlatChip(
-                        padding: const EdgeInsets.fromLTRB(10, 0, 20, 0),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const FlatCoin(size: 36),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${state.coins}',
-                              style: const TextStyle(
-                                fontSize: TextSizes.number,
-                                color: Palette.text,
-                                height: 1,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
                 ThemeTabs(
                   flat: true,
                   selected: theme,
@@ -231,6 +229,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
       arrowSize: ItemTile.arrowSize,
       arrowBuilder: FlatPageArrow.new,
       gap: 12,
+      cellAspect: ItemTile.aspect,
       itemCount: items.length,
       itemBuilder: (_, i) => ItemTile(
         item: items[i],
@@ -526,6 +525,35 @@ class _FlatRoundButton extends StatelessWidget {
         shape: BoxShape.circle,
       ),
       child: Icon(icon, size: size * .48, color: Palette.text),
+    ),
+  );
+}
+
+/// 가진 코인 수 (납작한 알약)
+class _CoinChip extends StatelessWidget {
+  const _CoinChip({required this.coins});
+  final int coins;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: '코인 $coins',
+    child: _FlatChip(
+      padding: const EdgeInsets.fromLTRB(10, 0, 18, 0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const FlatCoin(size: 36),
+          const SizedBox(width: 8),
+          Text(
+            '$coins',
+            style: const TextStyle(
+              fontSize: TextSizes.number,
+              color: Palette.text,
+              height: 1,
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }

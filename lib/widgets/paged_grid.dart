@@ -133,6 +133,7 @@ class PagedGrid extends StatefulWidget {
     this.initialIndex = 0,
     this.arrowSize = 64,
     this.arrowBuilder,
+    this.cellAspect,
   });
 
   final int itemCount;
@@ -151,6 +152,9 @@ class PagedGrid extends StatefulWidget {
   /// 화살표 모양을 바꿀 때 (없으면 기본 [PageArrow]). 크기·이름("앞 쪽"/"다음 쪽")은 같게 만든다.
   final PageArrowBuilder? arrowBuilder;
 
+  /// 칸 모양을 고정할 때 높이/너비 비율 (예: 1이면 정사각형). 없으면 자리에 맞춰 늘어난다.
+  final double? cellAspect;
+
   /// 칸 배치를 고른다. 다 들어가면 화살표 없이, 아니면 화살표 자리를 빼고 계산한다.
   static GridPlan plan({
     required Size area,
@@ -162,8 +166,16 @@ class PagedGrid extends StatefulWidget {
     int maxRows = 99,
     double gap = 10,
     double arrowSize = 64,
+    double? cellAspect,
   }) {
     final n = max(1, count);
+    // 칸 모양 고정: 넓은 쪽을 줄여 비율을 맞춘다
+    (double, double) shape(double w, double h) {
+      if (cellAspect == null) return (w, h);
+      final fw = min(w, h / cellAspect);
+      return (fw, fw * cellAspect);
+    }
+
     int fit(double space, double minCell) =>
         max(1, ((space + gap) / (minCell + gap)).floor());
     double cell(double space, int k, double maxCell) =>
@@ -178,8 +190,10 @@ class PagedGrid extends StatefulWidget {
       for (var r = 1; r <= rowsMax; r++) {
         final c = (n / r).ceil();
         if (c > colsMax) continue;
-        final w = cell(area.width, c, maxCellWidth);
-        final h = cell(area.height, r, maxCellHeight);
+        final (w, h) = shape(
+          cell(area.width, c, maxCellWidth),
+          cell(area.height, r, maxCellHeight),
+        );
         final score = min(w / minCellWidth, h / minCellHeight);
         if (score > bestScore + 1e-6) {
           bestScore = score;
@@ -198,11 +212,15 @@ class PagedGrid extends StatefulWidget {
     final inner = max(minCellWidth, area.width - 2 * (arrowSize + gap));
     final cols = fit(inner, minCellWidth);
     final rows = rowsMax;
+    final (w, h) = shape(
+      cell(inner, cols, maxCellWidth),
+      cell(area.height, rows, maxCellHeight),
+    );
     return GridPlan(
       cols: cols,
       rows: rows,
-      cellWidth: cell(inner, cols, maxCellWidth),
-      cellHeight: cell(area.height, rows, maxCellHeight),
+      cellWidth: w,
+      cellHeight: h,
       paged: true,
     );
   }
@@ -227,6 +245,7 @@ class _PagedGridState extends State<PagedGrid> {
         maxRows: widget.maxRows,
         gap: widget.gap,
         arrowSize: widget.arrowSize,
+        cellAspect: widget.cellAspect,
       );
       final pages = plan.pagesFor(widget.itemCount);
       final int page = min(
@@ -278,14 +297,13 @@ class _PagedGridState extends State<PagedGrid> {
 }
 
 /// 쪽 넘기는 화살표를 만드는 함수 ([PageArrow.new]와 같은 모양)
-typedef PageArrowBuilder =
-    Widget Function({
-      Key? key,
-      required bool forward,
-      required VoidCallback onTap,
-      bool enabled,
-      double size,
-    });
+typedef PageArrowBuilder = Widget Function({
+  Key? key,
+  required bool forward,
+  required VoidCallback onTap,
+  bool enabled,
+  double size,
+});
 
 /// 쪽 넘기는 큰 화살표. 더 넘길 쪽이 없으면 흐려진다.
 class PageArrow extends StatelessWidget {
