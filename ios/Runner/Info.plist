@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>NSCameraUsageDescription</key>
-	<string>눈 지킴이: 화면이 너무 가깝거나 자세가 비뚤어졌는지 앞카메라로 살펴봐요. 영상은 기기 안에서만 쓰고 저장하거나 보내지 않아요.</string>
+	<string>눈 지킴이: 부모님이 켜면 화면이 너무 가까운지 앞카메라로 살펴봐요. 영상은 이 기기 안에서만 처리하고, 저장하거나 기기 밖으로 보내지 않아요.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -55,6 +55,9 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<!-- 노치·홈 인디케이터: 화면 전체를 쓰고 안쪽 여백은 Flutter SafeArea 가 맡는다. 상태 표시줄은 처음부터 숨긴다. -->
+	<key>UIStatusBarHidden</key>
+	<true/>
 	<key>UIRequiresFullScreen</key>
 	<true/>
 	<key>UISupportedInterfaceOrientations</key>

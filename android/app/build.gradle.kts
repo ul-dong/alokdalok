@@ -1,8 +1,21 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// release 서명: android/key.properties(커밋 안 함)에 storeFile·keyAlias만 적고,
+// 비밀번호는 빌드할 때 환경 변수 ALOK_STORE_PASSWORD / ALOK_KEY_PASSWORD 로 받는다
+// (install_and_build.command 가 화면에 보이지 않게 물어본다). 둘 중 하나라도 없으면 debug 키로 서명한다.
+val keyProps = Properties().apply {
+    val f = rootProject.file("key.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val storePw: String? = System.getenv("ALOK_STORE_PASSWORD")?.takeIf { it.isNotEmpty() }
+val keyPw: String? = System.getenv("ALOK_KEY_PASSWORD")?.takeIf { it.isNotEmpty() } ?: storePw
+val hasReleaseKey = keyProps.getProperty("storeFile") != null && storePw != null
 
 android {
     namespace = "com.alokdalok.alokdalok"
@@ -15,27 +28,48 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.alokdalok.alokdalok"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
-        // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
-        // You can force using the value of versionCode by specifying the `-P force-version-code-ignoring-abi=true`
-        // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // arm 기기 전용 (에뮬레이터용 x86_64 제외 → 용량 절약)
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
+    }
+
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = file(keyProps.getProperty("storeFile"))
+                storePassword = storePw
+                keyAlias = keyProps.getProperty("keyAlias") ?: "alokdalok"
+                keyPassword = keyPw
+            }
+        }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseKey) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn("알록달록: release 키가 없어 debug 키로 서명합니다 (install_and_build.command 참고).")
+                signingConfigs.getByName("debug")
+            }
         }
     }
+}
+
+// ML Kit 얼굴 인식: 앱에 모델을 담는 번들 버전 대신 Play 서비스(unbundled) 버전을 쓴다.
+// 모델은 Play 서비스가 내려받으므로 APK가 작아진다. API(com.google.mlkit.vision.face)는 같다.
+configurations.all {
+    exclude(group = "com.google.mlkit", module = "face-detection")
+}
+
+dependencies {
+    implementation("com.google.android.gms:play-services-mlkit-face-detection:17.1.0")
 }
 
 kotlin {
