@@ -175,14 +175,15 @@ class _CharacterScreenState extends State<CharacterScreen> with ScreenMusic {
                           onShop: () => Navigator.of(context)
                               .pushReplacement(softRoute(const ShopScreen())),
                         )
-                      : GridView.builder(
-                          gridDelegate:
-                              const SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 128,
-                                mainAxisSpacing: 12,
-                                crossAxisSpacing: 12,
-                                childAspectRatio: .95,
-                              ),
+                      // 옷이 많아도 밀어서 보지 않는다: 한 화면에 맞추고 넘치면 큰 화살표로 쪽 넘기기
+                      : PagedGrid(
+                          key: ValueKey('outfits-$theme'),
+                          minCellWidth: ItemTile.minWidth,
+                          minCellHeight: ItemTile.minHeight,
+                          maxCellWidth: ItemTile.maxWidth,
+                          maxCellHeight: ItemTile.maxHeight,
+                          arrowSize: ItemTile.arrowSize,
+                          gap: 12,
                           itemCount: mine.length,
                           itemBuilder: (_, i) {
                             final item = mine[i];

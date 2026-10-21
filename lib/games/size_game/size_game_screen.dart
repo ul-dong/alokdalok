@@ -92,6 +92,7 @@ class _SizeGameScreenState extends State<SizeGameScreen>
         hint: round.showHint
             ? QuizHintBox(
                 label: '${q.ask.adjective} 쪽',
+                say: q.kind.sayName(q.color),
                 child: SizeHint(kind: q.kind, color: q.color, ask: q.ask),
               )
             : null,

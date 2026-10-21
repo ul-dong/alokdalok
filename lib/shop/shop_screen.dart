@@ -194,14 +194,15 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
 
   Widget _itemGrid(GameState state) {
     final items = ItemCatalog.byTheme(theme!);
-    return GridView.builder(
-      padding: const EdgeInsets.only(bottom: 8, top: 2),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 128,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: .95,
-      ),
+    // 밀어서 보지 않는다: 한 화면에 맞추고 넘치면 큰 화살표로 쪽 넘기기
+    return PagedGrid(
+      key: ValueKey('shop-$theme'),
+      minCellWidth: ItemTile.minWidth,
+      minCellHeight: ItemTile.minHeight,
+      maxCellWidth: ItemTile.maxWidth,
+      maxCellHeight: ItemTile.maxHeight,
+      arrowSize: ItemTile.arrowSize,
+      gap: 12,
       itemCount: items.length,
       itemBuilder: (_, i) => ItemTile(
         item: items[i],

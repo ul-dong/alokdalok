@@ -207,9 +207,10 @@ class _ColorGameScreenState extends State<ColorGameScreen> {
                     transitionBuilder: (c, a) =>
                         ScaleTransition(scale: a, child: c),
                     child: round.showSwatch
-                        ? _Swatch(
+                        ? SayName(
                             key: ValueKey(q.target.color.id),
-                            color: q.target.color.color,
+                            name: '${q.target.color.name}!',
+                            child: _Swatch(color: q.target.color.color),
                           )
                         : const SizedBox(
                             key: ValueKey('none'),
@@ -326,7 +327,7 @@ class _ColorGameScreenState extends State<ColorGameScreen> {
 
 /// 찾을 색을 크게 보여 주는 물감 방울
 class _Swatch extends StatelessWidget {
-  const _Swatch({super.key, required this.color});
+  const _Swatch({required this.color});
   final Color color;
 
   @override

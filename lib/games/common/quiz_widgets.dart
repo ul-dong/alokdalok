@@ -5,38 +5,10 @@ import 'package:flutter/material.dart';
 import '../../core/palette.dart';
 import '../../widgets/common.dart';
 import '../../widgets/listen_again_button.dart';
+import '../../widgets/paged_grid.dart';
 import 'game_frame.dart';
 
-/// 보기 [count]개를 [area]에 가장 크게 놓는 격자 (가로 화면이라 옆으로 밀기 없음).
-/// [aspect]는 칸의 높이/너비 비율.
-class TileGrid {
-  const TileGrid(this.rows, this.cols, this.tile);
-  final int rows;
-  final int cols;
-
-  /// 칸 너비 (높이는 tile * aspect)
-  final double tile;
-
-  static TileGrid fit(
-    int count,
-    Size area, {
-    double aspect = 1,
-    double gap = 12,
-    double maxTile = 230,
-  }) {
-    var best = const TileGrid(1, 1, 0);
-    for (var rows = 1; rows <= count; rows++) {
-      final cols = (count / rows).ceil();
-      // 줄 수를 늘려도 빈 줄이 생기면 건너뛴다
-      if ((rows - 1) * cols >= count) continue;
-      final w = (area.width - gap * (cols - 1)) / cols;
-      final h = (area.height - gap * (rows - 1)) / rows / aspect;
-      final tile = min(min(w, h), maxTile).floorToDouble();
-      if (tile > best.tile + .5) best = TileGrid(rows, cols, tile);
-    }
-    return TileGrid(best.rows, best.cols, max(0, best.tile));
-  }
-}
+export '../../widgets/paged_grid.dart' show TileGrid;
 
 /// 문제 카드: 왼쪽에 큰 노란 "다시 듣기"와 그림 힌트(견본), 오른쪽에 문제 글(부모님용)과 보기.
 class QuizCard extends StatelessWidget {
@@ -156,23 +128,31 @@ class QuizCard extends StatelessWidget {
 }
 
 /// 힌트·견본을 담는 모래빛 둥근 판
+/// [say]가 있으면 누를 때 그 이름을 말해 준다 (예: "동그라미!").
 class QuizHintBox extends StatelessWidget {
-  const QuizHintBox({super.key, required this.child, this.label});
+  const QuizHintBox({super.key, required this.child, this.label, this.say});
   final Widget child;
   final String? label;
 
+  /// 누르면 말할 이름 (null이면 눌러도 아무 일 없음)
+  final String? say;
+
   @override
-  Widget build(BuildContext context) => Semantics(
-    label: label,
-    child: Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF4D6),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Palette.yellow, width: 3),
-      ),
-      child: child,
+  Widget build(BuildContext context) {
+    final box = _box();
+    return say == null
+        ? Semantics(label: label, child: box)
+        : SayName(name: say!, semanticLabel: label, child: box);
+  }
+
+  Widget _box() => Container(
+    padding: const EdgeInsets.all(6),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF4D6),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: Palette.yellow, width: 3),
     ),
+    child: child,
   );
 }
 
@@ -288,7 +268,7 @@ class QuizTile extends StatelessWidget {
   }
 }
 
-/// [TileGrid]대로 보기를 가운데에 놓는다.
+/// [TileGrid]대로 보기를 가운데에 놓는다 (배치는 공용 [GridRows]).
 class QuizGrid extends StatelessWidget {
   const QuizGrid({
     super.key,
@@ -319,27 +299,13 @@ class QuizGrid extends StatelessWidget {
       );
       final w = g.tile, h = g.tile * aspect;
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var r = 0; r < g.rows; r++) ...[
-              if (r > 0) SizedBox(height: gap),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (
-                    var i = r * g.cols;
-                    i < min(count, (r + 1) * g.cols);
-                    i++
-                  )
-                    Padding(
-                      padding: EdgeInsets.only(left: i > r * g.cols ? gap : 0),
-                      child: builder(i, w, h),
-                    ),
-                ],
-              ),
-            ],
-          ],
+        child: GridRows(
+          last: count,
+          cols: g.cols,
+          cellWidth: w,
+          cellHeight: h,
+          gap: gap,
+          itemBuilder: (i) => builder(i, w, h),
         ),
       );
     },

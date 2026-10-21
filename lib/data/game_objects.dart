@@ -25,6 +25,12 @@ extension ObjectKindInfo on ObjectKind {
   /// 받침에 맞는 목적격 조사 (자동차를 / 별을)
   String get object => '$ko${hasBatchim(ko) ? '을' : '를'}';
 
+  /// 누르면 말해 주는 이름: "사과!" / 색이 있으면 "빨간 사과!" (둘 다 녹음 조각에 있다)
+  String sayName([GameColor? color]) =>
+      color != null && GameColor.extended.contains(color)
+      ? '${color.adjective} $ko!'
+      : '$ko!';
+
   /// 셀 때 붙이는 말: 동물은 '마리', 나머지는 '개'
   String get counter => switch (this) {
     ObjectKind.fish || ObjectKind.duck => '마리',

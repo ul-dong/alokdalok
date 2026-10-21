@@ -108,6 +108,16 @@ class ItemTile extends StatelessWidget {
   final VoidCallback onTap;
   final bool showPrice;
 
+  /// 격자 칸 크기 (가장 작게 ~ 가장 크게). 가장 크게는 예전 격자(최대 128, 높이 비율 1/.95)와 같다.
+  /// 가장 작게도 아이 손가락 기준(60~72px)보다 크다.
+  static const minWidth = 68.0;
+  static const minHeight = 80.0;
+  static const maxWidth = 128.0;
+  static const maxHeight = 135.0;
+
+  /// 쪽 넘기는 화살표 크기 (좁은 칸에서도 옷이 두 개씩 보이게 조금 작게)
+  static const arrowSize = 60.0;
+
   @override
   Widget build(BuildContext context) => Pressable(
     onTap: onTap,

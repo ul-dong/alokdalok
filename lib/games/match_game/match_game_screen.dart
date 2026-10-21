@@ -116,6 +116,7 @@ class _MatchGameScreenState extends State<MatchGameScreen>
         hint: round.showHint
             ? QuizHintBox(
                 label: '찾는 그림 ${board.labelOf(sel!)}',
+                say: '${board.labelOf(sel)}!',
                 child: ObjectIcon(
                   board.cards[sel].kind,
                   color: board.cards[sel].color.color,

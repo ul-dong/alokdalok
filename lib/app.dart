@@ -70,12 +70,21 @@ class AlokdalokApp extends StatelessWidget {
 class RootGate extends StatelessWidget {
   const RootGate({super.key});
 
+  /// 화면이 바뀌는 페이드 길이 (softRoute와 같다)
+  static const fadeDuration = Duration(milliseconds: 260);
+
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    if (!state.nicknameChosen) {
-      return const ZodiacPickerScreen(onboarding: true);
-    }
-    return const HomeScreen();
+    // 첫 실행 화면이 끝나 홈으로 바뀔 때도 다른 화면 전환처럼 짧은 페이드로 (갑자기 바뀌지 않게)
+    return AnimatedSwitcher(
+      duration: RootGate.fadeDuration,
+      child: state.nicknameChosen
+          ? const HomeScreen(key: ValueKey('home'))
+          : const ZodiacPickerScreen(
+              key: ValueKey('onboarding'),
+              onboarding: true,
+            ),
+    );
   }
 }

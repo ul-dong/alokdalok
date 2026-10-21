@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../core/palette.dart';
+import '../core/slow_clock.dart';
 import '../services/audio_service.dart';
 import '../services/game_state.dart';
 
@@ -86,6 +87,37 @@ class _PressableState extends State<Pressable> {
       ),
     );
   }
+}
+
+/// 놀이 화면의 물건(세는 물건, 견본 그림)을 누르면 이름을 말해 준다. (사양 UI 원칙 1)
+/// 정답 보기 칸에는 쓰지 않는다 — 보기를 누르는 것은 답을 고르는 동작이다.
+/// 효과음 없이 살짝 작아지기만 하고, [enabled]가 false면(같이 세는 중 등) 아무 일도 하지 않는다.
+class SayName extends StatelessWidget {
+  const SayName({
+    super.key,
+    required this.name,
+    required this.child,
+    this.enabled = true,
+    this.semanticLabel,
+  });
+
+  /// 말할 이름 (녹음 조각에 있는 문장, 예: "사과!")
+  final String name;
+  final Widget child;
+  final bool enabled;
+
+  /// 화면 읽기용 이름 (없으면 [name])
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) => Pressable(
+    onTap: () {},
+    sound: null,
+    speak: name,
+    enabled: enabled,
+    semanticLabel: semanticLabel ?? name,
+    child: child,
+  );
 }
 
 /// 크림색 둥근 카드 패널 (레퍼런스 스타일)
@@ -538,16 +570,43 @@ class RotateHint extends StatefulWidget {
   State<RotateHint> createState() => _RotateHintState();
 }
 
-class _RotateHintState extends State<RotateHint>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 2400),
-  )..repeat();
+class _RotateHintState extends State<RotateHint> {
+  // 계속 도는 애니메이션 대신 공용 20fps 시계로 몇 번만 눕혀 보이고 멈춘다 (사양 원칙 8).
+  static const _periodMs = 2400;
+  static const _cycles = 3;
+  int _ticks = 0;
+  double _value = 0;
+  bool _listening = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SlowClock.instance.addListener(_onClock);
+    _listening = true;
+  }
+
+  void _onClock() {
+    if (!mounted) return;
+    // 시계 한 번 = 50ms (공용 시계 박자로 센다)
+    final ms = ++_ticks * SlowClock.interval.inMilliseconds;
+    if (ms >= _periodMs * _cycles) {
+      // 다 보여 줬으면 누운 모습으로 멈추고 시계에서 빠진다
+      _stop();
+      setState(() => _value = .5);
+      return;
+    }
+    setState(() => _value = (ms % _periodMs) / _periodMs);
+  }
+
+  void _stop() {
+    if (!_listening) return;
+    SlowClock.instance.removeListener(_onClock);
+    _listening = false;
+  }
 
   @override
   void dispose() {
-    _c.dispose();
+    _stop();
     super.dispose();
   }
 
@@ -560,15 +619,12 @@ class _RotateHintState extends State<RotateHint>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedBuilder(
-              animation: _c,
-              builder: (_, child) {
-                // 0~0.5 동안 천천히 눕히고, 나머지는 멈춰 있다
-                final t = Curves.easeInOut.transform(
-                  (_c.value * 2).clamp(0.0, 1.0),
-                );
-                return Transform.rotate(angle: -t * pi / 2, child: child);
-              },
+            Transform.rotate(
+              // 0~0.5 동안 천천히 눕히고, 나머지는 멈춰 있다
+              angle:
+                  -Curves.easeInOut.transform((_value * 2).clamp(0.0, 1.0)) *
+                  pi /
+                  2,
               child: Container(
                 width: 70,
                 height: 120,

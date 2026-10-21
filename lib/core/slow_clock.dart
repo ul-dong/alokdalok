@@ -16,6 +16,10 @@ class SlowClock extends ChangeNotifier {
   Timer? _timer;
   int _listeners = 0;
 
+  /// 지금 이 시계를 듣는 위젯 수 (0이면 시계가 멈춰 있다). 테스트 확인용.
+  @visibleForTesting
+  int get listenerCount => _listeners;
+
   /// 시작 후 흐른 시간 (초)
   double get seconds => _watch.elapsedMicroseconds / 1e6;
 

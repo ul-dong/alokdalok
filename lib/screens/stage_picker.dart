@@ -137,6 +137,16 @@ class _StagePickerState extends State<StagePicker> {
   }
 }
 
+/// 단계 카드의 문제 그림: 칸에 맞춰 줄이기도 하고 키우기도 한다 (가로세로 비율은 그대로).
+class StageArtBox extends StatelessWidget {
+  const StageArtBox({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      FittedBox(fit: BoxFit.contain, child: child);
+}
+
 /// [trigger]가 바뀔 때마다 한 번 좌우로 흔든다 (잠긴 카드). 계속 도는 애니메이션은 아니다.
 class ShakeOnChange extends StatelessWidget {
   const ShakeOnChange({super.key, required this.trigger, required this.child});
@@ -207,7 +217,7 @@ class _StageCard extends StatelessWidget {
           FitBox(
             alignment: Alignment.centerLeft,
             child: SizedBox(
-              width: 120,
+              width: 160,
               child: Row(
                 children: [
                   Container(
@@ -234,49 +244,43 @@ class _StageCard extends StatelessWidget {
                   ),
                   const Spacer(),
                   if (cleared) const StarIcon(size: 40),
+                  const SizedBox(width: 4),
+                  _season(),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 6),
           Expanded(
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Opacity(
-                    opacity: open ? 1 : .4,
-                    child: FitBox(child: art),
-                  ),
-                ),
-                // 단계마다 계절이 바뀐다 (배경과 음악도 그 계절)
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Icon(
-                    switch (seasonForStage(id)) {
-                      Season.spring => Icons.local_florist_rounded,
-                      Season.summer => Icons.wb_sunny_rounded,
-                      Season.autumn => Icons.eco_rounded,
-                      Season.winter => Icons.ac_unit_rounded,
-                    },
-                    size: 30,
-                    color: open
-                        ? switch (seasonForStage(id)) {
-                            Season.spring => const Color(0xFFF59AB5),
-                            Season.summer => const Color(0xFFFFB13B),
-                            Season.autumn => const Color(0xFFE07A3F),
-                            Season.winter => const Color(0xFF6FB7E8),
-                          }
-                        : Palette.creamDeep,
-                    semanticLabel: seasonForStage(id).ko,
-                  ),
-                ),
-              ],
+            child: Opacity(
+              opacity: open ? 1 : .4,
+              // 카드가 커지면 그림도 같이 키운다 (1280 화면에서도 작아 보이지 않게)
+              child: StageArtBox(child: art),
             ),
           ),
         ],
       ),
     ),
+  );
+
+  /// 단계마다 계절이 바뀐다 (배경과 음악도 그 계절). 머리줄 오른쪽 끝에 둔다.
+  Widget _season() => Icon(
+    switch (seasonForStage(id)) {
+      Season.spring => Icons.local_florist_rounded,
+      Season.summer => Icons.wb_sunny_rounded,
+      Season.autumn => Icons.eco_rounded,
+      Season.winter => Icons.ac_unit_rounded,
+    },
+    size: 30,
+    color: open
+        ? switch (seasonForStage(id)) {
+            Season.spring => const Color(0xFFF59AB5),
+            Season.summer => const Color(0xFFFFB13B),
+            Season.autumn => const Color(0xFFE07A3F),
+            Season.winter => const Color(0xFF6FB7E8),
+          }
+        : Palette.creamDeep,
+    semanticLabel: seasonForStage(id).ko,
   );
 }
 

@@ -34,6 +34,89 @@ class GridPlan {
       '${cellHeight.toStringAsFixed(1)}, paged: $paged)';
 }
 
+/// 칸 [count]개를 [area]에 가장 크게 놓는 줄·칸 수 (쪽 넘기기 없이 한 화면에 다).
+/// 놀이 보기 칸(`QuizGrid`)이 쓴다. [aspect]는 칸의 높이/너비 비율.
+/// (최소 칸 크기를 지키며 넘치면 쪽을 나누는 것은 [PagedGrid.plan])
+class TileGrid {
+  const TileGrid(this.rows, this.cols, this.tile);
+  final int rows;
+  final int cols;
+
+  /// 칸 너비 (높이는 tile * aspect)
+  final double tile;
+
+  static TileGrid fit(
+    int count,
+    Size area, {
+    double aspect = 1,
+    double gap = 12,
+    double maxTile = 230,
+  }) {
+    var best = const TileGrid(1, 1, 0);
+    for (var rows = 1; rows <= count; rows++) {
+      final cols = (count / rows).ceil();
+      // 줄 수를 늘려도 빈 줄이 생기면 건너뛴다
+      if ((rows - 1) * cols >= count) continue;
+      final w = (area.width - gap * (cols - 1)) / cols;
+      final h = (area.height - gap * (rows - 1)) / rows / aspect;
+      final tile = min(min(w, h), maxTile).floorToDouble();
+      if (tile > best.tile + .5) best = TileGrid(rows, cols, tile);
+    }
+    return TileGrid(best.rows, best.cols, max(0, best.tile));
+  }
+}
+
+/// 칸 [first]~[last]-1을 [cols]칸씩 줄지어 놓는다 (칸 크기 고정, 사이 [gap]).
+/// 앱의 모든 격자([PagedGrid], 놀이 보기 `QuizGrid`)가 이 배치 하나를 쓴다.
+class GridRows extends StatelessWidget {
+  const GridRows({
+    super.key,
+    this.first = 0,
+    required this.last,
+    required this.cols,
+    required this.cellWidth,
+    required this.cellHeight,
+    required this.gap,
+    required this.itemBuilder,
+  });
+
+  final int first;
+  final int last;
+  final int cols;
+  final double cellWidth;
+  final double cellHeight;
+  final double gap;
+  final Widget Function(int index) itemBuilder;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      for (var r = 0; first + r * cols < last; r++)
+        Padding(
+          padding: EdgeInsets.only(top: r == 0 ? 0 : gap),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (
+                var i = first + r * cols;
+                i < min(last, first + (r + 1) * cols);
+                i++
+              ) ...[
+                if (i > first + r * cols) SizedBox(width: gap),
+                SizedBox(
+                  width: cellWidth,
+                  height: cellHeight,
+                  child: itemBuilder(i),
+                ),
+              ],
+            ],
+          ),
+        ),
+    ],
+  );
+}
+
 /// 옆으로 밀기 대신 쓰는 격자. 화면 크기에 맞춰 칸 크기를 자동으로 고르고,
 /// 칸이 너무 많으면 양옆의 큰 화살표로 한 쪽씩 넘긴다. (아이는 밀어서 더 본다는 걸 모른다)
 class PagedGrid extends StatefulWidget {
@@ -149,34 +232,15 @@ class _PagedGridState extends State<PagedGrid> {
       final first = plan.paged ? page * plan.perPage : 0;
       final last = min(widget.itemCount, first + plan.perPage);
 
-      final grid = Column(
+      final grid = GridRows(
         key: ValueKey(page),
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var r = 0; r < plan.rows; r++)
-            if (first + r * plan.cols < last)
-              Padding(
-                padding: EdgeInsets.only(top: r == 0 ? 0 : widget.gap),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (
-                      var i = first + r * plan.cols;
-                      i < min(last, first + (r + 1) * plan.cols);
-                      i++
-                    ) ...[
-                      if (i > first + r * plan.cols)
-                        SizedBox(width: widget.gap),
-                      SizedBox(
-                        width: plan.cellWidth,
-                        height: plan.cellHeight,
-                        child: widget.itemBuilder(context, i),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-        ],
+        first: first,
+        last: last,
+        cols: plan.cols,
+        cellWidth: plan.cellWidth,
+        cellHeight: plan.cellHeight,
+        gap: widget.gap,
+        itemBuilder: (i) => widget.itemBuilder(context, i),
       );
 
       final body = AnimatedSwitcher(

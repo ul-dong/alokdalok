@@ -97,6 +97,7 @@ class _ShapeGameScreenState extends State<ShapeGameScreen>
         hint: round.showSample
             ? QuizHintBox(
                 label: '견본 ${q.shape.ko}',
+                say: '${q.shape.ko}!',
                 child: ShapeIcon(
                   q.shape,
                   color: q.sampleColor.color,

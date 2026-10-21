@@ -56,6 +56,9 @@ class _NumberGameScreenState extends State<NumberGameScreen> {
   SessionSummary? summary;
   SceneGame? scene;
   bool busy = false;
+
+  /// 같이 세는 중 (물건을 눌러도 이름을 말하지 않는다: 세는 소리를 끊지 않게)
+  bool counting = false;
   Timer? _hintTimer;
   Timer? _nextTimer;
 
@@ -130,7 +133,10 @@ class _NumberGameScreenState extends State<NumberGameScreen> {
     _hintTimer?.cancel();
     final token = ++_hintToken;
     final n = round.question.count;
-    setState(() => hintShown = 0);
+    setState(() {
+      hintShown = 0;
+      counting = true;
+    });
     // 1) "같이 세어 볼까요?"를 크게 띄우고 말한다
     await Future.wait([
       state.audio
@@ -154,6 +160,7 @@ class _NumberGameScreenState extends State<NumberGameScreen> {
         Future<void>.delayed(const Duration(milliseconds: 520)),
       ]);
     }
+    if (mounted && token == _hintToken) setState(() => counting = false);
   }
 
   void _celebrateAt(int choice) {
@@ -200,6 +207,7 @@ class _NumberGameScreenState extends State<NumberGameScreen> {
         NumberQuestion.generate(stage, rng, previous: round.question),
       );
       hintShown = 0;
+      counting = false;
       bubble = null;
       bigPop = null;
       busy = false;
@@ -248,6 +256,7 @@ class _NumberGameScreenState extends State<NumberGameScreen> {
       sessionCoins = 0;
       sessionStars = 0;
       hintShown = 0;
+      counting = false;
       bubble = null;
       summary = null;
       busy = false;
@@ -318,6 +327,7 @@ class _NumberGameScreenState extends State<NumberGameScreen> {
                                 key: ValueKey(q),
                                 question: q,
                                 hintShown: hintShown,
+                                canName: !busy && !counting,
                               )
                             else
                               ObjectField(
@@ -326,6 +336,7 @@ class _NumberGameScreenState extends State<NumberGameScreen> {
                                 tint: _tintFor(q),
                                 count: q.count,
                                 hintShown: hintShown,
+                                canName: !busy && !counting,
                               ),
                             if (bigPop != null)
                               Positioned.fill(
@@ -467,9 +478,13 @@ class ObjectField extends StatelessWidget {
     required this.count,
     required this.hintShown,
     this.tint,
+    this.canName = true,
   });
 
   final ObjectKind kind;
+
+  /// 물건을 누르면 이름을 말해 줄지 (세는 중·정답 뒤에는 끈다)
+  final bool canName;
 
   /// 물건 색 (없으면 원래 색)
   final Color? tint;
@@ -516,10 +531,14 @@ class ObjectField extends StatelessWidget {
         child: SizedBox(
           width: cell,
           height: cell,
-          child: Stamped(
-            number: i < hintShown ? i + 1 : null,
-            badgeSize: max(30, size * .4),
-            child: ObjectIcon(kind, color: tint, size: size),
+          child: SayName(
+            name: kind.sayName(),
+            enabled: canName,
+            child: Stamped(
+              number: i < hintShown ? i + 1 : null,
+              badgeSize: max(30, size * .4),
+              child: ObjectIcon(kind, color: tint, size: size),
+            ),
           ),
         ),
       );
@@ -531,10 +550,14 @@ class ScatterField extends StatelessWidget {
     super.key,
     required this.question,
     required this.hintShown,
+    this.canName = true,
   });
 
   final NumberQuestion question;
   final int hintShown;
+
+  /// 물건을 누르면 이름을 말해 줄지 (세는 중·정답 뒤에는 끈다)
+  final bool canName;
 
   @override
   Widget build(BuildContext context) {
@@ -567,17 +590,21 @@ class ScatterField extends StatelessWidget {
                   curve: Curves.easeOutBack,
                   builder: (_, t, child) =>
                       Transform.scale(scale: max(0.0, t), child: child),
-                  child: Stamped(
-                    number: o.target && order.indexOf(o) < hintShown
-                        ? order.indexOf(o) + 1
-                        : null,
-                    badgeSize: max(28, size * .4),
-                    badgeTop: -4,
-                    child: ObjectIcon(
-                      o.kind,
-                      color: o.color?.color,
-                      size: size,
-                      faded: counting && !o.target,
+                  child: SayName(
+                    name: o.kind.sayName(o.color),
+                    enabled: canName,
+                    child: Stamped(
+                      number: o.target && order.indexOf(o) < hintShown
+                          ? order.indexOf(o) + 1
+                          : null,
+                      badgeSize: max(28, size * .4),
+                      badgeTop: -4,
+                      child: ObjectIcon(
+                        o.kind,
+                        color: o.color?.color,
+                        size: size,
+                        faded: counting && !o.target,
+                      ),
                     ),
                   ),
                 ),
