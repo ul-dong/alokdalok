@@ -9,14 +9,42 @@ import 'zodiac.dart';
 
 enum CharMood { normal, happy, think }
 
+/// 주둥이 종류 (얼굴 아래쪽 모양). 같은 머리 틀 위에 이것만 바꿔도 동물이 달라 보인다.
+enum Snout {
+  /// 작은 세모 코 + "ω" 입 (쥐·토끼·호랑이·개·원숭이·양)
+  cat,
+
+  /// 콧구멍 있는 둥근 주둥이 (소·말·돼지·용)
+  muzzle,
+
+  /// 새 부리 (닭·프테라노돈)
+  beak,
+
+  /// 갈라진 혀 (뱀)
+  snake,
+
+  /// 크고 넓은 턱 + 이빨 (티라노·스피노)
+  jaw,
+
+  /// 짧고 단단한 부리 주둥이 (트리케라톱스·스테고·안킬로·이구아노돈·파키)
+  dinoBeak,
+
+  /// 넓적한 오리 주둥이 (파라사우롤로푸스)
+  duck,
+
+  /// 뾰족한 주둥이 + 작은 이빨 (벨로시랩터·딜로포)
+  pointy,
+
+  /// 순한 둥근 주둥이 (브라키오)
+  gentle,
+}
+
 /// 친구 그리기 (12지신 + 공룡).
 ///
-/// 도형을 붙인 느낌이 나지 않도록 머리와 몸을 하나의 부드러운 곡선(찹쌀떡 머리, 서양배 몸)으로 그리고,
-/// 가는 외곽선, 밝은 배 무늬, 뭉툭한 팔·발로 그림책 같은 느낌을 낸다. 200 x 240 좌표계.
-///
-/// 모든 친구가 같은 몸 틀(머리 중심, 몸통, 팔·발 위치)을 공유해서 꾸미기 아이템이 누구에게나 맞는다.
+/// 모든 친구가 같은 몸 틀(머리 크기와 위치, 몸통, 팔·발 위치)을 공유해서 꾸미기 아이템이 누구에게나 맞는다.
+/// 종마다 다른 점은 머리 모양·귀·뿔·볏·주둥이와 무늬·색·꼬리·등판·날개로만 표현한다. 200 x 240 좌표계.
 /// 그리는 순서(레이어)는 고정:
-///   그림자 → 등 장식 → 등판(돛·골판) → 꼬리 → 발 → 몸 → 팔 → 옷 → 신발 → 가방끈 → 목걸이
+///   그림자 → 등 장식 → 등판(돛·골판·갑옷) → 꼬리 → 발 → 몸 → 팔 → 옷 → 신발 → 가방끈 → 목걸이
 ///   → 귀·뿔·볏(뒤) → 머리 → 무늬·주둥이·뿔 → 얼굴 → 늘어진 귀 → 안경·리본 → 모자
 class AnimalPainter extends CustomPainter {
   AnimalPainter({
@@ -30,7 +58,7 @@ class AnimalPainter extends CustomPainter {
   });
 
   /// 탈것에 탔을 때: 가는 쪽(오른쪽)을 보도록 얼굴을 돌린다.
-  /// 24마리 모두 같은 머리 틀이라 [turnFace] 변환 하나로 처리한다 (꼬리는 뒤쪽으로).
+  /// 24마리 모두 같은 머리 틀이라 [turnFace] 변환 하나로 처리한다 (꼬리·뒤로 뻗은 볏은 뒤쪽으로).
   final bool sideways;
 
   /// 옆을 볼 때 얼굴(눈·코·입·무늬)을 오른쪽으로 옮기고 가로로 줄이는 값
@@ -58,7 +86,7 @@ class AnimalPainter extends CustomPainter {
   final Map<ItemSlot, Item> items;
   final CharMood mood;
 
-  /// 0~1 반복 값 (꼬리 흔들기, 눈 깜빡임)
+  /// 0~1 값 (꼬리 흔들기, 눈 깜빡임)
   final double phase;
 
   static const Size design = Size(200, 240);
@@ -66,6 +94,9 @@ class AnimalPainter extends CustomPainter {
   /// 외곽선 색 (아이템·탈것 그림도 같은 색을 쓴다)
   static const Color ink = Color(0xFF4A3A31);
   static const double lineWidth = 3.8;
+
+  /// 뿔·발톱·이빨 같은 상아색
+  static const Color ivory = Color(0xFFFFF4DC);
 
   /// 몸통 (서양배 모양). 옷 그림도 이 모양을 그대로 쓴다.
   static final Path torsoPath = Path()
@@ -118,6 +149,7 @@ class AnimalPainter extends CustomPainter {
   ZodiacLook get look => zodiac.look;
   Color get fur => look.fur;
   bool get _dino => zodiac.isDino;
+  bool get _hatOn => items[ItemSlot.head] != null;
 
   /// 다리 대신 몸으로 서 있는지 (뱀)
   bool get _noLegs => zodiac == Zodiac.snake;
@@ -132,6 +164,38 @@ class AnimalPainter extends CustomPainter {
   bool get hasWings => _wings;
   bool get _wings => zodiac == Zodiac.rooster || zodiac == Zodiac.pteranodon;
 
+  /// 주둥이 종류
+  Snout get snout => snoutOf(zodiac);
+
+  static Snout snoutOf(Zodiac z) => switch (z) {
+    Zodiac.ox || Zodiac.horse || Zodiac.pig || Zodiac.dragon => Snout.muzzle,
+    Zodiac.rooster || Zodiac.pteranodon => Snout.beak,
+    Zodiac.snake => Snout.snake,
+    Zodiac.trex || Zodiac.spinosaurus => Snout.jaw,
+    Zodiac.triceratops ||
+    Zodiac.stegosaurus ||
+    Zodiac.ankylosaurus ||
+    Zodiac.iguanodon ||
+    Zodiac.pachycephalosaurus => Snout.dinoBeak,
+    Zodiac.parasaurolophus => Snout.duck,
+    Zodiac.velociraptor || Zodiac.dilophosaurus => Snout.pointy,
+    Zodiac.brachiosaurus => Snout.gentle,
+    _ => Snout.cat,
+  };
+
+  /// 옆을 볼 때 주둥이가 머리 밖으로 길게 나오는 공룡
+  static const Set<Zodiac> _sideSnouts = {
+    Zodiac.trex,
+    Zodiac.spinosaurus,
+    Zodiac.velociraptor,
+    Zodiac.parasaurolophus,
+    Zodiac.dilophosaurus,
+    Zodiac.iguanodon,
+    Zodiac.brachiosaurus,
+    Zodiac.stegosaurus,
+  };
+  bool get _sideSnout => sideways && _sideSnouts.contains(zodiac);
+
   /// 합치기(Path.combine)는 계산이 무거워서 한 번 만든 모양은 기억해 둔다 (발열 줄이기)
   static final Map<String, Path> _pathCache = {};
   static Path _cached(String key, Path Function() build) =>
@@ -142,6 +206,18 @@ class AnimalPainter extends CustomPainter {
 
   static Color _shade(Color c, [double t = .12]) =>
       Color.lerp(c, const Color(0xFF3A2A22), t)!;
+  static Color _tint(Color c, [double t = .4]) =>
+      Color.lerp(c, Colors.white, t)!;
+
+  /// 뒤로 뻗는 장식은 옆을 볼 때 등 쪽(왼쪽)으로 뒤집는다
+  void _backward(Canvas c, void Function() draw) {
+    if (!sideways) return draw();
+    c.save();
+    c.translate(200, 0);
+    c.scale(-1, 1);
+    draw();
+    c.restore();
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -166,16 +242,7 @@ class AnimalPainter extends CustomPainter {
     if (back != null) art.backBehind(back);
 
     _backDecor(canvas);
-    if (sideways) {
-      // 옆을 볼 때 꼬리는 등 뒤(왼쪽)로
-      canvas.save();
-      canvas.translate(200, 0);
-      canvas.scale(-1, 1);
-      _tail(canvas);
-      canvas.restore();
-    } else {
-      _tail(canvas);
-    }
+    _backward(canvas, () => _tail(canvas));
     final legsOn = drawLegs && items[ItemSlot.shoes] == null && !_noLegs;
     if (zodiac == Zodiac.sheep) {
       // 양: 구름 털 몸에 색이 다른 발·팔을 따로 붙인다
@@ -218,8 +285,10 @@ class AnimalPainter extends CustomPainter {
       _face(canvas, happy);
       canvas.restore();
       canvas.drawPath(head, stroke());
+      if (_sideSnout) _profileSnout(canvas, happy);
       canvas.save();
       turnFace(canvas, shift: earShift, squash: earSquash);
+      _headTop(canvas);
       _earsFront(canvas);
       canvas.restore();
       if (acc != null && !acc.isNecklace) {
@@ -233,6 +302,7 @@ class AnimalPainter extends CustomPainter {
       _head(canvas);
       _headDetails(canvas);
       _face(canvas, happy);
+      _headTop(canvas);
       _earsFront(canvas);
       if (acc != null && !acc.isNecklace) art.accessory(acc);
     }
@@ -244,53 +314,128 @@ class AnimalPainter extends CustomPainter {
 
   Offset _m(double m, double dx, double y) => Offset(100 + m * dx, y);
 
+  /// 끝이 둥근 가시·판 하나 (밑변 가운데 0,0 에서 위로 [h])
+  static Path _spike(double w, double h, {double round = .3}) => Path()
+    ..moveTo(-w / 2, 0)
+    ..quadraticBezierTo(-w * round, -h * .6, 0, -h)
+    ..quadraticBezierTo(w * round, -h * .6, w / 2, 0)
+    ..close();
+
+  void _at(Canvas c, Offset o, double rot, void Function() draw) {
+    c.save();
+    c.translate(o.dx, o.dy);
+    c.rotate(rot);
+    draw();
+    c.restore();
+  }
+
   // ================= 등판 (공룡) =================
   void _backDecor(Canvas c) {
     switch (zodiac) {
       case Zodiac.stegosaurus:
-        // 등에 솟은 골판이 머리 뒤로 부채처럼 보인다
-        for (final (o, r, rot) in const [
-          (Offset(46, 84), 18.0, -1.2),
-          (Offset(60, 48), 20.0, -.7),
-          (Offset(100, 30), 22.0, 0.0),
-          (Offset(140, 48), 20.0, .7),
-          (Offset(154, 84), 18.0, 1.2),
-          (Offset(40, 130), 15.0, -1.6),
-          (Offset(160, 130), 15.0, 1.6),
+        // 등줄기를 따라 솟은 각진 골판: 머리 위로 한 줄, 어깨 옆으로 작게 (꽃처럼 둥글게 두르지 않는다)
+        for (final (o, rot, h, alt) in const [
+          (Offset(42, 76), -1.0, 30.0, true),
+          (Offset(158, 76), 1.0, 30.0, true),
+          (Offset(62, 50), -.55, 36.0, false),
+          (Offset(138, 50), .55, 36.0, false),
+          (Offset(100, 42), 0.0, 40.0, true),
         ]) {
-          c.save();
-          c.translate(o.dx, o.dy);
-          c.rotate(rot);
-          final plate = Path()
-            ..moveTo(-r * .7, r * .7)
-            ..lineTo(-r * .8, -r * .1)
-            ..lineTo(0, -r * 1.1)
-            ..lineTo(r * .8, -r * .1)
-            ..lineTo(r * .7, r * .7)
-            ..close();
-          _fs(c, plate, look.accent);
-          c.restore();
+          _at(c, o, rot, () {
+            final plate = Path()
+              ..moveTo(-h * .36, 10)
+              ..lineTo(-h * .62, -h * .4)
+              ..lineTo(0, -h)
+              ..lineTo(h * .62, -h * .4)
+              ..lineTo(h * .36, 10)
+              ..close();
+            final color = alt ? const Color(0xFFFFA24C) : look.accent;
+            _fs(c, plate, color);
+            c.drawPath(
+              Path()
+                ..moveTo(-h * .2, -h * .3)
+                ..lineTo(0, -h * .7)
+                ..lineTo(h * .2, -h * .3),
+              stroke(2.6, _shade(color, .22)),
+            );
+          });
         }
       case Zodiac.spinosaurus:
-        // 등 돛 (부채처럼 뼈가 보이는)
-        final sail = Path()
-          ..moveTo(62, 176)
-          ..cubicTo(10, 120, 40, 4, 100, 8)
-          ..cubicTo(160, 4, 190, 120, 138, 176)
-          ..close();
+        // 등에 펼쳐진 커다란 돛 (위가 물결치고 뼈가 보이는)
+        final sail = _cached('spino-sail', () {
+          final p = Path()..moveTo(58, 176);
+          p.cubicTo(18, 140, 14, 70, 34, 40);
+          const bumps = 6;
+          var prev = const Offset(34, 40);
+          for (var i = 1; i <= bumps; i++) {
+            final t = i / bumps;
+            final a = pi * (1.18 + t * .64);
+            final next = Offset(100 + cos(a) * 88, 120 + sin(a) * 112);
+            final mid = (prev + next) / 2;
+            final out = (mid - const Offset(100, 120));
+            final ctl = mid + out / out.distance * 16;
+            p.quadraticBezierTo(ctl.dx, ctl.dy, next.dx, next.dy);
+            prev = next;
+          }
+          p.cubicTo(186, 70, 182, 140, 142, 176);
+          p.close();
+          return p;
+        });
         c.drawPath(sail, Paint()..color = look.accent);
         c.save();
         c.clipPath(sail);
+        c.drawPath(
+          Path()..addOval(
+            Rect.fromCenter(
+              center: const Offset(100, 150),
+              width: 150,
+              height: 130,
+            ),
+          ),
+          Paint()..color = _shade(look.accent, .1),
+        );
         for (var i = 0; i < 9; i++) {
-          final a = pi * (1.08 + i * .105);
+          final a = pi * (1.1 + i * .1);
           c.drawLine(
-            const Offset(100, 170),
-            const Offset(100, 170) + Offset(cos(a), sin(a)) * 170,
-            stroke(2.4, _shade(look.accent, .2)),
+            const Offset(100, 176),
+            const Offset(100, 176) + Offset(cos(a), sin(a)) * 180,
+            stroke(2.6, _shade(look.accent, .28)),
           );
         }
         c.restore();
         c.drawPath(sail, stroke());
+      case Zodiac.ankylosaurus:
+        // 몸 뒤로 넓게 보이는 등딱지 갑옷 + 옆으로 뻗은 가시
+        for (final m in [-1.0, 1.0]) {
+          for (final (y, len) in const [(150.0, 18.0), (172.0, 20.0)]) {
+            _at(c, Offset(100 + m * 48, y), m * pi / 2 + m * .1, () {
+              _fs(c, _spike(16, len), ivory, w: 3);
+            });
+          }
+        }
+        final shell = Path()
+          ..addRRect(
+            RRect.fromLTRBR(46, 138, 154, 200, const Radius.circular(34)),
+          );
+        c.drawPath(shell, Paint()..color = look.accent);
+        c.save();
+        c.clipPath(shell);
+        for (var row = 0; row < 3; row++) {
+          for (var i = 0; i < 6; i++) {
+            final o = Offset(
+              52.0 + i * 20 + (row.isOdd ? 10 : 0),
+              148.0 + row * 18,
+            );
+            c.drawCircle(o, 6, Paint()..color = _shade(look.accent, .18));
+            c.drawCircle(
+              o + const Offset(-1.5, -1.5),
+              2.2,
+              Paint()..color = _tint(look.accent, .3),
+            );
+          }
+        }
+        c.restore();
+        c.drawPath(shell, stroke());
       default:
         break;
     }
@@ -300,69 +445,12 @@ class AnimalPainter extends CustomPainter {
   void _tail(Canvas c) {
     final sway = sin(phase * 2 * pi) * 5;
     if (_dino && zodiac != Zodiac.pteranodon) {
-      // 굵게 뻗었다가 가늘어지는 공룡 꼬리
-      final tip = Offset(186 + sway * .6, 214 - sway * .3);
-      final tail = Path()
-        ..moveTo(122, 168)
-        ..cubicTo(150, 172, 170, 188, tip.dx, tip.dy)
-        ..cubicTo(166, 216, 146, 212, 124, 206)
-        ..close();
-      _fs(c, tail, fur);
-      switch (zodiac) {
-        case Zodiac.stegosaurus:
-          for (final (d, a) in const [
-            (Offset(-6, -6), -.9),
-            (Offset(-18, -10), -1.1),
-          ]) {
-            c.save();
-            c.translate(tip.dx + d.dx, tip.dy + d.dy);
-            c.rotate(a);
-            final spike = Path()
-              ..moveTo(-4, 0)
-              ..lineTo(0, -16)
-              ..lineTo(4, 0)
-              ..close();
-            _fs(c, spike, look.light, w: 3);
-            c.restore();
-          }
-        case Zodiac.ankylosaurus:
-          // 꼬리 곤봉
-          _fs(
-            c,
-            Path()..addOval(
-              Rect.fromCenter(
-                center: tip + const Offset(-4, -2),
-                width: 30,
-                height: 22,
-              ),
-            ),
-            look.accent,
-          );
-        case Zodiac.velociraptor:
-          // 꼬리 깃털
-          for (var i = 0; i < 3; i++) {
-            final o = tip + Offset(-6.0 - i * 9, -4.0 - i * 2);
-            final f = Path()
-              ..moveTo(o.dx, o.dy)
-              ..quadraticBezierTo(o.dx + 4, o.dy - 14, o.dx + 10, o.dy - 6)
-              ..close();
-            _fs(c, f, look.accent, w: 2.6);
-          }
-        default:
-          // 등줄 무늬
-          for (final t in [.35, .6]) {
-            final x = 122 + (tip.dx - 122) * t;
-            final y = 172 + (tip.dy - 172) * t * .95;
-            c.drawLine(
-              Offset(x - 2, y - 6),
-              Offset(x + 4, y + 2),
-              stroke(2.6, _shade(fur, .25)),
-            );
-          }
-      }
+      _dinoTail(c, sway);
       return;
     }
     switch (zodiac) {
+      case Zodiac.pteranodon:
+        break;
       case Zodiac.rat:
         final p = Path()
           ..moveTo(128, 200)
@@ -406,35 +494,56 @@ class AnimalPainter extends CustomPainter {
       case Zodiac.rabbit:
         _fs(c, _cloud(Offset(134 + sway * .2, 200), 12, 6), Colors.white, w: 3);
       case Zodiac.dragon:
+        // 굽이치는 긴 꼬리 + 끝의 불꽃 털
         final p = Path()
-          ..moveTo(126, 202)
-          ..quadraticBezierTo(160, 206, 168 + sway, 186);
+          ..moveTo(124, 204)
+          ..cubicTo(156, 214, 168, 196, 158 + sway, 182)
+          ..cubicTo(150, 170, 170, 160, 178 + sway, 168);
         c.drawPath(p, stroke(16));
         c.drawPath(p, stroke(9, fur));
-        final tip = Path()
-          ..moveTo(166 + sway, 190)
-          ..quadraticBezierTo(178 + sway, 176, 186 + sway, 184)
-          ..quadraticBezierTo(178 + sway, 194, 166 + sway, 190)
-          ..close();
-        _fs(c, tip, look.accent, w: 3);
+        for (final (o, a) in [
+          (Offset(178 + sway, 168), -.5),
+          (Offset(178 + sway, 168), .3),
+          (Offset(176 + sway, 168), -1.3),
+        ]) {
+          _at(c, o, a, () => _fs(c, _spike(12, 20), look.accent, w: 3));
+        }
+        // 등줄 가시
+        for (final (o, a) in const [
+          (Offset(146, 208), -.3),
+          (Offset(162, 196), -1.2),
+        ]) {
+          _at(c, o, a, () => _fs(c, _spike(9, 10), look.accent, w: 2.6));
+        }
       case Zodiac.snake:
+        // 똬리 두 겹 + 위로 말린 꼬리 끝
+        final tailTip = Path()
+          ..moveTo(150, 214)
+          ..cubicTo(178, 206, 182, 186, 170 + sway * .5, 176);
+        c.drawPath(tailTip, stroke(16));
+        c.drawPath(tailTip, stroke(8.4, fur));
         final body = Path()
           ..moveTo(84, 196)
-          ..cubicTo(60, 196, 40, 214, 52, 226)
-          ..cubicTo(64, 236, 150, 232, 160, 222)
-          ..cubicTo(170, 212, 162, 200, 148, 202);
-        c.drawPath(body, stroke(28));
-        c.drawPath(body, stroke(20.4, fur));
-        // 배 비늘 줄
-        final belly = Path()
-          ..moveTo(62, 222)
-          ..cubicTo(80, 230, 140, 228, 156, 220);
-        c.drawPath(belly, stroke(4, look.light));
+          ..cubicTo(52, 196, 36, 214, 50, 226)
+          ..cubicTo(64, 238, 150, 236, 162, 222)
+          ..cubicTo(172, 210, 160, 200, 140, 202);
+        c.drawPath(body, stroke(30));
+        c.drawPath(body, stroke(22.4, fur));
+        // 등 무늬 (마름모)
+        for (final o in const [
+          Offset(52, 216),
+          Offset(78, 230),
+          Offset(110, 231),
+          Offset(142, 228),
+          Offset(162, 214),
+        ]) {
+          _diamond(c, o, 7, look.accent);
+        }
       case Zodiac.horse:
         final p = Path()
           ..moveTo(128, 186)
-          ..cubicTo(152, 184, 158 + sway, 206, 150 + sway, 216)
-          ..cubicTo(144, 204, 138, 198, 128, 198)
+          ..cubicTo(156, 182, 162 + sway, 210, 150 + sway, 220)
+          ..cubicTo(146, 206, 138, 198, 128, 198)
           ..close();
         _fs(c, p, look.accent, w: 3);
       case Zodiac.sheep:
@@ -447,21 +556,22 @@ class AnimalPainter extends CustomPainter {
         c.drawPath(p, stroke(10));
         c.drawPath(p, stroke(4.4, fur));
       case Zodiac.rooster:
-        for (var i = 0; i < 3; i++) {
+        // 크게 휘어 올라간 꽁지깃 (짙은 초록·파랑 + 주황)
+        for (final (a, len, color) in const [
+          (-1.35, 56.0, Color(0xFF2F7F6A)),
+          (-.95, 62.0, Color(0xFF3F6FC4)),
+          (-.55, 56.0, Color(0xFF2F7F6A)),
+          (-.15, 44.0, Color(0xFFF08A3C)),
+        ]) {
           c.save();
-          c.translate(128, 188);
-          c.rotate(-0.75 + i * .35 + sway * .01);
+          c.translate(126, 184);
+          c.rotate(a + sway * .01);
           final f = Path()
-            ..moveTo(0, 0)
-            ..quadraticBezierTo(14, -14, 32, -6)
-            ..quadraticBezierTo(16, 6, 0, 0)
+            ..moveTo(0, -5)
+            ..cubicTo(len * .4, -14, len * .8, -10, len, 2)
+            ..cubicTo(len * .7, 6, len * .3, 8, 0, 5)
             ..close();
-          _fs(
-            c,
-            f,
-            i == 1 ? const Color(0xFF6C8FD8) : const Color(0xFF4F9E7A),
-            w: 3,
-          );
+          _fs(c, f, color, w: 3);
           c.restore();
         }
       case Zodiac.pig:
@@ -472,6 +582,140 @@ class AnimalPainter extends CustomPainter {
         c.drawPath(p, stroke(3.4));
       default:
         break;
+    }
+  }
+
+  void _diamond(Canvas c, Offset o, double r, Color color) {
+    final d = Path()
+      ..moveTo(o.dx, o.dy - r)
+      ..lineTo(o.dx + r * .8, o.dy)
+      ..lineTo(o.dx, o.dy + r)
+      ..lineTo(o.dx - r * .8, o.dy)
+      ..close();
+    c.drawPath(d, Paint()..color = color);
+  }
+
+  /// 공룡 꼬리: 굵게 뻗었다가 가늘어진다. 끝 장식이 종마다 다르다.
+  void _dinoTail(Canvas c, double sway) {
+    final long = zodiac == Zodiac.brachiosaurus;
+    final up = zodiac == Zodiac.brachiosaurus || zodiac == Zodiac.velociraptor;
+    final tip = long
+        ? Offset(194 + sway * .6, 150 - sway * .3)
+        : up
+        ? Offset(190 + sway * .6, 180 - sway * .3)
+        : Offset(186 + sway * .6, 214 - sway * .3);
+    final thick = zodiac == Zodiac.trex || zodiac == Zodiac.spinosaurus;
+    final tail = Path()
+      ..moveTo(122, thick ? 162 : 168)
+      ..cubicTo(
+        150,
+        long ? 176 : 172,
+        long ? 176 : 170,
+        long ? 170 : (up ? 174 : 188),
+        tip.dx,
+        tip.dy,
+      )
+      ..cubicTo(
+        long ? 182 : 166,
+        long ? 180 : (up ? 196 : 216),
+        146,
+        212,
+        124,
+        206,
+      )
+      ..close();
+
+    if (zodiac == Zodiac.spinosaurus) {
+      // 노 같은 꼬리 지느러미
+      final fin = Path()
+        ..moveTo(136, 170)
+        ..quadraticBezierTo(160, 150, 182 + sway * .6, 196)
+        ..lineTo(160, 190)
+        ..close();
+      _fs(c, fin, look.accent, w: 3);
+    }
+    if (zodiac == Zodiac.stegosaurus) {
+      // 꼬리 가시 4개 (두 쌍)
+      for (final (d, a, l) in const [
+        (Offset(-8, -8), -1.1, 26.0),
+        (Offset(-6, -2), -.3, 24.0),
+        (Offset(-22, -12), -1.3, 22.0),
+        (Offset(-20, -6), -.5, 20.0),
+      ]) {
+        _at(c, tip + d, a, () => _fs(c, _spike(9, l, round: .15), ivory, w: 3));
+      }
+    }
+    if (zodiac == Zodiac.velociraptor) {
+      // 꼬리 끝 깃털 부채
+      for (final a in [-1.3, -.8, -.3, .2]) {
+        _at(c, tip + const Offset(-4, 2), a + pi / 2 - .4, () {
+          final f = Path()
+            ..moveTo(-6, 0)
+            ..quadraticBezierTo(-8, -18, 0, -26)
+            ..quadraticBezierTo(8, -18, 6, 0)
+            ..close();
+          _fs(c, f, look.accent, w: 2.8);
+        });
+      }
+    }
+    _fs(c, tail, fur);
+    c.save();
+    c.clipPath(tail);
+    switch (zodiac) {
+      case Zodiac.trex:
+      case Zodiac.iguanodon:
+      case Zodiac.parasaurolophus:
+        for (final t in [.3, .52, .74]) {
+          final x = 124 + (tip.dx - 124) * t;
+          final y = 168 + (tip.dy - 168) * t;
+          c.drawLine(
+            Offset(x - 3, y - 12),
+            Offset(x + 3, y + 2),
+            stroke(4, _shade(fur, .22)),
+          );
+        }
+      case Zodiac.dilophosaurus:
+      case Zodiac.brachiosaurus:
+      case Zodiac.pachycephalosaurus:
+        for (final t in [.3, .55, .78]) {
+          final o = Offset(
+            124 + (tip.dx - 124) * t,
+            170 + (tip.dy - 170) * t - 2,
+          );
+          c.drawCircle(o, 4.2 - t * 1.6, Paint()..color = _shade(fur, .2));
+        }
+      default:
+        break;
+    }
+    c.restore();
+    if (zodiac == Zodiac.ankylosaurus) {
+      // 꼬리 곤봉: 양쪽으로 불룩한 뼈 덩어리
+      final club = _cached('anky-club', () {
+        var p = Path()
+          ..addOval(
+            Rect.fromCenter(center: Offset.zero, width: 22, height: 26),
+          );
+        for (final m in [-1.0, 1.0]) {
+          p = Path.combine(
+            PathOperation.union,
+            p,
+            Path()..addOval(
+              Rect.fromCenter(center: Offset(m * 11, 2), width: 22, height: 22),
+            ),
+          );
+        }
+        return p;
+      });
+      _at(c, tip + const Offset(-4, -4), -.5, () {
+        _fs(c, club, look.accent);
+        for (final o in const [
+          Offset(-10, -2),
+          Offset(10, -2),
+          Offset(0, -8),
+        ]) {
+          c.drawCircle(o, 3, Paint()..color = _shade(look.accent, .25));
+        }
+      });
     }
   }
 
@@ -500,7 +744,7 @@ class AnimalPainter extends CustomPainter {
   // ================= 발 =================
   void _legs(Canvas c) {
     for (final x in [86.0, 114.0]) {
-      if (zodiac == Zodiac.rooster || zodiac == Zodiac.pteranodon) {
+      if (_wings) {
         final leg = Path()
           ..moveTo(x, 206)
           ..lineTo(x, 222)
@@ -510,52 +754,48 @@ class AnimalPainter extends CustomPainter {
           ..moveTo(x, 222)
           ..lineTo(x, 228);
         c.drawPath(leg, stroke(8));
-        c.drawPath(leg, stroke(4, const Color(0xFFFFC94D)));
+        c.drawPath(
+          leg,
+          stroke(
+            4,
+            zodiac == Zodiac.pteranodon
+                ? _shade(fur, .1)
+                : const Color(0xFFFFC94D),
+          ),
+        );
         continue;
       }
-      // 뭉툭한 발: 아래가 조금 넓고 바닥이 평평
-      final foot = Path()
-        ..moveTo(x - 10, 198)
-        ..lineTo(x - 11.5, 219)
-        ..quadraticBezierTo(x - 13, 229, x - 3, 229)
-        ..lineTo(x + 3, 229)
-        ..quadraticBezierTo(x + 13, 229, x + 11.5, 219)
-        ..lineTo(x + 10, 198)
-        ..close();
-      final color = zodiac == Zodiac.sheep ? look.accent : fur;
-      _fs(c, foot, color);
-      if (_hooves) {
-        c.save();
-        c.clipPath(foot);
-        c.drawRect(
-          Rect.fromLTWH(x - 14, 221, 28, 10),
-          Paint()..color = const Color(0xFF8A817C),
-        );
-        c.restore();
-        c.drawPath(foot, stroke());
-      } else if (_dino) {
-        // 발톱 세 개
-        for (final dx in [-6.0, 0.0, 6.0]) {
-          c.drawOval(
-            Rect.fromCenter(center: Offset(x + dx, 227), width: 5, height: 4),
-            Paint()
-              ..color = zodiac == Zodiac.triceratops ? look.accent : look.light,
-          );
-        }
-      }
+      // 양: 뭉툭한 발 (털 몸 아래)
+      final foot = _footShape(x);
+      _fs(c, foot, look.accent);
+      c.save();
+      c.clipPath(foot);
+      c.drawRect(
+        Rect.fromLTWH(x - 14, 221, 28, 10),
+        Paint()..color = const Color(0xFF8A817C),
+      );
+      c.restore();
+      c.drawPath(foot, stroke());
     }
   }
 
   // ================= 몸 =================
   void _body(Canvas c) {
-    if (zodiac == Zodiac.sheep) {
-      _fs(c, _cloud(const Offset(100, 176), 40, 9), look.light);
-      return;
+    // 양: 구름 털 몸
+    _fs(c, _cloud(const Offset(100, 176), 40, 9), look.light);
+    for (final o in const [
+      Offset(84, 170),
+      Offset(112, 186),
+      Offset(96, 196),
+    ]) {
+      c.drawArc(
+        Rect.fromCircle(center: o, radius: 6),
+        pi * .1,
+        pi * 1.3,
+        false,
+        stroke(2.2, const Color(0xFFE6DCC8)),
+      );
     }
-    final body = torsoPath;
-    c.drawPath(body, Paint()..color = fur);
-    _bodyMarks(c);
-    c.drawPath(body, stroke());
   }
 
   /// 몸통 안쪽 무늬 (몸통 모양으로 잘라서 그린다)
@@ -591,42 +831,80 @@ class AnimalPainter extends CustomPainter {
           c.drawLine(Offset(138, y), Offset(126, y - 2), stroke(3.6));
         }
       case Zodiac.dragon:
+      case Zodiac.snake:
+        // 가로 비늘 줄이 있는 배
         final plate = RRect.fromLTRBR(
-          84,
-          152,
-          116,
-          196,
-          const Radius.circular(10),
+          82,
+          146,
+          118,
+          214,
+          const Radius.circular(14),
         );
         c.drawRRect(plate, Paint()..color = look.light);
-        for (final y in [166.0, 181.0]) {
+        for (var y = 160.0; y < 212; y += 12) {
           c.drawLine(
-            Offset(86, y),
-            Offset(114, y),
-            stroke(2.4, _shade(look.light, .2)),
+            Offset(84, y),
+            Offset(116, y),
+            stroke(2.4, _shade(look.light, .22)),
           );
+        }
+        if (zodiac == Zodiac.snake) {
+          for (final o in const [
+            Offset(70, 160),
+            Offset(130, 160),
+            Offset(72, 190),
+            Offset(128, 190),
+          ]) {
+            _diamond(c, o, 7, look.accent);
+          }
         }
       case Zodiac.rabbit:
       case Zodiac.rooster:
         break;
       case Zodiac.ankylosaurus:
-        // 등껍질 갑옷 (몸 위쪽을 덮는다)
         c.drawOval(belly, Paint()..color = look.light);
-        final shell = Path()
-          ..moveTo(60, 182)
-          ..cubicTo(60, 146, 140, 146, 140, 182)
-          ..close();
-        c.drawPath(shell, Paint()..color = look.accent);
-        for (final o in const [
-          Offset(80, 166),
-          Offset(100, 160),
-          Offset(120, 166),
-          Offset(90, 176),
-          Offset(110, 176),
-        ]) {
-          c.drawCircle(o, 4.2, Paint()..color = _shade(look.accent, .2));
+        for (final y in [174.0, 186.0, 198.0]) {
+          c.drawLine(
+            Offset(84, y),
+            Offset(116, y),
+            stroke(2, _shade(look.light, .12)),
+          );
         }
-        c.drawPath(shell, stroke(3));
+        // 어깨를 덮는 갑옷 띠
+        final band = Path()
+          ..moveTo(62, 160)
+          ..cubicTo(70, 136, 130, 136, 138, 160)
+          ..cubicTo(120, 150, 80, 150, 62, 160)
+          ..close();
+        c.drawPath(band, Paint()..color = look.accent);
+        for (final x in [80.0, 100.0, 120.0]) {
+          c.drawCircle(
+            Offset(x, 148),
+            4,
+            Paint()..color = _shade(look.accent, .2),
+          );
+        }
+      case Zodiac.velociraptor:
+        c.drawOval(belly, Paint()..color = look.light);
+        // 가슴 깃털 (V 모양)
+        for (final y in [152.0, 162.0]) {
+          final v = Path()
+            ..moveTo(84, y)
+            ..lineTo(100, y + 8)
+            ..lineTo(116, y);
+          c.drawPath(v, stroke(2.6, _shade(look.light, .18)));
+        }
+      case Zodiac.dilophosaurus:
+      case Zodiac.brachiosaurus:
+        c.drawOval(belly, Paint()..color = look.light);
+        for (final o in const [
+          Offset(72, 158),
+          Offset(128, 160),
+          Offset(70, 182),
+          Offset(130, 186),
+        ]) {
+          c.drawCircle(o, 4.6, Paint()..color = _shade(fur, .2));
+        }
       default:
         c.drawOval(belly, Paint()..color = look.light);
         if (_dino) {
@@ -666,7 +944,7 @@ class AnimalPainter extends CustomPainter {
       0, 0, 1, 0,
       tx, ty, 0, 1,
     ]);
-    return _armShape(small ? .72 : 1).transform(m);
+    return _armShape(small ? .66 : 1).transform(m);
   }
 
   /// 몸통 + 팔 + 발을 하나로 합친 몸.
@@ -682,6 +960,29 @@ class AnimalPainter extends CustomPainter {
         ? [_armAt(true, happy), _armAt(false, happy)]
         : const <Path>[];
     final footPaths = feet ? [_footShape(86), _footShape(114)] : const <Path>[];
+
+    // 팔 뒤로 붙는 깃털 (벨로시랩터)
+    if (arms && zodiac == Zodiac.velociraptor) {
+      for (final left in [true, false]) {
+        final (center, rot) = armPose(left, happy);
+        _at(c, center, rot, () {
+          final m = left ? -1.0 : 1.0;
+          for (final (y, l) in const [
+            (-6.0, 18.0),
+            (4.0, 20.0),
+            (13.0, 16.0),
+          ]) {
+            final f = Path()
+              ..moveTo(m * 4, y - 6)
+              ..quadraticBezierTo(m * (l + 4), y - 4, m * (l + 2), y + 6)
+              ..quadraticBezierTo(m * 10, y + 6, m * 4, y + 4)
+              ..close();
+            _fs(c, f, look.accent, w: 2.8);
+          }
+        });
+      }
+    }
+
     final sil = _cached('sil|${zodiac.name}|$happy|$feet|$arms', () {
       var out = Path.from(torsoPath);
       for (final p in [...footPaths, ...armPaths]) {
@@ -728,9 +1029,12 @@ class AnimalPainter extends CustomPainter {
       } else if (_dino) {
         for (final dx in [-6.0, 0.0, 6.0]) {
           c.drawOval(
-            Rect.fromCenter(center: Offset(x + dx, 227), width: 5, height: 4),
-            Paint()
-              ..color = zodiac == Zodiac.triceratops ? look.accent : look.light,
+            Rect.fromCenter(
+              center: Offset(x + dx, 227),
+              width: 5.5,
+              height: 4.5,
+            ),
+            Paint()..color = ivory,
           );
         }
       } else {
@@ -759,30 +1063,46 @@ class AnimalPainter extends CustomPainter {
 
     c.drawPath(sil, stroke());
 
+    // 벨로시랩터: 발 안쪽의 커다란 갈고리 발톱
+    if (feet && zodiac == Zodiac.velociraptor) {
+      for (final m in [-1.0, 1.0]) {
+        final x = 100 + m * 22;
+        final claw = Path()
+          ..moveTo(x - m * 4, 220)
+          ..cubicTo(x, 204, x + m * 12, 200, x + m * 18, 206)
+          ..cubicTo(x + m * 10, 206, x + m * 6, 212, x + m * 4, 224)
+          ..close();
+        _fs(c, claw, ivory, w: 3);
+      }
+    }
+
     // 팔 장식 (외곽선 위)
     if (arms) {
       for (final left in [true, false]) {
         final (center, rot) = armPose(left, happy);
-        c.save();
-        c.translate(center.dx, center.dy);
-        c.rotate(rot);
-        if (zodiac == Zodiac.iguanodon) {
-          final spike = Path()
-            ..moveTo(-3, 13)
-            ..lineTo(-12, 20)
-            ..lineTo(1, 17)
-            ..close();
-          _fs(c, spike, look.light, w: 2.6);
-        }
-        if (zodiac == Zodiac.velociraptor) {
-          final f = Path()
-            ..moveTo(-6, -8)
-            ..quadraticBezierTo(-18, 0, -12, 12)
-            ..quadraticBezierTo(-6, 4, -6, -8)
-            ..close();
-          _fs(c, f, look.accent, w: 2.6);
-        }
-        c.restore();
+        final m = left ? -1.0 : 1.0;
+        _at(c, center, rot, () {
+          switch (zodiac) {
+            case Zodiac.iguanodon:
+              // 엄지 가시: 손 안쪽에서 위로 솟은 큰 뿔
+              _at(c, Offset(m * 8, 8), m * .5, () {
+                _fs(c, _spike(12, 22, round: .2), ivory, w: 3);
+              });
+            case Zodiac.velociraptor:
+            case Zodiac.trex:
+            case Zodiac.dilophosaurus:
+            case Zodiac.spinosaurus:
+              // 손끝 작은 발톱
+              final s = zodiac == Zodiac.trex ? .66 : 1.0;
+              for (final dx in [-3.5, 3.5]) {
+                _at(c, Offset(dx * s, 17 * s), pi, () {
+                  _fs(c, _spike(4.5, 6, round: .2), ivory, w: 2);
+                });
+              }
+            default:
+              break;
+          }
+        });
       }
     }
   }
@@ -818,55 +1138,92 @@ class AnimalPainter extends CustomPainter {
 
   void _arms(Canvas c, bool happy) {
     if (_noLegs) return;
+    if (_wings) {
+      _wingArms(c, happy);
+      return;
+    }
+    // 양: 털 몸 옆에 얼굴색 팔 + 발굽
     for (final left in [true, false]) {
       final (center, rot) = armPose(left, happy);
+      _at(c, center, rot, () {
+        final arm = _armShape(1);
+        _fs(c, arm, look.accent);
+        c.save();
+        c.clipPath(arm);
+        c.drawRect(
+          const Rect.fromLTWH(-12, 8, 24, 12),
+          Paint()..color = const Color(0xFF8A817C),
+        );
+        c.restore();
+        c.drawPath(arm, stroke());
+      });
+    }
+  }
+
+  /// 날개 팔. 닭은 깃털 날개, 프테라노돈은 손가락 끝까지 펼친 큰 막 날개.
+  void _wingArms(Canvas c, bool happy) {
+    final ptero = zodiac == Zodiac.pteranodon;
+    for (final m in [-1.0, 1.0]) {
       c.save();
-      c.translate(center.dx, center.dy);
-      c.rotate(rot);
-      if (_wings) {
-        final big = zodiac == Zodiac.pteranodon;
-        final w = Path()
-          ..moveTo(0, -16)
-          ..quadraticBezierTo(big ? 22 : 13, -6, big ? 14 : 8, big ? 22 : 15)
-          ..lineTo(4, big ? 14 : 10)
-          ..lineTo(0, big ? 20 : 16)
-          ..lineTo(-4, big ? 14 : 10)
-          ..lineTo(big ? -14 : -8, big ? 22 : 15)
-          ..quadraticBezierTo(big ? -22 : -13, -6, 0, -16)
+      if (m > 0) {
+        c.translate(200, 0);
+        c.scale(-1, 1);
+      }
+      if (ptero && sideways) {
+        // 탈것에 탔을 때: 날개를 접어 몸 옆에 붙인다
+        _at(c, const Offset(70, 160), .5, () {
+          final w = Path()
+            ..moveTo(0, -20)
+            ..quadraticBezierTo(18, -4, 8, 28)
+            ..lineTo(0, 18)
+            ..lineTo(-8, 26)
+            ..quadraticBezierTo(-14, -4, 0, -20)
+            ..close();
+          _fs(c, w, look.light);
+        });
+      } else if (ptero) {
+        // 왼쪽 날개 (오른쪽은 뒤집어서). 어깨 (78,150)
+        final tip = happy ? const Offset(14, 104) : const Offset(16, 150);
+        final wing = Path()
+          ..moveTo(80, 146)
+          ..quadraticBezierTo(48, 124 + (happy ? -20 : 0), tip.dx, tip.dy)
+          ..quadraticBezierTo(30, happy ? 136 : 172, 44, happy ? 148 : 182)
+          ..quadraticBezierTo(54, happy ? 150 : 176, 62, happy ? 168 : 196)
+          ..quadraticBezierTo(70, 180, 80, 196)
           ..close();
-        _fs(c, w, big ? look.light : Colors.white);
-      } else {
-        final small = zodiac == Zodiac.trex;
-        final arm = _armShape(small ? .72 : 1);
-        if (small) c.translate(0, -5);
-        _fs(c, arm, zodiac == Zodiac.sheep ? look.accent : fur);
-        if (_hooves) {
-          c.save();
-          c.clipPath(arm);
-          c.drawRect(
-            const Rect.fromLTWH(-12, 8, 24, 12),
-            Paint()..color = const Color(0xFF8A817C),
+        _fs(c, wing, look.light);
+        // 날개 뼈(팔)와 손가락 발톱
+        final bone = Path()
+          ..moveTo(80, 148)
+          ..quadraticBezierTo(
+            48,
+            126 + (happy ? -20 : 0),
+            tip.dx + 2,
+            tip.dy + 1,
           );
-          c.restore();
-          c.drawPath(arm, stroke());
-        }
-        if (zodiac == Zodiac.iguanodon) {
-          // 엄지 가시
-          final spike = Path()
-            ..moveTo(-3, 13)
-            ..lineTo(-12, 20)
-            ..lineTo(1, 17)
+        c.drawPath(bone, stroke(7, ink));
+        c.drawPath(bone, stroke(3.4, fur));
+        final knuckle = happy ? const Offset(40, 114) : const Offset(42, 134);
+        _at(
+          c,
+          knuckle,
+          -.6,
+          () => _fs(c, _spike(5, 9, round: .2), ivory, w: 2.2),
+        );
+      } else {
+        final (center, rot) = armPose(true, happy);
+        _at(c, center, rot, () {
+          final w = Path()
+            ..moveTo(0, -18)
+            ..quadraticBezierTo(16, -6, 10, 18)
+            ..lineTo(5, 12)
+            ..lineTo(0, 20)
+            ..lineTo(-5, 12)
+            ..lineTo(-10, 18)
+            ..quadraticBezierTo(-16, -6, 0, -18)
             ..close();
-          _fs(c, spike, look.light, w: 2.6);
-        }
-        if (zodiac == Zodiac.velociraptor) {
-          final f = Path()
-            ..moveTo(-6, -8)
-            ..quadraticBezierTo(-18, 0, -12, 12)
-            ..quadraticBezierTo(-6, 4, -6, -8)
-            ..close();
-          _fs(c, f, look.accent, w: 2.6);
-        }
+          _fs(c, w, Colors.white);
+        });
       }
       c.restore();
     }
@@ -874,64 +1231,60 @@ class AnimalPainter extends CustomPainter {
 
   // ================= 귀·뿔·볏 (머리 뒤) =================
   void _earsBehind(Canvas c) {
-    if (zodiac == Zodiac.triceratops) {
-      // 커다란 목 프릴 (가장자리가 물결)
-      final frill = _cached('frill', () {
-        var f = Path()
-          ..addOval(Rect.fromCircle(center: const Offset(100, 82), radius: 74));
-        for (var i = 0; i < 9; i++) {
-          final a = pi + i * pi / 8;
-          f = Path.combine(
-            PathOperation.union,
-            f,
-            Path()..addOval(
-              Rect.fromCircle(
-                center: const Offset(100, 82) + Offset(cos(a), sin(a)) * 72,
-                radius: 11,
-              ),
-            ),
+    switch (zodiac) {
+      case Zodiac.triceratops:
+        _frill(c);
+      case Zodiac.parasaurolophus:
+        // 뒤로 길게 휜 관 볏 (굵은 관 + 밝은 줄)
+        _backward(c, () {
+          final crest = Path()
+            ..moveTo(104, 60)
+            ..cubicTo(112, 26, 150, 8, 184, 14);
+          c.drawPath(crest, stroke(30));
+          c.drawPath(crest, stroke(22.4, look.accent));
+          final hi = Path()
+            ..moveTo(116, 42)
+            ..cubicTo(128, 26, 150, 18, 176, 18);
+          c.drawPath(hi, stroke(5, _tint(look.accent, .45)));
+        });
+      case Zodiac.pteranodon:
+        // 뒤로 길게 뻗은 뾰족 볏
+        _backward(c, () {
+          final crest = Path()
+            ..moveTo(96, 48)
+            ..cubicTo(130, 30, 164, 14, 196, 8)
+            ..cubicTo(176, 30, 150, 50, 132, 70)
+            ..close();
+          _fs(c, crest, look.accent);
+          c.drawLine(
+            const Offset(116, 50),
+            const Offset(176, 18),
+            stroke(2.4, _shade(look.accent, .2)),
           );
+        });
+      case Zodiac.dilophosaurus:
+        // 머리 위 나란히 선 두 개의 반달 볏
+        for (final m in [-1.0, 1.0]) {
+          final x = 100 + m * 17;
+          _at(c, Offset(x, 52), m * .2, () {
+            final crest = Path()
+              ..moveTo(-9, 10)
+              ..cubicTo(-14, -26, 8, -46, 14, -40)
+              ..cubicTo(18, -24, 12, -4, 9, 10)
+              ..close();
+            _fs(c, crest, look.accent);
+            for (final (a, b) in const [
+              (Offset(-4, 2), Offset(2, -28)),
+              (Offset(4, 4), Offset(10, -24)),
+            ]) {
+              c.drawLine(a, b, stroke(2.6, _tint(look.accent, .5)));
+            }
+          });
         }
-        return f;
-      });
-      // 프릴은 몸과 같은 빨강(조금 진하게), 가장자리 혹은 크림색
-      _fs(c, frill, _shade(fur, .06));
-      for (var i = 0; i < 9; i++) {
-        final a = pi + i * pi / 8;
-        final o = const Offset(100, 82) + Offset(cos(a), sin(a)) * 72;
-        c.drawCircle(o, 7, Paint()..color = look.accent);
-        c.drawCircle(o, 7, stroke(2.6));
-      }
-    }
-    if (zodiac == Zodiac.parasaurolophus) {
-      // 뒤로 길게 휜 관 볏
-      final crest = Path()
-        ..moveTo(108, 52)
-        ..cubicTo(130, 26, 160, 18, 182, 22);
-      c.drawPath(crest, stroke(22));
-      c.drawPath(crest, stroke(14.4, look.accent));
-    }
-    if (zodiac == Zodiac.pteranodon) {
-      final crest = Path()
-        ..moveTo(110, 56)
-        ..lineTo(186, 26)
-        ..lineTo(124, 72)
-        ..close();
-      _fs(c, crest, look.accent);
-    }
-    if (zodiac == Zodiac.dilophosaurus) {
-      for (final m in [-1.0, 1.0]) {
-        final crest = Path()
-          ..moveTo(100 + m * 6, 50)
-          ..cubicTo(100 + m * 4, 10, 100 + m * 40, 14, 100 + m * 34, 50)
-          ..close();
-        _fs(c, crest, look.accent);
-        c.drawLine(
-          Offset(100 + m * 12, 44),
-          Offset(100 + m * 24, 26),
-          stroke(2.2, _shade(look.accent, .25)),
-        );
-      }
+      case Zodiac.dragon:
+        _dragonMane(c);
+      default:
+        break;
     }
     for (final m in [-1.0, 1.0]) {
       switch (zodiac) {
@@ -986,21 +1339,16 @@ class AnimalPainter extends CustomPainter {
           c.drawPath(inner, Paint()..color = const Color(0xFFF5B8C4));
           c.restore();
         case Zodiac.dragon:
+          // 사슴뿔처럼 갈라진 금빛 뿔
           final horn = Path()
-            ..moveTo(_m(m, 30, 48).dx, 48)
-            ..lineTo(_m(m, 40, 16).dx, 16)
-            ..lineTo(_m(m, 46, 32).dx, 32)
-            ..lineTo(_m(m, 54, 24).dx, 24)
-            ..lineTo(_m(m, 50, 42).dx, 42)
-            ..lineTo(_m(m, 44, 52).dx, 52)
-            ..close();
-          _fs(c, horn, look.accent, w: 3.2);
-          final ear = Path()
-            ..moveTo(_m(m, 60, 68).dx, 68)
-            ..quadraticBezierTo(_m(m, 92, 58).dx, 58, _m(m, 86, 82).dx, 82)
-            ..quadraticBezierTo(_m(m, 74, 86).dx, 86, _m(m, 62, 82).dx, 82)
-            ..close();
-          _fs(c, ear, fur);
+            ..moveTo(_m(m, 26, 52).dx, 52)
+            ..lineTo(_m(m, 34, 14).dx, 14)
+            ..moveTo(_m(m, 31, 32).dx, 32)
+            ..lineTo(_m(m, 48, 20).dx, 20)
+            ..moveTo(_m(m, 33, 22).dx, 22)
+            ..lineTo(_m(m, 22, 10).dx, 10);
+          c.drawPath(horn, stroke(12));
+          c.drawPath(horn, stroke(6, const Color(0xFFFFD34D)));
         case Zodiac.horse:
           final ear = Path()
             ..moveTo(_m(m, 30, 52).dx, 52)
@@ -1008,20 +1356,28 @@ class AnimalPainter extends CustomPainter {
             ..quadraticBezierTo(_m(m, 58, 42).dx, 42, _m(m, 52, 58).dx, 58)
             ..close();
           _fs(c, ear, fur);
+          c.drawPath(
+            Path()
+              ..moveTo(_m(m, 38, 48).dx, 48)
+              ..quadraticBezierTo(_m(m, 42, 30).dx, 30, _m(m, 50, 30).dx, 30),
+            stroke(4, _tint(look.accent, .5)),
+          );
         case Zodiac.sheep:
-          final o = _m(m, 64, 72);
+          // 크게 말린 뿔
+          final o = _m(m, 62, 66);
           _fs(
             c,
-            Path()..addOval(Rect.fromCircle(center: o, radius: 19)),
-            const Color(0xFFD9B98A),
+            Path()..addOval(Rect.fromCircle(center: o, radius: 22)),
+            const Color(0xFFD9B07A),
           );
-          c.drawArc(
-            Rect.fromCircle(center: o, radius: 9),
-            0,
-            pi * 1.6,
-            false,
-            stroke(3.2),
-          );
+          final spiral = Path()..moveTo(o.dx, o.dy);
+          for (var i = 0; i <= 24; i++) {
+            final t = i / 24;
+            final a = m * (t * pi * 3.2) - pi / 2;
+            final r = 3 + t * 13;
+            spiral.lineTo(o.dx + cos(a) * r, o.dy + sin(a) * r);
+          }
+          c.drawPath(spiral, stroke(3, _shade(const Color(0xFFD9B07A), .4)));
         case Zodiac.dog:
           final ear = Path()
             ..moveTo(_m(m, 26, 54).dx, 54)
@@ -1042,13 +1398,109 @@ class AnimalPainter extends CustomPainter {
             ..quadraticBezierTo(_m(m, 62, 34).dx, 34, _m(m, 62, 52).dx, 52)
             ..close();
           _fs(c, ear, fur);
+        case Zodiac.ankylosaurus:
+          // 뺨 뒤로 뻗은 뿔 가시
+          for (final (y, a, l) in const [
+            (78.0, 1.0, 22.0),
+            (118.0, 1.9, 26.0),
+          ]) {
+            _at(c, _m(m, 66, y), m * a, () {
+              _fs(c, _spike(20, l, round: .25), ivory, w: 3.2);
+            });
+          }
         default:
           break;
       }
     }
     if (zodiac == Zodiac.sheep) {
-      _fs(c, _cloud(const Offset(100, 50), 44, 8), look.light);
+      // 양: 늘어진 귀 (털 모자 아래 옆으로)
+      for (final m in [-1.0, 1.0]) {
+        _at(c, _m(m, 66, 92), m * .35, () {
+          final ear = Path()
+            ..addOval(
+              Rect.fromCenter(center: Offset(m * 10, 0), width: 34, height: 16),
+            );
+          _fs(c, ear, look.accent);
+          c.drawOval(
+            Rect.fromCenter(center: Offset(m * 12, 0), width: 18, height: 6),
+            Paint()..color = const Color(0xFFF5A9B8),
+          );
+        });
+      }
     }
+  }
+
+  /// 트리케라톱스의 커다란 목 프릴 (가장자리 물결 + 혹)
+  void _frill(Canvas c) {
+    const o = Offset(100, 84);
+    final frill = _cached('frill', () {
+      var f = Path()..addOval(Rect.fromCircle(center: o, radius: 76));
+      for (var i = 0; i < 9; i++) {
+        final a = pi + i * pi / 8;
+        f = Path.combine(
+          PathOperation.union,
+          f,
+          Path()..addOval(
+            Rect.fromCircle(
+              center: o + Offset(cos(a), sin(a)) * 74,
+              radius: 11,
+            ),
+          ),
+        );
+      }
+      return f;
+    });
+    _fs(c, frill, _shade(fur, .08));
+    c.drawCircle(o, 58, Paint()..color = _tint(fur, .25));
+    for (var i = 0; i < 9; i++) {
+      final a = pi + i * pi / 8;
+      final p = o + Offset(cos(a), sin(a)) * 74;
+      c.drawCircle(p, 7, Paint()..color = look.accent);
+      c.drawCircle(p, 7, stroke(2.6));
+    }
+  }
+
+  /// 용의 갈기: 머리 뒤로 불꽃처럼 뻗은 털
+  void _dragonMane(Canvas c) {
+    final mane = _cached('dragon-mane', () {
+      var p = Path()
+        ..addOval(
+          Rect.fromCenter(
+            center: const Offset(100, 100),
+            width: 138,
+            height: 100,
+          ),
+        );
+      for (final (deg, l) in const [
+        (-150.0, 34.0),
+        (-30.0, 34.0),
+        (-175.0, 30.0),
+        (-5.0, 30.0),
+        (160.0, 24.0),
+        (20.0, 24.0),
+      ]) {
+        final a = deg * pi / 180;
+        final base = const Offset(100, 96) + Offset(cos(a) * 66, sin(a) * 54);
+        final tip = base + Offset(cos(a), sin(a)) * l;
+        final side = Offset(-sin(a), cos(a)) * 12;
+        p = Path.combine(
+          PathOperation.union,
+          p,
+          Path()
+            ..moveTo(base.dx - side.dx, base.dy - side.dy)
+            ..quadraticBezierTo(
+              tip.dx - side.dx * .2,
+              tip.dy - side.dy * .2,
+              tip.dx + side.dx * .6,
+              tip.dy + side.dy * .6,
+            )
+            ..lineTo(base.dx + side.dx, base.dy + side.dy)
+            ..close(),
+        );
+      }
+      return p;
+    });
+    _fs(c, mane, const Color(0xFFFF8E4A));
   }
 
   void _earsFront(Canvas c) {
@@ -1098,65 +1550,143 @@ class AnimalPainter extends CustomPainter {
       ..close();
   }
 
+  /// 브라키오사우루스: 머리 위로 목처럼 높이 솟은 콧등 (모자를 쓰면 낮춘다)
+  Path get _brachioHead => _cached('brachio-head|$_hatOn', () {
+    final top = _hatOn ? 30.0 : 4.0;
+    final tower = Path()
+      ..moveTo(70, 70)
+      ..cubicTo(66, top + 30, 74, top, 100, top)
+      ..cubicTo(126, top, 134, top + 30, 130, 70)
+      ..close();
+    return Path.combine(PathOperation.union, headPath(), tower);
+  });
+
+  /// 파키케팔로사우루스: 위로 두껍게 솟은 둥근 돔 머리 (모자를 쓰면 낮춘다)
+  Path get _pachyHead => _cached('pachy-head|$_hatOn', () {
+    final top = _hatOn ? 34.0 : 8.0;
+    final dome = Path()
+      ..moveTo(38, 84)
+      ..cubicTo(34, top + 12, 72, top, 100, top)
+      ..cubicTo(128, top, 166, top + 12, 162, 84)
+      ..close();
+    return Path.combine(PathOperation.union, headPath(), dome);
+  });
+
   Path get _headShape => switch (zodiac) {
-    Zodiac.snake => headPath(dy: 6, sx: .92, sy: .92),
+    Zodiac.snake => headPath(dy: 10, sx: 1.0, sy: .84),
     Zodiac.horse => headPath(dy: 4, sx: .9, sy: 1.06),
-    Zodiac.sheep => headPath(dy: 8, sx: .84, sy: .88),
+    Zodiac.sheep => headPath(dy: 10, sx: .78, sy: .86),
+    Zodiac.trex => headPath(sx: 1.06, dy: 2),
     Zodiac.velociraptor || Zodiac.pteranodon => headPath(sx: .94),
+    Zodiac.brachiosaurus => _brachioHead,
+    Zodiac.pachycephalosaurus => _pachyHead,
     _ => headPath(),
   };
 
   void _head(Canvas c) {
     switch (zodiac) {
       case Zodiac.rooster:
-        final comb = Path();
-        for (final o in const [
-          Offset(86, 42),
-          Offset(100, 33),
-          Offset(114, 42),
-        ]) {
-          comb.addOval(Rect.fromCircle(center: o, radius: 12));
-        }
-        _fs(
-          c,
-          Path.combine(
-            PathOperation.union,
-            comb,
-            Path()..addRect(const Rect.fromLTRB(80, 40, 120, 50)),
-          ),
-          look.accent,
-        );
+        // 크고 붉은 볏 (봉우리 셋)
+        final comb = _cached('comb', () {
+          var p = Path()..addRect(const Rect.fromLTRB(80, 40, 120, 52));
+          for (final (o, r) in const [
+            (Offset(82, 38), 12.0),
+            (Offset(100, 24), 15.0),
+            (Offset(118, 36), 12.0),
+          ]) {
+            p = Path.combine(
+              PathOperation.union,
+              p,
+              Path()..addOval(Rect.fromCircle(center: o, radius: r)),
+            );
+          }
+          return p;
+        });
+        _fs(c, comb, look.accent);
         _fs(c, _headShape, Colors.white);
       case Zodiac.horse:
+        // 뒤로 늘어진 갈기
+        final back = Path()
+          ..moveTo(60, 50)
+          ..cubicTo(26, 60, 22, 110, 34, 140)
+          ..cubicTo(44, 120, 50, 90, 70, 70)
+          ..close();
+        _fs(c, back, look.accent, w: 3);
         _fs(c, _headShape, fur);
+      case Zodiac.sheep:
+        // 털 모자 뒤쪽 (얼굴 둘레)
+        _fs(c, _cloud(const Offset(100, 74), 58, 10), look.light);
+        _fs(c, _headShape, look.accent);
+      default:
+        _fs(c, _headShape, fur);
+    }
+  }
+
+  /// 머리 맨 위에 얹히는 것 (돔·털·볏 등). 옆을 볼 때도 얼굴보다 덜 돌린다.
+  void _headTop(Canvas c) {
+    switch (zodiac) {
+      case Zodiac.horse:
+        // 앞머리 갈기
         final mane = Path()
-          ..moveTo(78, 46)
-          ..cubicTo(86, 24, 118, 22, 124, 42)
-          ..cubicTo(114, 38, 108, 52, 100, 58)
-          ..cubicTo(96, 48, 88, 44, 78, 46)
+          ..moveTo(76, 48)
+          ..cubicTo(80, 22, 120, 18, 126, 40)
+          ..cubicTo(116, 36, 112, 50, 102, 60)
+          ..cubicTo(98, 48, 88, 44, 76, 48)
           ..close();
         _fs(c, mane, look.accent, w: 3);
       case Zodiac.sheep:
-        _fs(c, _headShape, const Color(0xFFFCE3CF));
+        // 앞이마 털 뭉치
+        _fs(c, _cloud(const Offset(100, 50), 30, 7), look.light);
       case Zodiac.pachycephalosaurus:
-        _fs(c, _headShape, fur);
-        // 두꺼운 돔 머리 + 작은 혹
-        final dome = Path()
-          ..moveTo(44, 70)
-          ..cubicTo(44, 22, 156, 22, 156, 70)
-          ..cubicTo(130, 60, 70, 60, 44, 70)
-          ..close();
-        _fs(c, dome, look.accent);
-        for (var i = 0; i < 6; i++) {
-          final x = 46.0 + i * 21.6;
-          c.drawCircle(
-            Offset(x, 70 - (i == 0 || i == 5 ? 0 : 4)),
-            4.4,
-            Paint()..color = look.light,
-          );
+        _pachyDome(c);
+      case Zodiac.velociraptor:
+        // 머리 깃털 볏 (뒤로 펼쳐진 다섯 가닥)
+        for (var i = 0; i < 5; i++) {
+          final a = -.75 + i * .3;
+          _at(c, Offset(100 + (i - 2) * 9.0, 46), a, () {
+            final l = 30.0 - (i - 2).abs() * 5;
+            final f = Path()
+              ..moveTo(-6, 4)
+              ..quadraticBezierTo(-9, -l * .6, 0, -l)
+              ..quadraticBezierTo(9, -l * .6, 6, 4)
+              ..close();
+            _fs(c, f, i.isEven ? look.accent : const Color(0xFFFFB13B), w: 2.8);
+          });
         }
       default:
-        _fs(c, _headShape, fur);
+        break;
+    }
+  }
+
+  /// 파키케팔로사우루스의 두꺼운 돔 머리와 둘레의 혹
+  void _pachyDome(Canvas c) {
+    // 돔은 머리와 한 덩어리 (조금 밝게 + 반짝), 아래 둘레에 동글동글 혹
+    final top = _hatOn ? 34.0 : 8.0;
+    final dome = Path()
+      ..moveTo(36, 84)
+      ..cubicTo(32, top + 12, 72, top, 100, top)
+      ..cubicTo(128, top, 168, top + 12, 164, 84)
+      ..cubicTo(130, 72, 70, 72, 36, 84)
+      ..close();
+    c.save();
+    c.clipPath(_headShape);
+    c.drawPath(dome, Paint()..color = _tint(fur, .3));
+    c.restore();
+    if (!_hatOn) {
+      c.drawArc(
+        Rect.fromLTRB(60, top + 10, 116, top + 56),
+        pi * 1.1,
+        pi * .35,
+        false,
+        stroke(5, Colors.white.withValues(alpha: .85)),
+      );
+    }
+    for (var i = 0; i < 7; i++) {
+      final t = i / 6;
+      final x = 38 + t * 124;
+      final y = 84 - sin(t * pi) * 12;
+      c.drawCircle(Offset(x, y), 6, Paint()..color = look.accent);
+      c.drawCircle(Offset(x, y), 6, stroke(2.6));
     }
   }
 
@@ -1192,29 +1722,33 @@ class AnimalPainter extends CustomPainter {
         }
         _muzzle(c, const Offset(100, 120), 46, 34, Colors.white, outline: true);
       case Zodiac.dragon:
+        // 툭 튀어나온 콧등 + 큰 콧구멍
         _muzzle(
           c,
-          const Offset(100, 118),
-          46,
-          30,
-          const Color(0xFFA9D98B),
+          const Offset(100, 120),
+          60,
+          36,
+          _tint(fur, .35),
           nostrils: true,
           outline: true,
         );
-        for (final m in [-1.0, 1.0]) {
-          final w = Path()
-            ..moveTo(_m(m, 24, 122).dx, 122)
-            ..cubicTo(
-              _m(m, 52, 118).dx,
-              118,
-              _m(m, 60, 134).dx,
-              134,
-              _m(m, 80, 128).dx,
-              128,
-            );
-          c.drawPath(w, stroke(2.6));
+        // 이마 비늘
+        for (final o in const [
+          Offset(92, 52),
+          Offset(108, 52),
+          Offset(100, 62),
+        ]) {
+          c.drawCircle(o, 4, Paint()..color = look.light);
         }
       case Zodiac.horse:
+        // 이마의 흰 줄무늬
+        final blaze = Path()
+          ..moveTo(96, 62)
+          ..quadraticBezierTo(100, 58, 104, 62)
+          ..lineTo(106, 110)
+          ..lineTo(94, 110)
+          ..close();
+        c.drawPath(blaze, Paint()..color = look.light);
         _muzzle(
           c,
           const Offset(100, 128),
@@ -1235,9 +1769,9 @@ class AnimalPainter extends CustomPainter {
         _fs(c, face, look.light, w: 3);
       case Zodiac.rooster:
         final wattle = Path()
-          ..moveTo(94, 128)
-          ..quadraticBezierTo(90, 144, 100, 146)
-          ..quadraticBezierTo(110, 144, 106, 128)
+          ..moveTo(95, 122)
+          ..cubicTo(88, 136, 92, 146, 100, 145)
+          ..cubicTo(108, 146, 112, 136, 105, 122)
           ..close();
         _fs(c, wattle, look.accent, w: 3);
       case Zodiac.dog:
@@ -1273,98 +1807,315 @@ class AnimalPainter extends CustomPainter {
       case Zodiac.rabbit:
         // 동그란 주둥이 (곰 인형처럼)
         _muzzle(c, const Offset(100, 116), 40, 28, look.light);
-      // ---------- 공룡 ----------
-      case Zodiac.triceratops:
-        // 이마 뿔 두 개 + 코뿔 + 부리
-        for (final m in [-1.0, 1.0]) {
-          final horn = Path()
-            ..moveTo(_m(m, 18, 62).dx, 62)
-            ..quadraticBezierTo(_m(m, 26, 30).dx, 30, _m(m, 36, 18).dx, 18)
-            ..quadraticBezierTo(_m(m, 38, 40).dx, 40, _m(m, 34, 64).dx, 64)
-            ..close();
-          _fs(c, horn, look.accent);
+      case Zodiac.snake:
+        // 정수리 무늬
+        c.save();
+        c.clipPath(clip);
+        for (final o in const [
+          Offset(100, 60),
+          Offset(80, 66),
+          Offset(120, 66),
+        ]) {
+          _diamond(c, o, 8, look.accent);
         }
-        _muzzle(c, const Offset(100, 122), 50, 30, look.light, outline: true);
-        final nose = Path()
-          ..moveTo(92, 110)
-          ..quadraticBezierTo(100, 90, 104, 86)
-          ..quadraticBezierTo(108, 98, 108, 110)
-          ..close();
-        _fs(c, nose, look.accent, w: 3);
+        c.restore();
+      case Zodiac.sheep:
+        break;
+      // ---------- 공룡 ----------
+      default:
+        _dinoHead(c, clip);
+    }
+  }
+
+  /// 공룡 머리 무늬와 주둥이
+  void _dinoHead(Canvas c, Path clip) {
+    // 아래턱 쪽은 밝은 색 (모든 공룡 공통: 파충류다운 얼굴)
+    final jawColor = look.light;
+    final lowJaw =
+        !_sideSnout &&
+        const {
+          Zodiac.trex,
+          Zodiac.spinosaurus,
+          Zodiac.velociraptor,
+          Zodiac.dilophosaurus,
+          Zodiac.brachiosaurus,
+        }.contains(zodiac);
+    if (lowJaw) {
+      c.save();
+      c.clipPath(clip);
+      c.drawOval(
+        Rect.fromCenter(center: const Offset(100, 150), width: 132, height: 64),
+        Paint()..color = jawColor,
+      );
+      c.restore();
+      if (!sideways) c.drawPath(clip, stroke());
+    }
+    switch (zodiac) {
       case Zodiac.trex:
-        // 눈 위 볼록한 눈두덩
-        for (final m in [-1.0, 1.0]) {
-          c.drawArc(
-            Rect.fromCenter(center: _m(m, 26, 86), width: 26, height: 14),
-            pi * 1.1,
-            pi * .8,
-            false,
-            stroke(3.2, _shade(fur, .3)),
+        // 머리 위 줄무늬 + 두툼한 눈두덩
+        c.save();
+        c.clipPath(clip);
+        for (final (dx, w) in const [
+          (0.0, 12.0),
+          (-24.0, 10.0),
+          (24.0, 10.0),
+        ]) {
+          c.drawOval(
+            Rect.fromCenter(center: Offset(100 + dx, 44), width: w, height: 24),
+            Paint()..color = look.accent,
           );
         }
-      case Zodiac.brachiosaurus:
-        // 이마의 볼록 볏과 점무늬
-        final bump = Path()
-          ..moveTo(78, 44)
-          ..cubicTo(80, 18, 120, 18, 122, 44)
+        c.restore();
+        for (final m in [-1.0, 1.0]) {
+          final brow = Path()
+            ..moveTo(_m(m, 16, 80).dx, 80)
+            ..quadraticBezierTo(_m(m, 28, 72).dx, 72, _m(m, 40, 80).dx, 80);
+          c.drawPath(brow, stroke(6, look.accent));
+        }
+      case Zodiac.spinosaurus:
+        if (!_sideSnout) {
+          // 길쭉한 주둥이 끝의 콧등과 콧구멍
+          final ridge = Path()
+            ..moveTo(88, 120)
+            ..cubicTo(86, 98, 114, 98, 112, 120);
+          c.drawPath(ridge, stroke(3, _shade(fur, .3)));
+          for (final m in [-1.0, 1.0]) {
+            c.drawOval(
+              Rect.fromCenter(center: _m(m, 6, 112), width: 5, height: 6),
+              Paint()..color = _shade(fur, .5),
+            );
+          }
+        }
+        c.save();
+        c.clipPath(clip);
+        for (final o in const [
+          Offset(54, 70),
+          Offset(146, 70),
+          Offset(64, 58),
+          Offset(136, 58),
+        ]) {
+          c.drawCircle(o, 4, Paint()..color = _shade(fur, .18));
+        }
+        c.restore();
+      case Zodiac.triceratops:
+        // 눈 위의 긴 뿔 둘 + 코뿔 + 부리
+        for (final m in [-1.0, 1.0]) {
+          final horn = Path()
+            ..moveTo(_m(m, 14, 70).dx, 70)
+            ..cubicTo(
+              _m(m, 18, 40).dx,
+              40,
+              _m(m, 30, 18).dx,
+              18,
+              _m(m, 44, 4).dx,
+              4,
+            )
+            ..cubicTo(
+              _m(m, 40, 26).dx,
+              26,
+              _m(m, 38, 50).dx,
+              50,
+              _m(m, 36, 70).dx,
+              70,
+            )
+            ..close();
+          _fs(c, horn, ivory);
+          c.drawLine(
+            _m(m, 18, 52),
+            _m(m, 34, 52),
+            stroke(2.4, const Color(0xFFE8CFA6)),
+          );
+        }
+        _beak(c, const Offset(100, 124), 52, 34);
+        final nose = Path()
+          ..moveTo(90, 112)
+          ..cubicTo(92, 98, 98, 88, 104, 82)
+          ..cubicTo(108, 94, 110, 104, 110, 112)
           ..close();
-        _fs(c, bump, fur);
+        _fs(c, nose, ivory, w: 3);
+      case Zodiac.stegosaurus:
+        _beak(c, const Offset(100, 124), 48, 28);
         c.save();
         c.clipPath(clip);
         for (final o in const [
           Offset(56, 70),
-          Offset(146, 66),
-          Offset(62, 124),
-          Offset(140, 120),
+          Offset(144, 70),
+          Offset(66, 60),
+          Offset(134, 60),
+          Offset(100, 50),
         ]) {
-          c.drawCircle(
-            o,
-            6,
-            Paint()..color = look.accent.withValues(alpha: .55),
-          );
+          c.drawCircle(o, 4.6, Paint()..color = _shade(fur, .16));
         }
         c.restore();
       case Zodiac.ankylosaurus:
+        // 정수리 갑옷 (육각 비늘)
+        c.save();
+        c.clipPath(clip);
+        final cap = Path()
+          ..moveTo(26, 82)
+          ..cubicTo(40, 22, 160, 22, 174, 82)
+          ..cubicTo(140, 68, 60, 68, 26, 82)
+          ..close();
+        c.drawPath(cap, Paint()..color = look.accent);
+        for (final o in const [
+          Offset(70, 54),
+          Offset(100, 48),
+          Offset(130, 54),
+          Offset(54, 70),
+          Offset(85, 66),
+          Offset(115, 66),
+          Offset(146, 70),
+        ]) {
+          c.drawCircle(o, 6.5, Paint()..color = _shade(look.accent, .2));
+          c.drawCircle(
+            o + const Offset(-1.5, -1.5),
+            2.4,
+            Paint()..color = _tint(look.accent, .3),
+          );
+        }
+        c.drawPath(cap, stroke(3));
+        c.restore();
+        _beak(c, const Offset(100, 124), 50, 30);
+      case Zodiac.iguanodon:
+        // 이마의 줄무늬 + 말처럼 긴 부리 주둥이
+        c.save();
+        c.clipPath(clip);
+        for (final dx in [-22.0, 0.0, 22.0]) {
+          final v = Path()
+            ..moveTo(100 + dx - 8, 42)
+            ..lineTo(100 + dx, 56)
+            ..lineTo(100 + dx + 8, 42);
+          c.drawPath(v, stroke(5, look.accent));
+        }
+        c.restore();
+        if (!_sideSnout) {
+          _beak(c, const Offset(100, 124), 56, 34);
+        }
+      case Zodiac.pachycephalosaurus:
+        // 콧등 혹
+        for (final o in const [
+          Offset(92, 108),
+          Offset(108, 108),
+          Offset(100, 102),
+        ]) {
+          c.drawCircle(o, 3.6, Paint()..color = look.accent);
+        }
+        _beak(c, const Offset(100, 126), 42, 24);
+      case Zodiac.parasaurolophus:
+        // 넓적한 오리 주둥이
+        if (!_sideSnout) {
+          final bill = Path()
+            ..addRRect(
+              RRect.fromLTRBR(64, 108, 136, 140, const Radius.circular(16)),
+            );
+          _fs(c, bill, const Color(0xFFFFE3A8), w: 3.2);
+          for (final m in [-1.0, 1.0]) {
+            c.drawOval(
+              Rect.fromCenter(center: _m(m, 10, 116), width: 6, height: 4),
+              Paint()..color = _shade(const Color(0xFFFFE3A8), .5),
+            );
+          }
+        }
+        c.save();
+        c.clipPath(clip);
+        for (final o in const [Offset(56, 72), Offset(144, 72)]) {
+          c.drawCircle(o, 4.4, Paint()..color = _shade(fur, .18));
+        }
+        c.restore();
+      case Zodiac.brachiosaurus:
+        // 솟은 콧등 꼭대기의 콧구멍과 점무늬
+        if (!_hatOn) {
+          for (final m in [-1.0, 1.0]) {
+            c.drawOval(
+              Rect.fromCenter(center: _m(m, 8, 18), width: 6, height: 8),
+              Paint()..color = _shade(fur, .45),
+            );
+          }
+        }
+        c.save();
+        c.clipPath(clip);
+        for (final o in const [
+          Offset(86, 44),
+          Offset(114, 52),
+          Offset(56, 74),
+          Offset(146, 74),
+        ]) {
+          c.drawCircle(
+            o,
+            5,
+            Paint()..color = look.accent.withValues(alpha: .6),
+          );
+        }
+        c.restore();
+      case Zodiac.dilophosaurus:
+        c.save();
+        c.clipPath(clip);
+        for (final o in const [
+          Offset(56, 70),
+          Offset(144, 70),
+          Offset(48, 84),
+          Offset(152, 84),
+        ]) {
+          c.drawCircle(o, 4.2, Paint()..color = _shade(fur, .2));
+        }
+        c.restore();
+        if (!_sideSnout) {
+          for (final m in [-1.0, 1.0]) {
+            c.drawOval(
+              Rect.fromCenter(center: _m(m, 7, 112), width: 5, height: 4),
+              Paint()..color = _shade(fur, .5),
+            );
+          }
+        }
+      case Zodiac.velociraptor:
+        // 눈가 줄무늬
+        c.save();
+        c.clipPath(clip);
         for (final m in [-1.0, 1.0]) {
-          final spike = Path()
-            ..moveTo(_m(m, 62, 104).dx, 104)
-            ..lineTo(_m(m, 84, 96).dx, 96)
-            ..lineTo(_m(m, 66, 120).dx, 120)
-            ..close();
-          _fs(c, spike, look.accent, w: 3);
+          final s = Path()
+            ..moveTo(_m(m, 34, 80).dx, 80)
+            ..quadraticBezierTo(_m(m, 54, 82).dx, 82, _m(m, 70, 96).dx, 96);
+          c.drawPath(s, stroke(5, _shade(fur, .2)));
+        }
+        c.restore();
+        if (!_sideSnout) {
+          for (final m in [-1.0, 1.0]) {
+            c.drawOval(
+              Rect.fromCenter(center: _m(m, 7, 110), width: 5, height: 4),
+              Paint()..color = _shade(fur, .5),
+            );
+          }
         }
       case Zodiac.pteranodon:
         break; // 부리는 얼굴에서
-      case Zodiac.velociraptor:
-        // 머리 깃털 세 가닥
-        for (var i = 0; i < 3; i++) {
-          final x = 88.0 + i * 12;
-          final f = Path()
-            ..moveTo(x - 5, 42)
-            ..quadraticBezierTo(x - 2, 16 - i * 2.0, x + 6, 22)
-            ..quadraticBezierTo(x + 2, 32, x + 5, 42)
-            ..close();
-          _fs(c, f, look.accent, w: 2.6);
-        }
-      case Zodiac.spinosaurus:
-      case Zodiac.iguanodon:
-      case Zodiac.parasaurolophus:
-      case Zodiac.dilophosaurus:
-      case Zodiac.stegosaurus:
-      case Zodiac.pachycephalosaurus:
-        // 볼에 작은 비늘 점
-        for (final m in [-1.0, 1.0]) {
-          for (final (dx, y) in const [
-            (58.0, 72.0),
-            (66.0, 64.0),
-            (50.0, 66.0),
-          ]) {
-            c.drawCircle(_m(m, dx, y), 2.6, Paint()..color = _shade(fur, .18));
-          }
-        }
-      case Zodiac.snake:
-      case Zodiac.sheep:
+      default:
         break;
+    }
+  }
+
+  /// 짧고 단단한 공룡 부리 (아래로 살짝 굽은)
+  void _beak(Canvas c, Offset o, double w, double h) {
+    final beak = Path()
+      ..moveTo(o.dx - w / 2, o.dy - h * .3)
+      ..quadraticBezierTo(o.dx, o.dy - h * .62, o.dx + w / 2, o.dy - h * .3)
+      ..quadraticBezierTo(o.dx + w * .36, o.dy + h * .4, o.dx, o.dy + h * .5)
+      ..quadraticBezierTo(
+        o.dx - w * .36,
+        o.dy + h * .4,
+        o.dx - w / 2,
+        o.dy - h * .3,
+      )
+      ..close();
+    _fs(c, beak, const Color(0xFFFFE3A8), w: 3);
+    for (final m in [-1.0, 1.0]) {
+      c.drawOval(
+        Rect.fromCenter(
+          center: o + Offset(m * w * .16, -h * .18),
+          width: 4.5,
+          height: 3.6,
+        ),
+        Paint()..color = const Color(0xFF8A6A4A),
+      );
     }
   }
 
@@ -1396,16 +2147,113 @@ class AnimalPainter extends CustomPainter {
     }
   }
 
+  /// 옆을 볼 때 머리 오른쪽으로 길게 나온 공룡 주둥이
+  void _profileSnout(Canvas c, bool happy) {
+    final (top, bottom, tip) = switch (zodiac) {
+      Zodiac.trex => (86.0, 142.0, 197.0),
+      Zodiac.spinosaurus => (98.0, 130.0, 199.0),
+      Zodiac.velociraptor => (94.0, 128.0, 194.0),
+      Zodiac.parasaurolophus => (100.0, 134.0, 195.0),
+      Zodiac.dilophosaurus => (94.0, 130.0, 192.0),
+      Zodiac.iguanodon => (94.0, 134.0, 192.0),
+      Zodiac.brachiosaurus => (98.0, 134.0, 186.0),
+      _ => (100.0, 134.0, 188.0),
+    };
+    final h = bottom - top;
+    final duck = zodiac == Zodiac.parasaurolophus;
+    final p = Path()
+      ..moveTo(136, top - 6)
+      ..quadraticBezierTo(150, top, tip - h * .45, top + (duck ? 4 : h * .08))
+      ..cubicTo(tip - 2, top + h * .14, tip, top + h * .3, tip, top + h * .55)
+      ..quadraticBezierTo(tip, bottom, tip - h * .5, bottom)
+      ..lineTo(136, bottom + 4)
+      ..close();
+    final head = _headShape;
+    c.drawPath(p, Paint()..color = duck ? const Color(0xFFFFE3A8) : fur);
+    // 아래턱은 밝은 색
+    final mouthY = top + h * .62;
+    c.save();
+    c.clipPath(p);
+    if (!duck) {
+      c.drawRect(
+        Rect.fromLTRB(140, mouthY, 200, 160),
+        Paint()..color = look.light,
+      );
+    }
+    c.restore();
+    // 외곽선은 머리 밖으로 나온 부분에만
+    c.save();
+    c.clipPath(
+      Path.combine(
+        PathOperation.difference,
+        Path()..addRect(const Rect.fromLTRB(0, 0, 200, 240)),
+        head,
+      ),
+    );
+    c.drawPath(p, stroke());
+    c.restore();
+    // 입선 + 이빨
+    final mouth = Path()
+      ..moveTo(150, mouthY - (happy ? 2 : 0))
+      ..quadraticBezierTo(
+        tip - 14,
+        mouthY + (happy ? 8 : 2),
+        tip - 4,
+        mouthY - 2,
+      );
+    c.drawPath(mouth, stroke(3));
+    if (const {
+      Zodiac.trex,
+      Zodiac.spinosaurus,
+      Zodiac.velociraptor,
+      Zodiac.dilophosaurus,
+    }.contains(zodiac)) {
+      final n = zodiac == Zodiac.trex ? 4 : 5;
+      for (var i = 0; i < n; i++) {
+        final x = 158 + i * (tip - 168) / n;
+        final y = mouthY + 1 + (x - 150) / (tip - 150) * -1;
+        final t = Path()
+          ..moveTo(x - 2.6, y)
+          ..lineTo(x + 2.6, y)
+          ..lineTo(x, y + 5.5)
+          ..close();
+        c.drawPath(t, Paint()..color = Colors.white);
+        c.drawPath(t, stroke(1.4));
+      }
+    }
+    // 콧구멍
+    c.drawOval(
+      Rect.fromCenter(
+        center: Offset(tip - 8, top + h * .26),
+        width: 5,
+        height: 4,
+      ),
+      Paint()..color = _shade(duck ? const Color(0xFFFFE3A8) : fur, .5),
+    );
+  }
+
   // ================= 얼굴 =================
   void _face(Canvas c, bool happy) {
     final blink = mood == CharMood.normal && phase > .94;
     final ey = switch (zodiac) {
       Zodiac.horse || Zodiac.ox => 90.0,
-      Zodiac.sheep => 98.0,
-      Zodiac.pachycephalosaurus => 98.0,
+      Zodiac.sheep => 100.0,
+      Zodiac.pachycephalosaurus => 96.0,
+      Zodiac.snake => 102.0,
+      Zodiac.spinosaurus || Zodiac.trex => 92.0,
+      Zodiac.triceratops ||
+      Zodiac.parasaurolophus ||
+      Zodiac.iguanodon ||
+      Zodiac.stegosaurus => 92.0,
       _ => 96.0,
     };
-    final eyeDx = zodiac == Zodiac.sheep ? 22.0 : 25.0;
+    final eyeDx = switch (zodiac) {
+      Zodiac.sheep => 20.0,
+      Zodiac.snake => 30.0,
+      Zodiac.spinosaurus => 32.0,
+      Zodiac.trex => 27.0,
+      _ => 25.0,
+    };
     final eye = Paint()..color = ink;
 
     for (final m in [-1.0, 1.0]) {
@@ -1428,10 +2276,11 @@ class AnimalPainter extends CustomPainter {
     }
 
     // 볼터치
+    final cheekDx = zodiac == Zodiac.sheep ? 36.0 : 44.0;
     for (final m in [-1.0, 1.0]) {
       c.drawOval(
         Rect.fromCenter(
-          center: Offset(100 + m * 44, ey + 16),
+          center: Offset(100 + m * cheekDx, ey + 16),
           width: 17,
           height: 9,
         ),
@@ -1439,31 +2288,56 @@ class AnimalPainter extends CustomPainter {
       );
     }
 
-    if (zodiac == Zodiac.rooster) {
-      final beak = Path()
-        ..moveTo(91, 110)
-        ..quadraticBezierTo(100, 106, 109, 110)
-        ..lineTo(100, 123)
-        ..close();
-      _fs(c, beak, const Color(0xFFFFC94D), w: 3);
-      return;
+    switch (snout) {
+      case Snout.beak:
+        if (zodiac == Zodiac.rooster) {
+          final beak = Path()
+            ..moveTo(87, 108)
+            ..quadraticBezierTo(100, 100, 113, 108)
+            ..quadraticBezierTo(106, 118, 100, 128)
+            ..quadraticBezierTo(94, 118, 87, 108)
+            ..close();
+          _fs(c, beak, const Color(0xFFFFB52E), w: 3);
+        } else {
+          // 프테라노돈: 아래로 길게 뻗은 부리
+          final beak = Path()
+            ..moveTo(84, 106)
+            ..quadraticBezierTo(100, 98, 116, 106)
+            ..quadraticBezierTo(108, 130, 100, 146)
+            ..quadraticBezierTo(92, 130, 84, 106)
+            ..close();
+          _fs(c, beak, const Color(0xFFFFD36B), w: 3);
+          c.drawLine(
+            const Offset(100, 112),
+            const Offset(100, 138),
+            stroke(2.2, const Color(0xFFC99A3A)),
+          );
+        }
+        return;
+      case Snout.snake:
+        // 콧구멍 두 점 + 웃는 입 + 갈라진 혀
+        for (final m in [-1.0, 1.0]) {
+          c.drawCircle(_m(m, 6, 112), 2, Paint()..color = _shade(fur, .5));
+        }
+        final my = 124.0;
+        if (!happy) {
+          final tongue = Path()
+            ..moveTo(98, my)
+            ..lineTo(98, my + 10)
+            ..lineTo(93, my + 16)
+            ..moveTo(102, my)
+            ..lineTo(102, my + 10)
+            ..lineTo(107, my + 16);
+          c.drawPath(tongue, stroke(5.5));
+          c.drawPath(tongue, stroke(2.8, const Color(0xFFE8433A)));
+        }
+        _mouth(c, my, 16, happy);
+        return;
+      default:
+        break;
     }
-    if (zodiac == Zodiac.pteranodon) {
-      final beak = Path()
-        ..moveTo(86, 108)
-        ..quadraticBezierTo(100, 102, 114, 108)
-        ..lineTo(100, 136)
-        ..close();
-      _fs(c, beak, look.accent, w: 3);
-      return;
-    }
+    if (_sideSnout) return; // 주둥이·입은 옆으로 나온 주둥이에서
 
-    final hasSnout = const {
-      Zodiac.ox,
-      Zodiac.horse,
-      Zodiac.pig,
-      Zodiac.dragon,
-    }.contains(zodiac);
     final my = switch (zodiac) {
       Zodiac.ox => 136.0,
       Zodiac.horse => 142.0,
@@ -1471,71 +2345,61 @@ class AnimalPainter extends CustomPainter {
       Zodiac.dragon => 134.0,
       Zodiac.tiger => 122.0,
       Zodiac.rat || Zodiac.rabbit => 121.0,
-      Zodiac.triceratops => 128.0,
+      Zodiac.triceratops ||
+      Zodiac.stegosaurus ||
+      Zodiac.ankylosaurus ||
+      Zodiac.pachycephalosaurus => 128.0,
+      Zodiac.iguanodon => 130.0,
+      Zodiac.parasaurolophus => 132.0,
+      Zodiac.trex => 122.0,
+      Zodiac.spinosaurus => 130.0,
+      Zodiac.velociraptor || Zodiac.dilophosaurus => 122.0,
+      Zodiac.brachiosaurus => 120.0,
+      Zodiac.sheep => 126.0,
       _ => 116.0,
     };
-    if (!hasSnout && zodiac != Zodiac.triceratops) {
-      if (_dino) {
-        // 콧구멍 두 점
-        for (final m in [-1.0, 1.0]) {
-          c.drawCircle(
-            _m(m, 6, my - 10),
-            1.8,
-            Paint()..color = _shade(fur, .45),
-          );
-        }
-      } else {
-        // 동그스름한 세모 코
-        final ny = zodiac == Zodiac.tiger ? 112.0 : my - 9;
-        final nose = Path()
-          ..moveTo(95, ny - 3)
-          ..quadraticBezierTo(100, ny - 5, 105, ny - 3)
-          ..quadraticBezierTo(104, ny + 3, 100, ny + 4)
-          ..quadraticBezierTo(96, ny + 3, 95, ny - 3)
-          ..close();
-        c.drawPath(
-          nose,
-          Paint()
-            ..color = zodiac == Zodiac.snake ? const Color(0xFF4F7F3A) : ink,
-        );
-      }
-    }
-    final mouth = Path();
-    final wide = zodiac == Zodiac.trex || zodiac == Zodiac.spinosaurus;
-    final mw = wide ? 14.0 : 7.0;
-    if (happy) {
-      mouth
-        ..moveTo(100 - mw - 1, my - 2)
-        ..quadraticBezierTo(100, my + 12, 100 + mw + 1, my - 2)
+    if (snout == Snout.cat) {
+      // 동그스름한 세모 코
+      final ny = zodiac == Zodiac.tiger ? 112.0 : my - 9;
+      final nose = Path()
+        ..moveTo(95, ny - 3)
+        ..quadraticBezierTo(100, ny - 5, 105, ny - 3)
+        ..quadraticBezierTo(104, ny + 3, 100, ny + 4)
+        ..quadraticBezierTo(96, ny + 3, 95, ny - 3)
         ..close();
-      c.drawPath(mouth, Paint()..color = const Color(0xFFE77C83));
-      c.drawPath(mouth, stroke(3));
-    } else if (!_dino && !hasSnout && zodiac != Zodiac.snake) {
-      // 고양이 입 "ω"
-      mouth
-        ..moveTo(100, my - 5)
-        ..lineTo(100, my - 1)
-        ..moveTo(93, my - 2)
-        ..quadraticBezierTo(96.5, my + 3, 100, my - 1)
-        ..quadraticBezierTo(103.5, my + 3, 107, my - 2);
-      c.drawPath(mouth, stroke(2.8));
-    } else {
-      mouth
-        ..moveTo(100 - mw, my - 2)
-        ..quadraticBezierTo(100, my + 6, 100 + mw, my - 2);
-      c.drawPath(mouth, stroke(3));
+      c.drawPath(
+        nose,
+        Paint()..color = zodiac == Zodiac.sheep ? const Color(0xFF8A5A4A) : ink,
+      );
     }
-    if (zodiac == Zodiac.trex) {
-      // 귀여운 이빨 두 개
-      for (final m in [-1.0, 1.0]) {
-        final tooth = Path()
-          ..moveTo(_m(m, 6, my).dx - 2.5, my + 1)
-          ..lineTo(_m(m, 6, my).dx + 2.5, my + 1)
-          ..lineTo(_m(m, 6, my).dx, my + 6)
-          ..close();
-        c.drawPath(tooth, Paint()..color = Colors.white);
-        c.drawPath(tooth, stroke(1.6));
-      }
+    switch (snout) {
+      case Snout.cat:
+        if (happy) {
+          _mouth(c, my, 7, true);
+        } else {
+          // 고양이 입 "ω"
+          final mouth = Path()
+            ..moveTo(100, my - 5)
+            ..lineTo(100, my - 1)
+            ..moveTo(93, my - 2)
+            ..quadraticBezierTo(96.5, my + 3, 100, my - 1)
+            ..quadraticBezierTo(103.5, my + 3, 107, my - 2);
+          c.drawPath(mouth, stroke(2.8));
+        }
+      case Snout.jaw:
+        if (zodiac == Zodiac.trex) {
+          _toothyGrin(c, my, 36, happy, teeth: 7, big: true);
+        } else {
+          _toothyGrin(c, my, 24, happy, teeth: 5);
+        }
+      case Snout.pointy:
+        _toothyGrin(c, my, 16, happy, teeth: 4);
+      case Snout.duck:
+        _mouth(c, my, 24, happy);
+      case Snout.dinoBeak:
+        _mouth(c, my, zodiac == Zodiac.iguanodon ? 10 : 14, happy, sides: true);
+      default:
+        _mouth(c, my, 7, happy);
     }
 
     if (zodiac == Zodiac.rat) {
@@ -1544,6 +2408,105 @@ class AnimalPainter extends CustomPainter {
         c.drawLine(_m(m, 30, 114), _m(m, 54, 116), stroke(2));
       }
     }
+    if (zodiac == Zodiac.dragon) {
+      // 길게 늘어진 수염
+      for (final m in [-1.0, 1.0]) {
+        final w = Path()
+          ..moveTo(_m(m, 30, 116).dx, 116)
+          ..cubicTo(
+            _m(m, 52, 108).dx,
+            108,
+            _m(m, 60, 132).dx,
+            132,
+            _m(m, 80, 120).dx,
+            120,
+          )
+          ..quadraticBezierTo(_m(m, 88, 114).dx, 114, _m(m, 86, 106).dx, 106);
+        c.drawPath(w, stroke(5.5));
+        c.drawPath(w, stroke(2.2, const Color(0xFFFFD34D)));
+      }
+      // 작은 송곳니
+      for (final m in [-1.0, 1.0]) {
+        final t = Path()
+          ..moveTo(_m(m, 6, my).dx - 2.5, my)
+          ..lineTo(_m(m, 6, my).dx + 2.5, my)
+          ..lineTo(_m(m, 6, my).dx, my + 6)
+          ..close();
+        c.drawPath(t, Paint()..color = Colors.white);
+        c.drawPath(t, stroke(1.5));
+      }
+    }
+  }
+
+  /// 웃는 입 (기쁠 때는 벌린 입)
+  void _mouth(
+    Canvas c,
+    double my,
+    double mw,
+    bool happy, {
+    bool sides = false,
+  }) {
+    final mouth = Path();
+    if (happy) {
+      mouth
+        ..moveTo(100 - mw - 1, my - 2)
+        ..quadraticBezierTo(100, my + 12, 100 + mw + 1, my - 2)
+        ..close();
+      c.drawPath(mouth, Paint()..color = const Color(0xFFE77C83));
+      c.drawPath(mouth, stroke(3));
+    } else {
+      mouth
+        ..moveTo(100 - mw, my - 2)
+        ..quadraticBezierTo(100, my + 6, 100 + mw, my - 2);
+      c.drawPath(mouth, stroke(3));
+    }
+    if (sides) {
+      for (final m in [-1.0, 1.0]) {
+        c.drawLine(_m(m, mw, my - 2), _m(m, mw + 4, my - 5), stroke(2.6));
+      }
+    }
+  }
+
+  /// 이빨이 보이는 넓은 웃음 (티라노·스피노·랩터·딜로포)
+  void _toothyGrin(
+    Canvas c,
+    double my,
+    double mw,
+    bool happy, {
+    required int teeth,
+    bool big = false,
+  }) {
+    final open = (happy ? 12.0 : 6.0) + (big ? 4 : 0);
+    final mouth = Path()
+      ..moveTo(100 - mw, my - 3)
+      ..quadraticBezierTo(100, my + 4, 100 + mw, my - 3)
+      ..quadraticBezierTo(100, my + 4 + open * 1.4, 100 - mw, my - 3)
+      ..close();
+    c.drawPath(mouth, Paint()..color = const Color(0xFFB04A4A));
+    c.save();
+    c.clipPath(mouth);
+    c.drawOval(
+      Rect.fromCenter(
+        center: Offset(100, my + 4 + open),
+        width: mw * 1.1,
+        height: open,
+      ),
+      Paint()..color = const Color(0xFFF08A90),
+    );
+    c.restore();
+    // 윗니 (뾰족)
+    for (var i = 0; i < teeth; i++) {
+      final t = (i + .5) / teeth;
+      final x = 100 - mw * .82 + t * mw * 1.64;
+      final y = my - 3 + (1 - pow((x - 100) / mw, 2)) * 3.5;
+      final tooth = Path()
+        ..moveTo(x - 3, y - 1)
+        ..lineTo(x + 3, y - 1)
+        ..lineTo(x, y + 5)
+        ..close();
+      c.drawPath(tooth, Paint()..color = Colors.white);
+    }
+    c.drawPath(mouth, stroke(3));
   }
 
   @override

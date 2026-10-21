@@ -63,6 +63,7 @@ void main() {
     'shop': () => const ShopScreen(startWithVehicles: true),
     'settings': () => const SettingsScreen(),
     'picker': () => const ZodiacPickerScreen(onboarding: true),
+    'picker_dino': () => const ZodiacPickerScreen(onboarding: true),
     'nickname': () => const NicknameScreen(onboarding: true),
     'bag': () => const BagScreen(),
   };
@@ -86,6 +87,13 @@ void main() {
         );
         for (var i = 0; i < 15; i++) {
           await t.pump(const Duration(milliseconds: 100));
+        }
+        if (e.key == 'picker_dino') {
+          // 공룡 탭을 눌러 공룡 친구 12마리를 본다
+          await t.tap(find.text('공룡'));
+          for (var i = 0; i < 10; i++) {
+            await t.pump(const Duration(milliseconds: 100));
+          }
         }
         await expectLater(
           find.byType(MaterialApp).first,

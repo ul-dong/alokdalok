@@ -187,6 +187,40 @@ class RiderPose {
       c.restore();
     }
     c.drawOval(r, AnimalPainter.stroke(t));
+    if (zodiac == Zodiac.velociraptor && shoe == null && !far) {
+      // 갈고리 발톱 (발 위로 휘어 오른)
+      final o = r.topCenter + Offset(2 * scale, 2 * scale);
+      final claw = Path()
+        ..moveTo(o.dx - 4 * scale, o.dy + 2 * scale)
+        ..cubicTo(
+          o.dx - 2 * scale,
+          o.dy - 10 * scale,
+          o.dx + 8 * scale,
+          o.dy - 14 * scale,
+          o.dx + 14 * scale,
+          o.dy - 10 * scale,
+        )
+        ..cubicTo(
+          o.dx + 8 * scale,
+          o.dy - 8 * scale,
+          o.dx + 4 * scale,
+          o.dy - 4 * scale,
+          o.dx + 4 * scale,
+          o.dy + 2 * scale,
+        )
+        ..close();
+      c.drawPath(claw, Paint()..color = AnimalPainter.ivory);
+      c.drawPath(claw, AnimalPainter.stroke(t * .8));
+    } else if (zodiac.isDino && shoe == null && !far) {
+      // 발끝 발톱 세 개
+      for (final dx in [-1.0, 0.0, 1.0]) {
+        c.drawCircle(
+          Offset(r.right - 4 * scale, r.center.dy + dx * 4.5 * scale),
+          2 * scale,
+          Paint()..color = AnimalPainter.ivory,
+        );
+      }
+    }
   }
 
   void _arm(
@@ -197,10 +231,41 @@ class RiderPose {
     bool far = false,
   }) {
     final t = AnimalPainter.lineWidth * scale;
-    final w = armWidth * scale;
+    // 티라노는 작은 팔: 가늘게
+    final w = armWidth * scale * (zodiac == Zodiac.trex ? .72 : 1);
+    if (zodiac == Zodiac.velociraptor && items[ItemSlot.outfit] == null) {
+      // 팔 뒤쪽 깃털
+      final d = hand - shoulder;
+      final n = Offset(d.dy, -d.dx) / d.distance;
+      for (final k in [.3, .55, .8]) {
+        final base = shoulder + d * k;
+        final f = Path()
+          ..moveTo(base.dx, base.dy)
+          ..quadraticBezierTo(
+            base.dx + n.dx * 14 * scale - d.dx * .12,
+            base.dy + n.dy * 14 * scale - d.dy * .12,
+            base.dx - d.dx * .22 + n.dx * 4 * scale,
+            base.dy - d.dy * .22 + n.dy * 4 * scale,
+          )
+          ..close();
+        final col = zodiac.look.accent;
+        c.drawPath(f, Paint()..color = far ? _dim(col) : col);
+        c.drawPath(f, AnimalPainter.stroke(t * .7));
+      }
+    }
     _limb(c, [shoulder, hand], w, t, far ? _dim(_sleeve) : _sleeve);
     c.drawCircle(hand, w * .58, Paint()..color = far ? _dim(_tip) : _tip);
     c.drawCircle(hand, w * .58, AnimalPainter.stroke(t));
+    if (zodiac == Zodiac.iguanodon && !far) {
+      // 엄지 가시 (손 위로 솟은 뿔)
+      final spike = Path()
+        ..moveTo(hand.dx - 4 * scale, hand.dy - 5 * scale)
+        ..lineTo(hand.dx - 1 * scale, hand.dy - 20 * scale)
+        ..lineTo(hand.dx + 4 * scale, hand.dy - 5 * scale)
+        ..close();
+      c.drawPath(spike, Paint()..color = AnimalPainter.ivory);
+      c.drawPath(spike, AnimalPainter.stroke(t * .8));
+    }
   }
 
   /// 손잡이 위에 손을 한 번 더 그려 꼭 잡은 것처럼 보이게 (날개·뱀 친구는 없음)

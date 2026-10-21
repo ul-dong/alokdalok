@@ -91,16 +91,16 @@ extension ZodiacInfo on Zodiac {
     Zodiac.dragon => const ZodiacLook(
       animal: '용',
       buddy: '용용이',
-      fur: Color(0xFF8CCB5E),
-      light: Color(0xFFFFE57A),
+      fur: Color(0xFF5DBFD6),
+      light: Color(0xFFFFE7A3),
       accent: Color(0xFFFFB13B),
     ),
     Zodiac.snake => const ZodiacLook(
       animal: '뱀',
       buddy: '스르르',
       fur: Color(0xFF8CC63F),
-      light: Color(0xFFC9E79A),
-      accent: Color(0xFF5E9A2C),
+      light: Color(0xFFE4F2B8),
+      accent: Color(0xFF4E8A2A),
     ),
     Zodiac.horse => const ZodiacLook(
       animal: '말',
@@ -112,9 +112,9 @@ extension ZodiacInfo on Zodiac {
     Zodiac.sheep => const ZodiacLook(
       animal: '양',
       buddy: '매애',
-      fur: Color(0xFFFFF6DA),
-      light: Color(0xFFFFF6DA),
-      accent: Color(0xFFFCE3CF),
+      fur: Color(0xFFFFFBF0),
+      light: Color(0xFFFFFBF0),
+      accent: Color(0xFFF6CFB0),
     ),
     Zodiac.monkey => const ZodiacLook(
       animal: '원숭이',
@@ -147,9 +147,9 @@ extension ZodiacInfo on Zodiac {
     Zodiac.trex => const ZodiacLook(
       animal: '티라노사우루스',
       buddy: '티라노',
-      fur: Color(0xFF9BD07A),
+      fur: Color(0xFF6CC56A),
       light: Color(0xFFF4EFC8),
-      accent: Color(0xFF5E9A4A),
+      accent: Color(0xFF3F8F47),
     ),
     // 겸딩이가 좋아하는 산호빛 빨강 + 크림색 뿔
     Zodiac.triceratops => const ZodiacLook(
@@ -162,9 +162,9 @@ extension ZodiacInfo on Zodiac {
     Zodiac.stegosaurus => const ZodiacLook(
       animal: '스테고사우루스',
       buddy: '스테고',
-      fur: Color(0xFF8FBFE0),
-      light: Color(0xFFE6F3FB),
-      accent: Color(0xFFF59AB5),
+      fur: Color(0xFF8CC7EA),
+      light: Color(0xFFE8F5FC),
+      accent: Color(0xFFF27FA6),
     ),
     Zodiac.brachiosaurus => const ZodiacLook(
       animal: '브라키오사우루스',
@@ -176,16 +176,16 @@ extension ZodiacInfo on Zodiac {
     Zodiac.ankylosaurus => const ZodiacLook(
       animal: '안킬로사우루스',
       buddy: '안킬로',
-      fur: Color(0xFFD2AE84),
+      fur: Color(0xFFC9A06E),
       light: Color(0xFFF3E3CC),
-      accent: Color(0xFF9C7A55),
+      accent: Color(0xFF8C6640),
     ),
     Zodiac.pteranodon => const ZodiacLook(
       animal: '프테라노돈',
       buddy: '프테라',
-      fur: Color(0xFFF7C04A),
-      light: Color(0xFFFFF0C2),
-      accent: Color(0xFFE8743B),
+      fur: Color(0xFFF59B54),
+      light: Color(0xFFFFE3C4),
+      accent: Color(0xFFE0543A),
     ),
     Zodiac.parasaurolophus => const ZodiacLook(
       animal: '파라사우롤로푸스',
@@ -204,30 +204,30 @@ extension ZodiacInfo on Zodiac {
     Zodiac.velociraptor => const ZodiacLook(
       animal: '벨로시랩터',
       buddy: '랩터',
-      fur: Color(0xFFA7B4C2),
-      light: Color(0xFFEEF1F5),
-      accent: Color(0xFFF26B5E),
+      fur: Color(0xFF9AA6C4),
+      light: Color(0xFFEEF1F7),
+      accent: Color(0xFFF2584A),
     ),
     Zodiac.spinosaurus => const ZodiacLook(
       animal: '스피노사우루스',
       buddy: '스피노',
-      fur: Color(0xFF6FA8DC),
-      light: Color(0xFFE3F0FB),
-      accent: Color(0xFFF59A5E),
+      fur: Color(0xFF4F86D6),
+      light: Color(0xFFDCEBFB),
+      accent: Color(0xFFFF9F45),
     ),
     Zodiac.iguanodon => const ZodiacLook(
       animal: '이구아노돈',
       buddy: '이구아노',
-      fur: Color(0xFFB2CF68),
-      light: Color(0xFFEFF5D8),
-      accent: Color(0xFF7A8F3A),
+      fur: Color(0xFFB4D255),
+      light: Color(0xFFF0F6D2),
+      accent: Color(0xFF6F8B26),
     ),
     Zodiac.dilophosaurus => const ZodiacLook(
       animal: '딜로포사우루스',
       buddy: '딜로포',
-      fur: Color(0xFFFFD27A),
-      light: Color(0xFFFFF4D6),
-      accent: Color(0xFFF26B5E),
+      fur: Color(0xFFFFD34D),
+      light: Color(0xFFFFF4D0),
+      accent: Color(0xFFE8433A),
     ),
   };
 
