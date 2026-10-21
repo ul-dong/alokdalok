@@ -8,7 +8,15 @@ import '../../widgets/listen_again_button.dart';
 import '../../widgets/paged_grid.dart';
 import 'game_frame.dart';
 
-export '../../widgets/paged_grid.dart' show TileGrid;
+export '../../widgets/paged_grid.dart' show GridRows, TileGrid;
+
+/// 문제 글 크기: 카드 높이에 비례해 키운다 (휴대폰 28 → 태블릿 약 40).
+double quizPromptSize(double cardHeight) =>
+    (cardHeight * .072).clamp(TextSizes.heading, 46.0).toDouble();
+
+/// 문제 줄(문제 글 + 다시 듣기) 높이: 카드 높이에 비례
+double quizHeaderHeight(double cardHeight) =>
+    (cardHeight * .12).clamp(52.0, 72.0).toDouble();
 
 /// 문제 카드: 왼쪽에 큰 노란 "다시 듣기"와 그림 힌트(견본), 오른쪽에 문제 글(부모님용)과 보기.
 class QuizCard extends StatelessWidget {
@@ -88,14 +96,14 @@ class QuizCard extends StatelessWidget {
                   if (showText) ...[
                     // 큰 화면에서는 문제 글도 조금 크게 (숫자·색깔 놀이 제목과 같은 크기까지)
                     SizedBox(
-                      height: (c.maxHeight * .08).clamp(32.0, 42.0),
+                      height: (c.maxHeight * .1).clamp(32.0, 60.0),
                       width: double.infinity,
                       child: FitBox(
                         alignment: Alignment.centerLeft,
                         child: Text(
                           prompt,
-                          style: const TextStyle(
-                            fontSize: TextSizes.heading,
+                          style: TextStyle(
+                            fontSize: quizPromptSize(c.maxHeight),
                             color: Palette.text,
                           ),
                         ),
@@ -277,7 +285,7 @@ class QuizGrid extends StatelessWidget {
     required this.builder,
     this.aspect = 1,
     this.gap = 12,
-    this.maxTile = 230,
+    this.maxTile = double.infinity,
   });
 
   final int count;
@@ -297,6 +305,7 @@ class QuizGrid extends StatelessWidget {
         aspect: aspect,
         gap: gap,
         maxTile: maxTile,
+        maxRows: TileGrid.quizMaxRows,
       );
       final w = g.tile, h = g.tile * aspect;
       return Center(

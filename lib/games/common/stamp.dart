@@ -23,6 +23,15 @@ class Stamped extends StatefulWidget {
   final double badgeSize;
   final double badgeTop;
 
+  /// 도장 효과 전체 길이
+  static const duration = Duration(milliseconds: 520);
+
+  /// 숫자가 생긴 뒤 도장이 물건에 "쾅" 닿기까지 걸리는 시간.
+  /// 소리·진동·숫자판은 이 순간에 맞춘다.
+  static final impactDelay = Duration(
+    milliseconds: (duration.inMilliseconds * _StampedState.drop).round(),
+  );
+
   @override
   State<Stamped> createState() => _StampedState();
 }
@@ -30,7 +39,7 @@ class Stamped extends StatefulWidget {
 class _StampedState extends State<Stamped> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 520),
+    duration: Stamped.duration,
   );
 
   @override

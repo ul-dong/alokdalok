@@ -14,6 +14,7 @@ import '../../widgets/common.dart';
 import '../../widgets/listen_again_button.dart';
 import '../common/game_frame.dart';
 import '../common/object_art.dart';
+import '../common/quiz_widgets.dart';
 import '../common/scene_game.dart';
 import 'color_round.dart';
 
@@ -196,129 +197,103 @@ class _ColorGameScreenState extends State<ColorGameScreen> {
           : null,
       card: CreamCard(
         padding: const EdgeInsets.fromLTRB(16, 10, 12, 14),
-        child: Column(
-          children: [
-            SizedBox(
-              height: 60,
-              child: Row(
-                children: [
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    transitionBuilder: (c, a) =>
-                        ScaleTransition(scale: a, child: c),
-                    child: round.showSwatch
-                        ? SayName(
-                            key: ValueKey(q.target.color.id),
-                            name: '${q.target.color.name}!',
-                            child: _Swatch(color: q.target.color.color),
-                          )
-                        : const SizedBox(
-                            key: ValueKey('none'),
-                            width: 0,
-                            height: 56,
+        child: LayoutBuilder(
+          builder: (context, card) => Column(
+            children: [
+              SizedBox(
+                height: max(60.0, quizHeaderHeight(card.maxHeight)),
+                child: Row(
+                  children: [
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      transitionBuilder: (c, a) =>
+                          ScaleTransition(scale: a, child: c),
+                      child: round.showSwatch
+                          ? SayName(
+                              key: ValueKey(q.target.color.id),
+                              name: '${q.target.color.name}!',
+                              child: _Swatch(color: q.target.color.color),
+                            )
+                          : const SizedBox(
+                              key: ValueKey('none'),
+                              width: 0,
+                              height: 56,
+                            ),
+                    ),
+                    if (round.showSwatch) const SizedBox(width: 12),
+                    Expanded(
+                      child: FitBox(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          q.prompt,
+                          style: TextStyle(
+                            fontSize: quizPromptSize(card.maxHeight),
+                            color: Palette.text,
                           ),
-                  ),
-                  if (round.showSwatch) const SizedBox(width: 12),
-                  Expanded(
-                    child: FitBox(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        q.prompt,
-                        style: const TextStyle(
-                          fontSize: TextSizes.heading,
-                          color: Palette.text,
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  // 큰 노란 "다시 듣기" (62px, 6초마다 통통)
-                  ListenAgainButton(onTap: _ask),
-                ],
+                    const SizedBox(width: 8),
+                    // 큰 노란 "다시 듣기" (62px, 6초마다 통통)
+                    ListenAgainButton(onTap: _ask),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: Stack(
-                children: [
-                  LayoutBuilder(
-                    builder: (context, c) {
-                      final n = q.choices.length;
-                      const gap = 14.0;
-                      // 한 줄 배치와 (보기 3개일 때) 위 2·아래 1 배치 중 카드가 더 커지는 쪽을 쓴다
-                      final rowTile = min(
-                        (c.maxWidth - gap * (n - 1)) / n,
-                        c.maxHeight / 1.1,
-                      );
-                      final triTile = n == 3
-                          ? min(
-                              (c.maxWidth - gap) / 2,
-                              (c.maxHeight - gap) / 2 / 1.1,
-                            )
-                          : 0.0;
-                      // 가로 화면에서는 한 줄이 기본. 공간이 정사각형에 가까울 때만 위 2·아래 1
-                      final triangle = triTile > rowTile * 1.15;
-                      final tile = (triangle ? triTile : rowTile).clamp(
-                        80.0,
-                        240.0,
-                      );
-                      Widget tileAt(int i) => _ChoiceTile(
-                        key: _tileKeys.putIfAbsent(i, GlobalKey.new),
-                        choice: q.choices[i],
-                        size: tile,
-                        faded: round.wrongPicks.contains(i),
-                        glow:
-                            round.highlightAnswer &&
-                            i == q.answerIndex &&
-                            !round.solved,
-                        wobble: wobbleIndex == i ? wobbleTrigger : 0,
-                        enabled: !round.isDisabled(i),
-                        onTap: () => _onPick(i),
-                      );
-                      if (triangle) {
+              const SizedBox(height: 10),
+              Expanded(
+                child: Stack(
+                  children: [
+                    LayoutBuilder(
+                      builder: (context, c) {
+                        final n = q.choices.length;
+                        const gap = 14.0;
+                        // 1~3줄 중 카드가 가장 크게 나오는 배치 (주어진 자리를 다 쓴다)
+                        final g = TileGrid.fit(
+                          n,
+                          c.biggest,
+                          aspect: 1.1,
+                          gap: gap,
+                          maxRows: TileGrid.quizMaxRows,
+                        );
+                        final tile = max(0.0, g.tile);
+                        Widget tileAt(int i) => _ChoiceTile(
+                          key: _tileKeys.putIfAbsent(i, GlobalKey.new),
+                          choice: q.choices[i],
+                          size: tile,
+                          faded: round.wrongPicks.contains(i),
+                          glow:
+                              round.highlightAnswer &&
+                              i == q.answerIndex &&
+                              !round.solved,
+                          wobble: wobbleIndex == i ? wobbleTrigger : 0,
+                          enabled: !round.isDisabled(i),
+                          onTap: () => _onPick(i),
+                        );
                         return Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  tileAt(0),
-                                  const SizedBox(width: gap),
-                                  tileAt(1),
-                                ],
-                              ),
-                              const SizedBox(height: gap),
-                              tileAt(2),
-                            ],
+                          child: GridRows(
+                            last: n,
+                            cols: g.cols,
+                            cellWidth: tile,
+                            cellHeight: tile * 1.1,
+                            gap: gap,
+                            itemBuilder: tileAt,
                           ),
                         );
-                      }
-                      return Center(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (var i = 0; i < n; i++) ...[
-                              if (i > 0) const SizedBox(width: gap),
-                              tileAt(i),
-                            ],
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                  Positioned(
-                    top: 0,
-                    right: 8,
-                    child: CoinPop(
-                      amount: coinPopAmount,
-                      trigger: coinPopTrigger,
+                      },
                     ),
-                  ),
-                ],
+                    Positioned(
+                      top: 0,
+                      right: 8,
+                      child: CoinPop(
+                        amount: coinPopAmount,
+                        trigger: coinPopTrigger,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -337,7 +312,7 @@ class _Swatch extends StatelessWidget {
     decoration: BoxDecoration(
       color: color,
       shape: BoxShape.circle,
-      border: Border.all(color: Palette.outline, width: 4),
+      border: Border.all(color: Colors.white, width: 4),
       boxShadow: const [
         BoxShadow(
           color: Palette.panelShadow,

@@ -36,6 +36,8 @@ class GridPlan {
 
 /// 칸 [count]개를 [area]에 가장 크게 놓는 줄·칸 수 (쪽 넘기기 없이 한 화면에 다).
 /// 놀이 보기 칸(`QuizGrid`)이 쓴다. [aspect]는 칸의 높이/너비 비율.
+/// 1~[maxRows]줄 중 칸이 가장 크게 나오는 배치를 고른다 (놀이 보기는 [TileGrid.quizMaxRows]줄).
+/// 칸 수가 많아 [maxRows]줄로는 한 줄에 7칸을 넘게 되면 그 이상도 본다.
 /// (최소 칸 크기를 지키며 넘치면 쪽을 나누는 것은 [PagedGrid.plan])
 class TileGrid {
   const TileGrid(this.rows, this.cols, this.tile);
@@ -50,10 +52,13 @@ class TileGrid {
     Size area, {
     double aspect = 1,
     double gap = 12,
-    double maxTile = 230,
+    double maxTile = double.infinity,
+    int maxRows = 99,
   }) {
     var best = const TileGrid(1, 1, 0);
-    for (var rows = 1; rows <= count; rows++) {
+    // 한 줄에 7칸을 넘기면 너무 잘아지므로, 그만큼은 줄을 더 쓸 수 있게 한다
+    final rowLimit = max(maxRows, (count / 7).ceil());
+    for (var rows = 1; rows <= min(count, rowLimit); rows++) {
       final cols = (count / rows).ceil();
       // 줄 수를 늘려도 빈 줄이 생기면 건너뛴다
       if ((rows - 1) * cols >= count) continue;
@@ -64,6 +69,12 @@ class TileGrid {
     }
     return TileGrid(best.rows, best.cols, max(0, best.tile));
   }
+
+  /// 놀이 보기·카드의 줄 수 한계 (1~3줄)
+  static const quizMaxRows = 3;
+
+  @override
+  String toString() => 'TileGrid($rows x $cols, $tile)';
 }
 
 /// 칸 [first]~[last]-1을 [cols]칸씩 줄지어 놓는다 (칸 크기 고정, 사이 [gap]).
@@ -278,14 +289,13 @@ class _PagedGridState extends State<PagedGrid> {
 }
 
 /// 쪽 넘기는 화살표를 만드는 함수 ([PageArrow.new]와 같은 모양)
-typedef PageArrowBuilder =
-    Widget Function({
-      Key? key,
-      required bool forward,
-      required VoidCallback onTap,
-      bool enabled,
-      double size,
-    });
+typedef PageArrowBuilder = Widget Function({
+  Key? key,
+  required bool forward,
+  required VoidCallback onTap,
+  bool enabled,
+  double size,
+});
 
 /// 쪽 넘기는 큰 화살표. 더 넘길 쪽이 없으면 흐려진다.
 class PageArrow extends StatelessWidget {

@@ -435,8 +435,8 @@ void main() {
       final g = TileGrid.fit(4, const Size(900, 300));
       expect(g.rows, 1);
       expect(g.cols, 4);
-      final big = TileGrid.fit(2, const Size(2000, 2000));
-      expect(big.tile, 230, reason: '너무 커지지 않게');
+      final big = TileGrid.fit(2, const Size(2000, 2000), maxTile: 230);
+      expect(big.tile, 230, reason: '한계를 주면 그보다 커지지 않는다');
     });
   });
 

@@ -17,6 +17,7 @@ import 'package:alokdalok/data/game_objects.dart';
 import 'package:alokdalok/data/stages.dart';
 import 'package:alokdalok/games/color_game/color_game_screen.dart';
 import 'package:alokdalok/games/color_game/color_round.dart';
+import 'package:alokdalok/games/common/korean_numbers.dart';
 import 'package:alokdalok/games/number_game/number_game_screen.dart';
 import 'package:alokdalok/games/number_game/number_round.dart';
 import 'package:alokdalok/services/audio_service.dart';
@@ -249,14 +250,18 @@ void main() {
     await settle(t, 300);
     expect(s.coins, coins, reason: '오답에 코인 차감 없음');
     expect(audio.played.last, Sfx.tryAgain);
-    expect(find.text('같이 세어 볼까요?'), findsWidgets); // 말풍선 + 크게 뜨는 안내
+    expect(find.text('같이 세어 볼까요?'), findsWidgets); // 말풍선 + 숫자판 제목
+    expect(find.byType(CountBoard), findsOneWidget);
+    // 다 세고 약 0.9초 뒤 판이 내려가야 다시 고를 수 있다
+    await settle(t, 1200 + 800 * expected.count + 1000);
+    expect(find.byType(CountBoard), findsNothing);
 
     await t.tap(choiceButton('${expected.count}'));
     await settle(t, 300);
     expect(s.coins, coins + Economy.correctAfterRetry);
     expect(audio.played, contains(Sfx.correct));
 
-    await settle(t, 2500); // 다음 문제로
+    await settle(t, 5000); // 같이 센 뒤 다음 문제로
     expect(t.takeException(), isNull);
     await t.pumpWidget(const SizedBox());
   });
@@ -278,7 +283,7 @@ void main() {
       );
       prev = q;
       await t.tap(choiceButton('${q.count}'));
-      await settle(t, 2400);
+      await settle(t, 5000);
     }
     await settle(t, 600);
     expect(find.text('또 하기'), findsOneWidget);
@@ -522,7 +527,7 @@ void main() {
     expect(audio.spoken.last, q.prompt);
     final wrong = q.choices.firstWhere((c) => c != q.count);
     await t.tap(choiceButton('$wrong'));
-    await settle(t, 650 * q.count + 400);
+    await settle(t, 1200 + 800 * q.count + 1000);
     // 세는 물건 수만큼 번호
     for (var n = 1; n <= q.count; n++) {
       expect(find.text('$n'), findsWidgets);
@@ -531,7 +536,12 @@ void main() {
     await t.tap(choiceButton('${q.count}'));
     await settle(t, 400);
     expect(s.coins, coins + Economy.correctAfterRetry);
-    expect(audio.spoken.last, contains(q.answerLine));
+    await settle(t, 600 * q.count + 400);
+    expect(
+      audio.spoken,
+      contains('${KoreanNumbers.count(q.count)}, 정말 잘했어요!'),
+      reason: '빠르게 센 뒤 마지막 숫자에 칭찬을 이어 말한다',
+    );
     await settle(t, 2400);
     await t.pumpWidget(const SizedBox());
   });

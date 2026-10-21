@@ -127,7 +127,6 @@ class _MatchGameScreenState extends State<MatchGameScreen>
         body: QuizGrid(
           count: board.cards.length,
           gap: 10,
-          maxTile: 170,
           builder: (i, w, h) {
             final c = board.cards[i];
             return QuizTile(

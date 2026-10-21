@@ -711,7 +711,8 @@ class CoinPop extends StatelessWidget {
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 1100),
       builder: (_, t, child) => Opacity(
-        opacity: t < .7 ? 1 : (1 - t) / .3,
+        // t가 딱 .7이면 (1 - .7) / .3이 1을 살짝 넘으므로 0~1로 묶는다
+        opacity: t < .7 ? 1 : ((1 - t) / .3).clamp(0.0, 1.0),
         child: Transform.translate(offset: Offset(0, -40 * t), child: child),
       ),
       child: Row(

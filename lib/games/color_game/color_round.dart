@@ -39,7 +39,8 @@ class ColorQuestion {
     }
     final picked = colors.take(stage.choiceCount).toList();
 
-    final kinds = [...stage.objects]..shuffle(rng);
+    // 색을 바꿔 칠할 수 있는 물건만 보기로 쓴다 (사과·오리는 늘 제 색)
+    final kinds = [...stage.objects.where((k) => k.tintable)]..shuffle(rng);
     final choices = <ColorChoice>[
       for (var i = 0; i < picked.length; i++)
         ColorChoice(

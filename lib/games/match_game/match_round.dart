@@ -65,7 +65,9 @@ class MatchBoard {
     final kinds = [...stage.objects]..shuffle(rng);
     final faces = <(ObjectKind, GameColor)>[];
     if (stage.colorVariant) {
-      // 같은 물건 한 가지 + 색 여러 가지 (앞 판과 다른 물건으로)
+      // 같은 물건 한 가지 + 색 여러 가지 (앞 판과 다른 물건으로).
+      // 색을 바꿀 수 있는 물건만 쓴다 (사과·오리는 늘 제 색).
+      kinds.removeWhere((k) => !k.tintable);
       if (previous != null &&
           kinds.first == previous.cards.first.kind &&
           kinds.length > 1) {
@@ -76,7 +78,9 @@ class MatchBoard {
       }
     } else {
       for (var i = 0; i < stage.pairs; i++) {
-        faces.add((kinds[i % kinds.length], colors[i % colors.length]));
+        final kind = kinds[i % kinds.length];
+        // 사과는 빨강, 오리는 노랑: 고유색이 있는 물건은 색을 바꾸지 않는다
+        faces.add((kind, kind.colorFor(colors[i % colors.length])));
       }
     }
     final cards = <MatchCard>[

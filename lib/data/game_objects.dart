@@ -37,13 +37,35 @@ extension ObjectKindInfo on ObjectKind {
     _ => '개',
   };
 
-  /// 숫자 놀이에서 쓰는 기본 색
+  /// 색을 바꿔 칠해도 되는 물건인지.
+  /// 공·풍선·자동차·별·꽃·물고기처럼 원래 여러 색인 것만 바꾼다.
+  /// 사과(빨강)·오리(노랑)처럼 고유한 색이 있는 물건은 늘 원래 색이다
+  /// (노란 사과는 3살 아이에게 헷갈린다).
+  bool get tintable => fixedColor == null;
+
+  /// 고유한 색이 있는 물건의 색 (색을 바꿀 수 있는 물건은 null)
+  GameColor? get fixedColor => switch (this) {
+    ObjectKind.apple => GameColor.red,
+    ObjectKind.duck => GameColor.yellow,
+    _ => null,
+  };
+
+  /// 이 물건을 [wanted] 색으로 칠하려 할 때 실제로 쓸 색 (고유색이 있으면 그 색)
+  GameColor colorFor(GameColor wanted) => fixedColor ?? wanted;
+
+  /// 그릴 때 쓸 색: 고유색이 있으면 [wanted]를 무시한다
+  Color? paintColor(Color? wanted) => fixedColor?.color ?? wanted;
+
+  /// 이 색으로 내도 되는지 (색깔 놀이 보기 등)
+  bool allows(GameColor c) => fixedColor == null || fixedColor!.id == c.id;
+
+  /// 색을 정하지 않았을 때의 기본 색
   Color get naturalColor => switch (this) {
-    ObjectKind.apple => const Color(0xFFF26B5E),
+    ObjectKind.apple => GameColor.red.color,
     ObjectKind.car => const Color(0xFF6FA8E8),
     ObjectKind.star => const Color(0xFFFFCF4D),
     ObjectKind.fish => const Color(0xFFFF9F5A),
-    ObjectKind.duck => const Color(0xFFFFDD5C),
+    ObjectKind.duck => GameColor.yellow.color,
     ObjectKind.balloon => const Color(0xFFF59AB5),
     ObjectKind.ball => const Color(0xFF8ED37A),
     ObjectKind.flower => const Color(0xFFF59AB5),

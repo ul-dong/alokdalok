@@ -2,10 +2,10 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../../core/palette.dart';
 import '../../data/game_objects.dart';
 
-/// 모양 놀이의 모양을 그린다 (100 x 100 좌표계, 원색 + 갈색 외곽선 + 반짝임).
+/// 모양 놀이의 모양을 그린다 (100 x 100 좌표계).
+/// 외곽선 없는 납작한 원색 면 + 아래 두께 띠 + 오른쪽 아래 연한 그늘 + 반짝임.
 class ShapePainter extends CustomPainter {
   ShapePainter(
     this.shape,
@@ -123,12 +123,12 @@ class ShapePainter extends CustomPainter {
       );
       canvas.drawPath(path, Paint()..color = color);
       canvas.drawPath(
-        path,
-        Paint()
-          ..color = Palette.outline
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 4
-          ..strokeJoin = StrokeJoin.round,
+        Path.combine(
+          PathOperation.difference,
+          path,
+          path.shift(const Offset(-5, -6)),
+        ),
+        Paint()..color = Color.lerp(color, Colors.black, .12)!,
       );
       // 반짝임
       final shine = switch (shape) {

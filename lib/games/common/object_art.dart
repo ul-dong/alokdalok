@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import '../../core/palette.dart';
 import '../../data/game_objects.dart';
 
-/// 숫자·색깔 놀이에 나오는 사물을 만화풍으로 그린다 (100 x 100 좌표계).
+/// 놀이에 나오는 사물을 그린다 (100 x 100 좌표계).
+/// 캐릭터와 같은 그림체: 외곽선 없이 납작한 원색·파스텔 면, 같은 색 계열의 그늘·무늬 면.
 class ObjectPainter extends CustomPainter {
   ObjectPainter(this.kind, this.color, {this.faded = false});
 
@@ -30,26 +31,49 @@ class ObjectPainter extends CustomPainter {
     canvas.restore();
   }
 
-  Paint get _stroke => Paint()
-    ..color = Palette.outline
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 4
-    ..strokeJoin = StrokeJoin.round
-    ..strokeCap = StrokeCap.round;
+  /// 같은 색 계열의 진한 면 (그늘·날개·꼬리)
+  Color get _dark => Color.lerp(color, Colors.black, .16)!;
 
-  void _fs(Canvas c, Path p, Color fill) {
+  /// 같은 색 계열의 밝은 면 (배·창)
+  Color get _light => Color.lerp(color, Colors.white, .45)!;
+
+  /// 외곽선 없는 납작한 면 + 오른쪽 아래 가장자리의 연한 그늘 (캐릭터와 같은 그림체).
+  /// 그늘 면이 있어 밝은 바탕에서도 모양이 또렷하다.
+  void _flat(
+    Canvas c,
+    Path p,
+    Color fill, {
+    Offset shade = const Offset(-5, -6),
+  }) {
     c.drawPath(p, Paint()..color = fill);
-    c.drawPath(p, _stroke);
+    final crescent = Path.combine(PathOperation.difference, p, p.shift(shade));
+    c.drawPath(crescent, Paint()..color = Color.lerp(fill, Colors.black, .13)!);
   }
 
-  Color get _dark => Color.lerp(color, Colors.black, .18)!;
+  /// 둥근 끝의 굵은 띠 (줄기·끈·꼭지). 선이 아니라 색 면으로 쓴다.
+  void _band(Canvas c, Path p, Color col, double w) => c.drawPath(
+    p,
+    Paint()
+      ..color = col
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round,
+  );
 
   void _shine(Canvas c, Offset o, double w, double h) {
     c.drawOval(
       Rect.fromCenter(center: o, width: w, height: h),
-      Paint()..color = Colors.white.withValues(alpha: .75),
+      Paint()..color = Colors.white.withValues(alpha: .8),
     );
   }
+
+  static const _leaf = Color(0xFF5DBB5A);
+  static const _stem = Color(0xFF9A6A44);
+  static const _glass = Color(0xFFDDF1FF);
+  static const _tyre = Color(0xFF4F4A52);
+  static const _hub = Color(0xFFD9D6DC);
+  static const _beak = Color(0xFFFF8A3D);
 
   void _draw(Canvas c) {
     switch (kind) {
@@ -61,186 +85,196 @@ class ObjectPainter extends CustomPainter {
           ..cubicTo(64, 94, 84, 82, 88, 56)
           ..cubicTo(92, 32, 70, 18, 50, 30)
           ..close();
-        c.drawLine(
-          const Offset(50, 30),
-          const Offset(54, 12),
-          _stroke..strokeWidth = 5,
+        _band(
+          c,
+          Path()
+            ..moveTo(50, 32)
+            ..quadraticBezierTo(50, 20, 55, 12),
+          _stem,
+          6,
         );
         final leaf = Path()
-          ..moveTo(55, 18)
-          ..quadraticBezierTo(70, 6, 80, 14)
-          ..quadraticBezierTo(70, 26, 55, 18)
+          ..moveTo(55, 19)
+          ..quadraticBezierTo(68, 4, 82, 13)
+          ..quadraticBezierTo(70, 28, 55, 19)
           ..close();
-        _fs(c, leaf, const Color(0xFF8ED37A));
-        _fs(c, body, color);
-        _shine(c, const Offset(30, 46), 10, 16);
+        c.drawPath(leaf, Paint()..color = _leaf);
+        _flat(c, body, color);
+        _shine(c, const Offset(30, 46), 10, 17);
       case ObjectKind.car:
-        final body = Path()
-          ..addRRect(RRect.fromLTRBR(8, 46, 92, 76, const Radius.circular(12)));
         final top = Path()
-          ..moveTo(26, 48)
-          ..lineTo(34, 26)
-          ..quadraticBezierTo(36, 22, 42, 22)
-          ..lineTo(62, 22)
-          ..quadraticBezierTo(67, 22, 70, 27)
-          ..lineTo(78, 48)
+          ..moveTo(24, 50)
+          ..lineTo(33, 27)
+          ..quadraticBezierTo(36, 21, 43, 21)
+          ..lineTo(62, 21)
+          ..quadraticBezierTo(68, 21, 71, 27)
+          ..lineTo(80, 50)
           ..close();
-        _fs(c, top, color);
-        _fs(c, body, color);
-        c.drawPath(
-          Path()..addRRect(
-            RRect.fromLTRBR(37, 28, 50, 44, const Radius.circular(3)),
-          ),
-          Paint()..color = const Color(0xFFDFF3FF),
-        );
-        c.drawPath(
-          Path()..addRRect(
-            RRect.fromLTRBR(55, 28, 68, 44, const Radius.circular(3)),
-          ),
-          Paint()..color = const Color(0xFFDFF3FF),
+        final body = Path()
+          ..addRRect(RRect.fromLTRBR(6, 44, 94, 78, const Radius.circular(13)));
+        final whole = Path.combine(PathOperation.union, top, body);
+        _flat(c, whole, color);
+        for (final w in [
+          RRect.fromLTRBR(37, 27, 50, 43, const Radius.circular(4)),
+          RRect.fromLTRBR(55, 27, 68, 43, const Radius.circular(4)),
+        ]) {
+          c.drawRRect(w, Paint()..color = _glass);
+        }
+        // 차체 아래 띠 (진한 같은 색)
+        c.drawRRect(
+          RRect.fromLTRBR(6, 66, 94, 78, const Radius.circular(10)),
+          Paint()..color = _dark,
         );
         c.drawCircle(
-          const Offset(86, 58),
-          4,
+          const Offset(87, 55),
+          4.5,
           Paint()..color = const Color(0xFFFFE97A),
         );
         for (final x in [28.0, 72.0]) {
-          final w = Path()
-            ..addOval(Rect.fromCircle(center: Offset(x, 78), radius: 11));
-          _fs(c, w, const Color(0xFF5A4A44));
-          c.drawCircle(
-            Offset(x, 78),
-            4,
-            Paint()..color = const Color(0xFFD9D2CC),
-          );
+          c.drawCircle(Offset(x, 78), 12, Paint()..color = _tyre);
+          c.drawCircle(Offset(x, 78), 5, Paint()..color = _hub);
         }
-        _shine(c, const Offset(20, 56), 10, 5);
+        _shine(c, const Offset(19, 54), 10, 5);
       case ObjectKind.star:
         final p = Path();
         for (var i = 0; i < 10; i++) {
           final a = -pi / 2 + i * pi / 5;
-          final r = i.isEven ? 44.0 : 21.0;
+          final r = i.isEven ? 45.0 : 22.0;
           final pt = Offset(50 + cos(a) * r, 54 + sin(a) * r);
           i == 0 ? p.moveTo(pt.dx, pt.dy) : p.lineTo(pt.dx, pt.dy);
         }
         p.close();
-        _fs(c, p, color);
+        _flat(c, p, color, shade: const Offset(-4, -5));
         _face(c, const Offset(50, 58), 7);
+        _shine(c, const Offset(40, 40), 7, 5);
       case ObjectKind.fish:
         final tail = Path()
-          ..moveTo(70, 50)
-          ..lineTo(94, 30)
-          ..quadraticBezierTo(88, 50, 94, 70)
+          ..moveTo(68, 50)
+          ..lineTo(95, 29)
+          ..quadraticBezierTo(87, 50, 95, 71)
           ..close();
-        _fs(c, tail, _dark);
+        c.drawPath(tail, Paint()..color = _dark);
         final body = Path()
           ..addOval(
             Rect.fromCenter(
               center: const Offset(44, 50),
-              width: 66,
-              height: 46,
+              width: 68,
+              height: 48,
             ),
           );
-        _fs(c, body, color);
-        c.drawArc(
-          Rect.fromCenter(center: const Offset(52, 50), width: 18, height: 30),
-          -pi / 2,
-          pi,
-          false,
-          _stroke..color = _dark,
+        _flat(c, body, color);
+        // 지느러미 (진한 같은 색 면)
+        final fin = Path()
+          ..moveTo(48, 40)
+          ..quadraticBezierTo(62, 44, 56, 62)
+          ..quadraticBezierTo(50, 52, 48, 40)
+          ..close();
+        c.drawPath(fin, Paint()..color = _dark);
+        // 배 (밝은 같은 색 면)
+        c.drawOval(
+          Rect.fromCenter(center: const Offset(36, 62), width: 28, height: 10),
+          Paint()..color = _light,
         );
-        c.drawCircle(const Offset(28, 46), 5, Paint()..color = Palette.catEye);
         c.drawCircle(
-          const Offset(26.5, 44.5),
-          1.6,
+          const Offset(27, 45),
+          5.5,
+          Paint()..color = Palette.catEye,
+        );
+        c.drawCircle(
+          const Offset(25.5, 43.5),
+          1.8,
           Paint()..color = Colors.white,
         );
-        _shine(c, const Offset(38, 36), 12, 5);
+        _shine(c, const Offset(40, 35), 12, 5);
       case ObjectKind.duck:
         final body = Path()
           ..moveTo(20, 60)
-          ..quadraticBezierTo(14, 88, 50, 90)
-          ..quadraticBezierTo(86, 90, 88, 64)
-          ..quadraticBezierTo(90, 52, 80, 58)
+          ..quadraticBezierTo(14, 90, 50, 91)
+          ..quadraticBezierTo(87, 91, 89, 64)
+          ..quadraticBezierTo(91, 51, 80, 57)
           ..quadraticBezierTo(60, 66, 44, 56)
           ..close();
-        _fs(c, body, color);
         final head = Path()
           ..addOval(Rect.fromCircle(center: const Offset(36, 38), radius: 20));
-        _fs(c, head, color);
         final beak = Path()
-          ..moveTo(16, 40)
-          ..quadraticBezierTo(2, 42, 6, 48)
-          ..quadraticBezierTo(14, 50, 20, 46)
+          ..moveTo(18, 39)
+          ..quadraticBezierTo(2, 40, 5, 47)
+          ..quadraticBezierTo(13, 51, 21, 46)
           ..close();
-        _fs(c, beak, const Color(0xFFFF9F5A));
-        c.drawCircle(const Offset(32, 34), 4, Paint()..color = Palette.catEye);
-        c.drawCircle(const Offset(31, 33), 1.3, Paint()..color = Colors.white);
-        c.drawArc(
-          Rect.fromCenter(center: const Offset(58, 70), width: 30, height: 18),
-          0,
-          pi,
-          false,
-          _stroke..color = _dark,
+        c.drawPath(beak, Paint()..color = _beak);
+        _flat(c, Path.combine(PathOperation.union, body, head), color);
+        // 날개 (진한 같은 색 면)
+        final wing = Path()
+          ..moveTo(44, 66)
+          ..quadraticBezierTo(58, 58, 74, 66)
+          ..quadraticBezierTo(62, 82, 44, 66)
+          ..close();
+        c.drawPath(wing, Paint()..color = _dark);
+        c.drawCircle(
+          const Offset(32, 34),
+          4.2,
+          Paint()..color = Palette.catEye,
         );
+        c.drawCircle(const Offset(31, 33), 1.4, Paint()..color = Colors.white);
         c.drawOval(
-          Rect.fromCenter(center: const Offset(40, 46), width: 8, height: 5),
+          Rect.fromCenter(center: const Offset(41, 45), width: 8, height: 5),
           Paint()..color = Palette.catCheek,
         );
       case ObjectKind.balloon:
-        final string = Path()
-          ..moveTo(50, 76)
-          ..quadraticBezierTo(42, 86, 50, 92)
-          ..quadraticBezierTo(56, 96, 50, 100);
-        c.drawPath(string, _stroke..strokeWidth = 2.5);
+        _band(
+          c,
+          Path()
+            ..moveTo(50, 78)
+            ..quadraticBezierTo(42, 87, 50, 92)
+            ..quadraticBezierTo(56, 96, 50, 100),
+          const Color(0xFFB9A796),
+          2.5,
+        );
         final knot = Path()
-          ..moveTo(45, 78)
-          ..lineTo(55, 78)
+          ..moveTo(44, 80)
+          ..lineTo(56, 80)
           ..lineTo(50, 72)
           ..close();
-        _fs(c, knot, color);
+        c.drawPath(knot, Paint()..color = _dark);
         final b = Path()
           ..addOval(
             Rect.fromCenter(
               center: const Offset(50, 40),
-              width: 62,
-              height: 72,
+              width: 64,
+              height: 74,
             ),
           );
-        _fs(c, b, color);
-        _shine(c, const Offset(36, 26), 10, 18);
+        _flat(c, b, color);
+        _shine(c, const Offset(35, 25), 10, 19);
       case ObjectKind.ball:
         final b = Path()
-          ..addOval(Rect.fromCircle(center: const Offset(50, 52), radius: 40));
-        _fs(c, b, color);
+          ..addOval(Rect.fromCircle(center: const Offset(50, 52), radius: 41));
+        _flat(c, b, color);
         c.save();
         c.clipPath(b);
+        // 흰 띠 (비치볼 무늬)
         c.drawRect(
-          const Rect.fromLTWH(0, 44, 100, 14),
-          Paint()..color = Colors.white.withValues(alpha: .85),
+          const Rect.fromLTWH(0, 43, 100, 16),
+          Paint()..color = Colors.white.withValues(alpha: .9),
         );
         c.restore();
-        c.drawLine(
-          const Offset(12, 44),
-          const Offset(88, 44),
-          _stroke..strokeWidth = 3,
-        );
-        c.drawLine(
-          const Offset(12, 58),
-          const Offset(88, 58),
-          _stroke..strokeWidth = 3,
-        );
-        c.drawPath(b, _stroke);
-        _shine(c, const Offset(34, 30), 14, 8);
+        _shine(c, const Offset(33, 29), 14, 8);
       case ObjectKind.flower:
-        c.drawLine(
-          const Offset(50, 60),
-          const Offset(50, 98),
-          _stroke
-            ..color = const Color(0xFF5DA05A)
-            ..strokeWidth = 6,
+        _band(
+          c,
+          Path()
+            ..moveTo(50, 60)
+            ..lineTo(50, 98),
+          _leaf,
+          7,
         );
-        // 꽃잎을 하나의 윤곽으로 합쳐 겹친 선이 보이지 않게 한다
+        final leaf = Path()
+          ..moveTo(50, 86)
+          ..quadraticBezierTo(62, 70, 76, 74)
+          ..quadraticBezierTo(66, 90, 50, 86)
+          ..close();
+        c.drawPath(leaf, Paint()..color = _leaf);
+        // 꽃잎을 하나의 면으로 합친다
         var petals = Path();
         for (var i = 0; i < 5; i++) {
           final a = -pi / 2 + i * 2 * pi / 5;
@@ -248,20 +282,18 @@ class ObjectPainter extends CustomPainter {
             ..addOval(
               Rect.fromCircle(
                 center: Offset(50 + cos(a) * 22, 42 + sin(a) * 22),
-                radius: 16,
+                radius: 17,
               ),
             );
           petals = i == 0
               ? petal
               : Path.combine(PathOperation.union, petals, petal);
         }
-        _fs(c, petals, color);
-        _fs(
-          c,
-          Path()..addOval(
-            Rect.fromCircle(center: const Offset(50, 42), radius: 13),
-          ),
-          const Color(0xFFFFE08A),
+        _flat(c, petals, color);
+        c.drawCircle(
+          const Offset(50, 42),
+          13,
+          Paint()..color = const Color(0xFFFFE08A),
         );
         _face(c, const Offset(50, 44), 4.5);
     }
@@ -311,7 +343,12 @@ class ObjectIcon extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox.square(
     dimension: size,
     child: CustomPaint(
-      painter: ObjectPainter(kind, color ?? kind.naturalColor, faded: faded),
+      // 사과는 늘 빨강, 오리는 늘 노랑 (고유색이 있는 물건은 색을 바꾸지 않는다)
+      painter: ObjectPainter(
+        kind,
+        kind.paintColor(color) ?? kind.naturalColor,
+        faded: faded,
+      ),
     ),
   );
 }

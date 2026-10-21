@@ -63,7 +63,8 @@ class SizeQuestion {
     final scales = [...stage.scales]..shuffle(rng);
     return SizeQuestion(
       kind: kinds.first,
-      color: colors.first,
+      // 사과는 빨강, 오리는 노랑: 고유색이 있는 물건은 색을 바꾸지 않는다
+      color: kinds.first.colorFor(colors.first),
       scales: scales,
       ask: SizeAsk.values[rng.nextInt(2)],
       superlative: stage.superlative,

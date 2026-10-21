@@ -20,8 +20,14 @@ class HoldToConfirm extends StatefulWidget {
     this.holdTime = defaultHoldTime,
   });
 
-  static const defaultHoldTime = Duration(milliseconds: 1000);
+  static const defaultHoldTime = Duration(milliseconds: 900);
   static const hint = '꾹 누르고 있어요.';
+
+  /// 이름표 뒤에 붙는 표시 ("집으로 (꾹)")
+  static String shownLabel(String label) => '$label (꾹)';
+
+  /// 짧게 톡 눌렀을 때 고리가 이만큼 차올랐다가 다시 줄어든다 (눌린 걸 눈으로 알게)
+  static const nudge = .3;
 
   final IconData icon;
   final String label;
@@ -44,7 +50,8 @@ class _HoldToConfirmState extends State<HoldToConfirm>
   bool _done = false;
 
   void _onStatus(AnimationStatus s) {
-    if (s == AnimationStatus.completed && !_done) {
+    // animateTo(살짝 차오름)도 끝나면 completed가 되므로, 고리가 다 찼을 때만 나간다
+    if (s == AnimationStatus.completed && _c.value >= 1 && !_done) {
       _done = true;
       AppScope.read(context).audio.play(Sfx.tap);
       widget.onConfirmed();
@@ -58,11 +65,24 @@ class _HoldToConfirmState extends State<HoldToConfirm>
 
   void _up() {
     if (_done) return;
-    if (_c.value < 1) {
+    if (_c.value >= 1) return;
+    AppScope.read(context).audio.say(HoldToConfirm.hint);
+    if (_c.value < HoldToConfirm.nudge) {
+      // 톡 누르면 고리가 거의 안 보이므로, 조금 차오르는 모습을 보여 준 뒤 줄인다
+      _c
+          .animateTo(
+            HoldToConfirm.nudge,
+            duration: const Duration(milliseconds: 160),
+          )
+          .whenCompleteOrCancel(() {
+            if (mounted && !_done && !_pressed) _c.reverse();
+          });
+    } else {
       _c.reverse();
-      AppScope.read(context).audio.say(HoldToConfirm.hint);
     }
   }
+
+  bool _pressed = false;
 
   @override
   void dispose() {
@@ -79,9 +99,18 @@ class _HoldToConfirmState extends State<HoldToConfirm>
       // 손가락이 조금 움직여도 끊기지 않도록 날 포인터 이벤트로 받는다
       child: Listener(
         behavior: HitTestBehavior.opaque,
-        onPointerDown: (_) => _down(),
-        onPointerUp: (_) => _up(),
-        onPointerCancel: (_) => _up(),
+        onPointerDown: (_) {
+          _pressed = true;
+          _down();
+        },
+        onPointerUp: (_) {
+          _pressed = false;
+          _up();
+        },
+        onPointerCancel: (_) {
+          _pressed = false;
+          _up();
+        },
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -120,12 +149,24 @@ class _HoldToConfirmState extends State<HoldToConfirm>
               ),
             ),
             const SizedBox(height: 4),
-            Text(
-              widget.label,
-              style: const TextStyle(
-                fontSize: TextSizes.label,
-                color: Palette.text,
-              ),
+            // 손가락 그림 + "집으로 (꾹)": 꾹 눌러야 하는 버튼이라는 표시
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.touch_app_rounded,
+                  size: TextSizes.label + 6,
+                  color: Palette.textSoft,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  HoldToConfirm.shownLabel(widget.label),
+                  style: const TextStyle(
+                    fontSize: TextSizes.label,
+                    color: Palette.text,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -139,14 +180,18 @@ class HoldRingPainter extends CustomPainter {
   HoldRingPainter({required this.progress});
   final double progress;
 
+  static const trackColor = Color(0xFFE3D3BC);
+  static const fillColor = Color(0xFFFFB82E);
+
   @override
   void paint(Canvas c, Size s) {
-    final r = s.shortestSide / 2 - 5;
+    final r = s.shortestSide / 2 - 6;
     final o = s.center(Offset.zero);
+    // 크림 카드 위에서도 보이도록 진한 바탕 고리
     final base = Paint()
-      ..color = Palette.creamDeep
+      ..color = trackColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 9;
+      ..strokeWidth = 10;
     c.drawCircle(o, r, base);
     if (progress <= 0) return;
     c.drawArc(
@@ -155,9 +200,9 @@ class HoldRingPainter extends CustomPainter {
       2 * pi * progress,
       false,
       Paint()
-        ..color = Palette.yellow
+        ..color = fillColor
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 9
+        ..strokeWidth = 10
         ..strokeCap = StrokeCap.round,
     );
   }
