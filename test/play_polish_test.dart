@@ -1,5 +1,6 @@
 // 놀이 화면 다듬기: 같이 세기 숫자판 박자, 꾹 눌러 나가기, 큰 화면 카드 크기,
 // 고유색 물건(사과는 빨강), 외곽선 없는 물건 그림
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -335,6 +336,34 @@ void main() {
     }
   });
 
+  test('실제 녹음 팩(manifest)으로도 새 화면의 말이 녹음 조각으로 재생된다', () {
+    final manifest = (jsonDecode(
+      File('assets/voice/manifest.json').readAsStringSync(),
+    ) as Map).cast<String, String>();
+    final pack = VoicePack(manifest);
+    // 말 → 기대하는 조각 문장들
+    final cases = {
+      HoldToConfirm.hint: ['꾹 누르고 있어요.'],
+      NumberGameScreen.boardTitle: ['같이 세어 볼까요?'],
+      '${KoreanNumbers.count(3)}, ${NumberGameScreen.praise}': [
+        '셋',
+        '정말 잘했어요!',
+      ],
+    };
+    for (final e in cases.entries) {
+      final clips = pack.plan(e.key);
+      expect(clips, isNotNull, reason: e.key);
+      expect(
+        [for (final c in clips!) c.file],
+        [for (final s in e.value) manifest[s]],
+        reason: e.key,
+      );
+      for (final c in clips) {
+        expect(File('assets/voice/${c.file}').existsSync(), isTrue);
+      }
+    }
+  });
+
   group('멈춤 화면: 꾹 눌러 나가기', () {
     Future<void> openPause(WidgetTester t, GameState s) async {
       await t.pumpWidget(
@@ -447,6 +476,34 @@ void main() {
         max(span.width / body.width, span.height / body.height),
         greaterThan(.9),
       );
+      await t.pumpWidget(const SizedBox());
+      await settle(t, 3000);
+    });
+
+    testWidgets('1280x800 숫자 보기는 큰 동그라미에 맞춰 숫자도 커진다', (t) async {
+      await setSize(t, const Size(1280, 800));
+      final s = await makeState();
+      await t.pumpWidget(
+        wrap(s, NumberGameScreen(stageId: 1, random: Random(1))),
+      );
+      await settle(t, 900);
+      final buttons = find.byType(PillButton);
+      final big = [
+        for (final e in buttons.evaluate())
+          if (t.getSize(find.byWidget(e.widget)).height > 180) e.widget,
+      ];
+      expect(big, isNotEmpty, reason: '1280 화면의 숫자 보기 동그라미');
+      for (final b in big) {
+        final button = t.getSize(find.byWidget(b));
+        final digit = find.descendant(
+          of: find.byWidget(b),
+          matching: find.byWidgetPredicate(
+            (w) => w is Text && RegExp(r'^\d+$').hasMatch(w.data ?? ''),
+          ),
+        );
+        // 예전에는 46px 글씨 그대로라 버튼 높이의 약 20%였다
+        expect(t.getRect(digit).height / button.height, greaterThan(.28));
+      }
       await t.pumpWidget(const SizedBox());
       await settle(t, 3000);
     });

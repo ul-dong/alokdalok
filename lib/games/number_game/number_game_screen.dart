@@ -607,27 +607,40 @@ class _ChoiceFace extends StatelessWidget {
     builder: (context, c) {
       // 좁고 긴 버튼이면 주사위를 위아래로 쌓아 크게 보이게
       final narrow = c.maxWidth < 100 && value > 5;
-      return FitBox(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$value',
-              style: TextStyle(
-                fontSize: 46,
-                color: NumberShape.colorOf(value),
-                height: 1.05,
-                shadows: const [Shadow(color: Colors.white, blurRadius: 2)],
-              ),
+      final face = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$value',
+            style: TextStyle(
+              fontSize: 46,
+              color: NumberShape.colorOf(value),
+              height: 1.05,
+              shadows: const [Shadow(color: Colors.white, blurRadius: 2)],
             ),
-            const SizedBox(height: 6),
-            NumberShape(value, vertical: narrow),
-          ],
-        ),
+          ),
+          const SizedBox(height: 6),
+          NumberShape(value, vertical: narrow),
+        ],
       );
+      // 태블릿처럼 버튼이 크면 숫자·주사위도 버튼에 맞춰 키운다 (예전엔 46px 그대로라
+      // 1280 화면의 큰 동그라미 안에 작게 떠 있었다). 숫자·주사위 묶음은 폭이 좁아서 높이 80%까지 키워도 동그라미 안에 든다.
+      if (c.maxHeight >= choiceGrowFrom) {
+        return Center(
+          child: SizedBox(
+            width: c.maxWidth * .68,
+            height: c.maxHeight * .8,
+            child: FittedBox(child: face),
+          ),
+        );
+      }
+      return FitBox(child: face);
     },
   );
 }
+
+/// 보기 버튼 안쪽 높이가 이 값 이상이면 숫자·주사위를 버튼 크기에 맞춰 키운다.
+const choiceGrowFrom = 160.0;
 
 /// 사물 [n]개를 줄로 나누는 방법 (위 줄이 같거나 더 많게). 예: 5 → [3, 2], 7 → [4, 3], 10 → [5, 5]
 List<int> objectRows(int n) {
