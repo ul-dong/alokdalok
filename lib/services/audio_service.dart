@@ -67,6 +67,17 @@ abstract class AudioService {
 
   String? get currentTrack => _musicStack.isEmpty ? null : _musicStack.last.$2;
 
+  /// 곡 한 바퀴의 정확한 길이(초) = 16마디 × 4박 × 60 / BPM.
+  /// tool/generate_music.py의 BPM과 같아야 한다. 웹에서 반복 이음매를 정확히 맞추는 데 쓴다.
+  static const Map<String, double> musicLoopSeconds = {
+    'spring': 3840 / 112,
+    'summer': 3840 / 120,
+    'autumn': 3840 / 96,
+    'winter': 3840 / 104,
+    'home': 3840 / 100,
+    'shop': 3840 / 112,
+  };
+
   /// 곡 이름: 'spring', 'summer', 'autumn', 'winter', 'home', 'shop'.
   /// 돌려주는 번호로 [stopMusic]을 부른다.
   int playMusic(String track) {
@@ -111,6 +122,42 @@ class DeviceAudio extends AudioService {
   final WebAudioEngine _web = WebAudioEngine();
   final AudioPlayer _music = AudioPlayer();
   static const double _musicVolume = .3;
+
+  /// 목소리가 나올 때 음악을 이만큼으로 줄인다 (웹과 같다)
+  static const double _duckRatio = .35;
+  bool _ducked = false;
+  double _musicLevel = 0;
+  int _fadeToken = 0;
+
+  double get _musicTarget => _musicVolume * (_ducked ? _duckRatio : 1);
+
+  /// 앱: 음악 볼륨을 조금씩 바꿔 부드럽게 커지고 작아지게 한다. 새 페이드가 시작되면 앞의 것은 멈춘다.
+  Future<void> _fadeMusicTo(double to, Duration d) async {
+    final token = ++_fadeToken;
+    final from = _musicLevel;
+    const steps = 12;
+    for (var i = 1; i <= steps; i++) {
+      await Future<void>.delayed(d ~/ steps);
+      if (token != _fadeToken) return;
+      _musicLevel = from + (to - from) * i / steps;
+      try {
+        await _music.setVolume(_musicLevel);
+      } catch (_) {}
+    }
+  }
+
+  /// 말하는 동안 음악 줄이기 (덕킹)
+  void _duck(bool on) {
+    if (_ducked == on) return;
+    _ducked = on;
+    if (kIsWeb) {
+      _web.duck(on);
+    } else if (_nativeTrack != null) {
+      unawaited(
+        _fadeMusicTo(_musicTarget, Duration(milliseconds: on ? 250 : 600)),
+      );
+    }
+  }
 
   @override
   bool get voiceAvailable => _voiceAvailable || (_pack?.isEmpty == false);
@@ -158,7 +205,7 @@ class DeviceAudio extends AudioService {
     } else {
       try {
         await _music.setReleaseMode(ReleaseMode.loop);
-        await _music.setVolume(_musicVolume);
+        await _music.setVolume(0);
       } catch (_) {}
     }
     try {
@@ -293,10 +340,13 @@ class DeviceAudio extends AudioService {
       _web.stopVoice();
     }
     if (!_voiceAvailable || token != _voiceToken) return;
+    _duck(true);
     try {
-      await _tts.speak(text);
+      await _tts.speak(text); // 말이 끝날 때 끝난다 (awaitSpeakCompletion)
     } catch (e) {
       debugPrint('tts speak: $e');
+    } finally {
+      if (token == _voiceToken) _duck(false);
     }
   }
 
@@ -315,7 +365,7 @@ class DeviceAudio extends AudioService {
       }
       if (token != _voiceToken) return;
       _clipPlayers.addAll(players);
-      await _music.setVolume(_musicVolume * .35);
+      _duck(true);
       for (var i = 0; i < clips.length; i++) {
         if (token != _voiceToken) return;
         if (clips[i].pauseBefore > Duration.zero) {
@@ -329,11 +379,7 @@ class DeviceAudio extends AudioService {
     } catch (e) {
       debugPrint('voice clips: $e');
     } finally {
-      if (token == _voiceToken) {
-        try {
-          await _music.setVolume(_musicVolume);
-        } catch (_) {}
-      }
+      if (token == _voiceToken) _duck(false);
     }
   }
 
@@ -351,15 +397,26 @@ class DeviceAudio extends AudioService {
   @override
   Future<void> startMusic(String track) async {
     if (kIsWeb) {
-      await _web.playMusic('assets/assets/audio/music/$track.mp3');
+      await _web.playMusic(
+        'assets/assets/audio/music/$track.mp3',
+        loopSeconds: AudioService.musicLoopSeconds[track],
+      );
       return;
     }
     if (_nativeTrack == track) return;
     _nativeTrack = track;
     try {
+      if (_musicLevel > 0) {
+        // 앞 곡은 스르르 줄인 뒤 바꾼다
+        await _fadeMusicTo(0, const Duration(milliseconds: 400));
+        if (_nativeTrack != track) return;
+      }
+      _fadeToken++;
+      _musicLevel = 0;
       await _music.stop();
-      await _music.setVolume(_musicVolume);
-      await _music.play(AssetSource('audio/music/$track.mp3'));
+      await _music.play(AssetSource('audio/music/$track.mp3'), volume: 0);
+      if (_nativeTrack != track) return;
+      unawaited(_fadeMusicTo(_musicTarget, const Duration(milliseconds: 1500)));
     } catch (e) {
       debugPrint('music: $e');
     }
@@ -372,6 +429,10 @@ class DeviceAudio extends AudioService {
       return;
     }
     _nativeTrack = null;
+    if (_musicLevel > 0) {
+      await _fadeMusicTo(0, const Duration(milliseconds: 600));
+    }
+    if (_nativeTrack != null) return; // 그 사이 다른 곡이 시작됨
     try {
       await _music.stop();
     } catch (_) {}
@@ -382,6 +443,7 @@ class DeviceAudio extends AudioService {
   @override
   Future<void> stopVoice() async {
     _voiceToken++;
+    _duck(false);
     _web.stopVoice();
     await _disposeClipPlayers();
     try {

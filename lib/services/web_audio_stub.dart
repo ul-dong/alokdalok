@@ -6,6 +6,7 @@ class WebAudioEngine {
   Future<void> preload(List<String> urls) async {}
   Future<bool> playClips(List<String> urls, List<double> pauses) async => false;
   void stopVoice({bool keepToken = false}) {}
-  Future<void> playMusic(String url) async {}
+  Future<void> playMusic(String url, {double? loopSeconds}) async {}
   void stopMusic() {}
+  void duck(bool on) {}
 }
