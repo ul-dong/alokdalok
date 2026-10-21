@@ -6,6 +6,7 @@ import 'screens/home_screen.dart';
 import 'services/game_state.dart';
 import 'widgets/common.dart';
 import 'widgets/eye_guard_overlay.dart';
+import 'widgets/play_guard_overlay.dart';
 
 class AlokdalokApp extends StatelessWidget {
   const AlokdalokApp({super.key, required this.state});
@@ -45,6 +46,8 @@ class AlokdalokApp extends StatelessWidget {
                 : Stack(
                     children: [
                       child!,
+                      // 놀이 시간 끝("오늘은 여기까지!")·눈 쉬기("창밖 먼 곳을 봐요") 덮개
+                      const Positioned.fill(child: PlayGuardOverlay()),
                       // 화면이 너무 가깝거나 자세가 비뚤어지면 덮는 안내 (눈 지킴이)
                       const Positioned.fill(child: EyeGuardOverlay()),
                     ],

@@ -1,0 +1,382 @@
+import 'dart:async';
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+
+import '../../core/palette.dart';
+import '../../widgets/common.dart';
+import 'game_frame.dart';
+
+/// 보기 [count]개를 [area]에 가장 크게 놓는 격자 (가로 화면이라 옆으로 밀기 없음).
+/// [aspect]는 칸의 높이/너비 비율.
+class TileGrid {
+  const TileGrid(this.rows, this.cols, this.tile);
+  final int rows;
+  final int cols;
+
+  /// 칸 너비 (높이는 tile * aspect)
+  final double tile;
+
+  static TileGrid fit(
+    int count,
+    Size area, {
+    double aspect = 1,
+    double gap = 12,
+    double maxTile = 230,
+  }) {
+    var best = const TileGrid(1, 1, 0);
+    for (var rows = 1; rows <= count; rows++) {
+      final cols = (count / rows).ceil();
+      // 줄 수를 늘려도 빈 줄이 생기면 건너뛴다
+      if ((rows - 1) * cols >= count) continue;
+      final w = (area.width - gap * (cols - 1)) / cols;
+      final h = (area.height - gap * (rows - 1)) / rows / aspect;
+      final tile = min(min(w, h), maxTile).floorToDouble();
+      if (tile > best.tile + .5) best = TileGrid(rows, cols, tile);
+    }
+    return TileGrid(best.rows, best.cols, max(0, best.tile));
+  }
+}
+
+/// 문제 카드: 왼쪽에 큰 노란 "다시 듣기"와 그림 힌트(견본), 오른쪽에 문제 글(부모님용)과 보기.
+class QuizCard extends StatelessWidget {
+  const QuizCard({
+    super.key,
+    required this.prompt,
+    required this.onReplay,
+    required this.body,
+    this.hint,
+    this.hintId,
+    this.coinPopAmount = 0,
+    this.coinPopTrigger = 0,
+  });
+
+  final String prompt;
+  final VoidCallback onReplay;
+
+  /// 보기 영역 (남은 공간을 다 쓴다)
+  final Widget body;
+
+  /// 그림 힌트·견본 (null이면 비워 둔다). 크기는 [QuizHintBox]가 맞춘다.
+  final Widget? hint;
+
+  /// 힌트가 바뀌었는지 알아보는 값 (바뀔 때만 다시 튀어나온다)
+  final Object? hintId;
+  final int coinPopAmount;
+  final int coinPopTrigger;
+
+  static const replaySize = 62.0;
+
+  @override
+  Widget build(BuildContext context) => CreamCard(
+    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+    child: LayoutBuilder(
+      builder: (context, c) {
+        final replay = min(replaySize, c.maxHeight);
+        // 힌트 칸: 다시 듣기 아래 남은 높이만큼 정사각형 (자리는 늘 비워 둬서 보기가 흔들리지 않게)
+        final side = (c.maxHeight - replay - 8)
+            .clamp(replay, max(replay, min(200.0, c.maxWidth * .2)))
+            .toDouble();
+        // 낮은 화면에서는 문제 글(부모님용)을 빼고 보기를 크게 (문제는 목소리로 듣는다)
+        final showText = c.maxHeight >= 180;
+        return Row(
+          children: [
+            SizedBox(
+              width: side,
+              child: Column(
+                children: [
+                  ReplayButton(size: replay, onTap: onReplay),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: Center(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (c, a) =>
+                            ScaleTransition(scale: a, child: c),
+                        child: hint == null
+                            ? const SizedBox.shrink(key: ValueKey('none'))
+                            : SizedBox.square(
+                                key: ValueKey(hintId ?? 'hint'),
+                                dimension: max(
+                                  0,
+                                  min(side, c.maxHeight - replay - 8),
+                                ),
+                                child: hint,
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                children: [
+                  if (showText) ...[
+                    SizedBox(
+                      height: 30,
+                      width: double.infinity,
+                      child: FitBox(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          prompt,
+                          style: const TextStyle(
+                            fontSize: 26,
+                            color: Palette.text,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        Positioned.fill(child: body),
+                        Positioned(
+                          top: 0,
+                          right: 4,
+                          child: CoinPop(
+                            amount: coinPopAmount,
+                            trigger: coinPopTrigger,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+/// 힌트·견본을 담는 모래빛 둥근 판
+class QuizHintBox extends StatelessWidget {
+  const QuizHintBox({super.key, required this.child, this.label});
+  final Widget child;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: label,
+    child: Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4D6),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Palette.yellow, width: 3),
+      ),
+      child: child,
+    ),
+  );
+}
+
+/// 큰 노란 "다시 듣기" 버튼 (62px). 6초마다 한 번 통통 튀어 눈에 띈다.
+class ReplayButton extends StatefulWidget {
+  const ReplayButton({super.key, required this.onTap, this.size = 62});
+  final VoidCallback onTap;
+  final double size;
+
+  @override
+  State<ReplayButton> createState() => _ReplayButtonState();
+}
+
+class _ReplayButtonState extends State<ReplayButton> {
+  Timer? _timer;
+  int _hop = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 6), (_) {
+      if (mounted) setState(() => _hop++);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    key: ValueKey(_hop),
+    tween: Tween(begin: _hop == 0 ? 1 : 0, end: 1),
+    duration: const Duration(milliseconds: 600),
+    builder: (_, t, child) => Transform.translate(
+      offset: Offset(0, -sin(t * pi * 2).abs() * (1 - t) * 10),
+      child: child,
+    ),
+    child: RoundIconButton(
+      icon: Icons.volume_up_rounded,
+      label: '다시 듣기',
+      size: widget.size,
+      color: Palette.yellow,
+      onTap: widget.onTap,
+    ),
+  );
+}
+
+/// 보기 칸 하나: 누르면 살짝 작아지고, 틀리면 흔들리며 흐려지고, 두 번 틀리면 정답이 빛난다.
+class QuizTile extends StatelessWidget {
+  const QuizTile({
+    super.key,
+    required this.width,
+    required this.height,
+    required this.child,
+    required this.onTap,
+    this.semanticLabel,
+    this.faded = false,
+    this.glow = false,
+    this.selected = false,
+    this.done = false,
+    this.wobble = 0,
+    this.enabled = true,
+    this.color = Palette.cream,
+  });
+
+  final double width;
+  final double height;
+  final Widget child;
+  final VoidCallback onTap;
+  final String? semanticLabel;
+  final bool faded;
+  final bool glow;
+
+  /// 골라 둔 카드 (짝 맞추기)
+  final bool selected;
+
+  /// 이미 맞춘 카드 (짝 맞추기)
+  final bool done;
+  final int wobble;
+  final bool enabled;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = min(width, height) * .2;
+    final borderColor = glow
+        ? Palette.yellow
+        : selected
+        ? Palette.pink
+        : done
+        ? Palette.mint
+        : Colors.white;
+    final card = AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: width,
+      height: height,
+      padding: EdgeInsets.all(min(width, height) * .07),
+      decoration: BoxDecoration(
+        color: done ? const Color(0xFFE9F7EF) : color,
+        borderRadius: BorderRadius.circular(r),
+        border: Border.all(color: borderColor, width: glow || selected ? 6 : 4),
+        boxShadow: [
+          const BoxShadow(color: Palette.creamDeep, offset: Offset(0, 5)),
+          if (glow)
+            const BoxShadow(
+              color: Color(0x88FFD45C),
+              blurRadius: 24,
+              spreadRadius: 4,
+            ),
+          if (selected)
+            const BoxShadow(
+              color: Color(0x66F59AB5),
+              blurRadius: 16,
+              spreadRadius: 2,
+            ),
+          const BoxShadow(
+            color: Palette.panelShadow,
+            blurRadius: 12,
+            offset: Offset(0, 7),
+          ),
+        ],
+      ),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 300),
+        opacity: faded ? .35 : 1,
+        child: child,
+      ),
+    );
+    return Pressable(
+      onTap: onTap,
+      enabled: enabled,
+      sound: null,
+      semanticLabel: semanticLabel,
+      child: TweenAnimationBuilder<double>(
+        key: ValueKey(wobble),
+        tween: Tween(begin: wobble == 0 ? 1 : 0, end: 1),
+        duration: const Duration(milliseconds: 500),
+        builder: (_, t, child) => Transform.rotate(
+          angle: sin(t * pi * 4) * (1 - t) * .12,
+          child: child,
+        ),
+        child: card,
+      ),
+    );
+  }
+}
+
+/// [TileGrid]대로 보기를 가운데에 놓는다.
+class QuizGrid extends StatelessWidget {
+  const QuizGrid({
+    super.key,
+    required this.count,
+    required this.builder,
+    this.aspect = 1,
+    this.gap = 12,
+    this.maxTile = 230,
+  });
+
+  final int count;
+  final double aspect;
+  final double gap;
+  final double maxTile;
+
+  /// (위치, 칸 너비, 칸 높이) → 보기
+  final Widget Function(int index, double w, double h) builder;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, c) {
+      final g = TileGrid.fit(
+        count,
+        c.biggest,
+        aspect: aspect,
+        gap: gap,
+        maxTile: maxTile,
+      );
+      final w = g.tile, h = g.tile * aspect;
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var r = 0; r < g.rows; r++) ...[
+              if (r > 0) SizedBox(height: gap),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (
+                    var i = r * g.cols;
+                    i < min(count, (r + 1) * g.cols);
+                    i++
+                  )
+                    Padding(
+                      padding: EdgeInsets.only(left: i > r * g.cols ? gap : 0),
+                      child: builder(i, w, h),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      );
+    },
+  );
+}

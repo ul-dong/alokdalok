@@ -5,11 +5,10 @@ import 'package:flutter/material.dart';
 import '../core/palette.dart';
 import '../data/game_objects.dart';
 import '../data/stages.dart';
-import '../games/color_game/color_game_screen.dart';
 import '../games/common/journey_trail.dart';
 import '../games/common/object_art.dart';
 import '../games/common/scene_game.dart';
-import '../games/number_game/number_game_screen.dart';
+import '../games/game_entry.dart';
 import '../services/game_state.dart';
 import '../widgets/common.dart';
 
@@ -20,10 +19,7 @@ class StagePicker extends StatelessWidget {
   final GameKind game;
 
   void _start(BuildContext context, int stageId) {
-    final page = game == GameKind.number
-        ? NumberGameScreen(stageId: stageId)
-        : ColorGameScreen(stageId: stageId);
-    Navigator.of(context).pushReplacement(softRoute(page));
+    openGame(context, game, stageId);
   }
 
   @override
@@ -54,7 +50,7 @@ class StagePicker extends StatelessWidget {
                 ),
                 radius: 26,
                 child: Text(
-                  isNumber ? '숫자 놀이' : '색깔 놀이',
+                  game.title,
                   style: const TextStyle(fontSize: 28, color: Palette.text),
                 ),
               ),
@@ -99,9 +95,11 @@ class StagePicker extends StatelessWidget {
                         open: id <= unlocked,
                         cleared: cleared.contains(id),
                         highlight: id == unlocked,
-                        art: isNumber
-                            ? _NumberStageArt(Stages.number[id - 1])
-                            : _ColorStageArt(Stages.color[id - 1]),
+                        art:
+                            stageArt(game, id) ??
+                            (isNumber
+                                ? _NumberStageArt(Stages.number[id - 1])
+                                : _ColorStageArt(Stages.color[id - 1])),
                         onTap: () {
                           if (id <= unlocked) {
                             _start(context, id);

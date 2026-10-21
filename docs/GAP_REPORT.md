@@ -20,12 +20,12 @@
 |---|---|---|
 | 첫 실행: 친구 고르기 → 이름 짓기 → 이후 홈 | 있음 | `lib/app.dart` RootGate, `screens/zodiac_picker_screen.dart`, `screens/nickname_screen.dart` |
 | 홈: 큰 버튼 3개(놀이터 가기·내 캐릭터·꾸미기 상점)만 | **부분** | `screens/home_screen.dart`: 숫자 놀이·색깔 놀이·내 캐릭터·꾸미기 상점·내 가방·탈것 꾸미기 6개 타일. '놀이터 가기' 없음, 가방·탈것 꾸미기 별도 진입 |
-| 홈 구석 작은 톱니바퀴 → 부모 확인 → 설정 | 부분 | 톱니바퀴(60px) 있음, 부모 확인 없음 |
+| 홈 구석 작은 톱니바퀴 → 부모 확인 → 설정 | 부분 | 톱니바퀴(60px) 있음. 부모 확인 `confirmParent(context)`(`widgets/parental_gate.dart`)는 준비됨 — 홈에서 부르는 것은 트랙 A |
 | 놀이터 화면 (기구 그림 5개, 이름표, 깬 단계만큼 별, 내 캐릭터 서 있음) | **없음** | 새 화면 필요 (`screens/playground_screen.dart` 예정) |
 | 단계 고르기: 카드에 문제 그림 + 계절 아이콘, 아래 골인 길 | 있음(가로 스크롤 문제) | `screens/stage_picker.dart` (계절 아이콘, JourneyTrail, 잠김 시 "앞 단계를 먼저…"). 카드 목록이 `ListView` 가로 스크롤 → 원칙 4 위반. 잠긴 카드 흔들림 확인 필요 |
 | 놀이 화면: 위 멈춤·발자국·코인 / 가운데 문제 카드 / 아래 길·말풍선 | 있음 | `games/common/game_frame.dart` |
 | 내 캐릭터: 옷 입기, 탈것 타기, 친구 바꾸기 | 있음 | `screens/character_screen.dart` (+ `screens/bag_screen.dart` 중복 기능) |
-| 설정: 눈 보호·놀이 시간·눈 쉬기 간격·소리·백업 | **부분** | `screens/settings_screen.dart`: 소리(음성·효과음·음악·목소리 종류), 눈 지킴이, 닉네임, 기록 지우기(꾹 누르기), 라이선스. 놀이 시간·눈 쉬기·백업 없음 |
+| 설정: 눈 보호·놀이 시간·눈 쉬기 간격·소리·백업 | 있음 | `screens/settings_screen.dart`: 눈 보호(켜기·경고 거리 25/30/35/40cm·30cm 보정), 하루 놀이 시간, 눈 쉬기 간격, 소리, 부모 확인 켜기/끄기, 백업, 닉네임, 기록 지우기, 라이선스 |
 
 ## 2. 놀이 5종
 
@@ -38,13 +38,13 @@
 | └ 정답·오답 모두 "하나, 둘…" 세기 + 도장 "쾅" + 보기 자리에 큰 숫자, 물건 가리지 않음 | 있음 | `_startCountingHint`, `games/common/stamp.dart`, `Sfx.stamp` |
 | └ 원색, 단계마다 다양, 많으면 줄 맞춤 | 있음 | `objectRows()` 줄 맞춤, 단계별 색 목록 |
 | 색깔 놀이 (그네), 5단계 | 있음 | `games/color_game/`, `Stages.color` 5단계 (`swatchFromStart`, `mixedShapes`) |
-| 모양 놀이 (모래놀이터) | **없음** | 동그라미·세모·네모·별·하트·다이아 / 같은 색·회전·견본과 같은 모양 |
-| 크기 놀이 (시소) | **없음** | 큰 것/작은 것, 3개 이상 "가장", 차이 감소 |
-| 짝 맞추기 (회전목마) | **없음** | 뒤집지 않음, 2→6쌍, 마지막 같은 물건 다른 색 |
+| 모양 놀이 (모래놀이터) | 있음 (트랙 B) | `games/shape_game/` (`shape_round.dart` 순수 로직, `shape_art.dart` 그림), `Stages.shape` 5단계: 쉬운 세 모양+견본 → 여섯 모양 → 같은 색 → 회전 → 견본과 같은 모양 |
+| 크기 놀이 (시소) | 있음 (트랙 B) | `games/size_game/`, `Stages.size` 5단계: 보기 2→2→3→3→4, 3개 이상은 "가장 큰/작은", 이웃 크기 비율 2.2→1.2로 감소 |
+| 짝 맞추기 (회전목마) | 있음 (트랙 B) | `games/match_game/`, `Stages.match` 2→3→4→5→6쌍, 카드 모두 보임, 5단계는 같은 물건 다른 색. 한 문제 = 카드 한 판 |
 | 공통 흐름: 정답→효과음·칭찬·코인→다음, 결과(별·코인, 또 하기/다음 단계/집으로) | 있음 | `game_frame.dart` 결과 화면 |
 | 단계마다 계절 배경·음악 | 있음 | `scene_game.dart` `seasonForStage`, 계절 음악 4곡 |
 | 1번 틀림 그림 힌트, 2번 틀림 정답 빛남, 틀린 보기 흐려짐 | 있음 | 숫자(`wrongPicks`, `glow`, opacity .35), 색깔(`faded`, `glow`) |
-| `GameKind` 확장 | 없음 | `services/game_state.dart` `enum GameKind { number, color }`, `SaveData`에 숫자·색깔 진행만 |
+| `GameKind` 확장 | 있음 (트랙 B) | `enum GameKind { number, color, shape, size, match }` + `title`·`stageCount`. 진입: `games/game_entry.dart` `gameScreen(kind, stageId)`·`openGame(context, kind, stageId)`·`stageArt(kind, stageId)`. `SaveData`에 `shape/size/matchStageUnlocked·Cleared` 추가(버전 5 유지, 없으면 1단계부터) |
 
 ## 3. 캐릭터 (24마리)
 
@@ -95,25 +95,25 @@
 
 | 사양 | 상태 | 메모 |
 |---|---|---|
-| 부모 확인: 덧셈(각 6~9) 숫자 패드, 설정 진입·놀이 시간 연장 시 | **없음** | `widgets/parental_gate.dart` 예정 |
-| 눈 보호·놀이 시간·부모 확인 **기본 켜짐** | **부분** | `SaveData.eyeGuardOn = false` 기본 꺼짐. 놀이 시간·부모 확인은 기능 자체 없음 |
+| 부모 확인: 덧셈(각 6~9) 숫자 패드, 설정 진입·놀이 시간 연장 시 | 있음 | `widgets/parental_gate.dart` `confirmParent(context)` (틀리면 새 문제, 닫으면 false). 놀이 시간 연장은 덮개 안에서 바로 연결. 설정 진입 연결은 트랙 A |
+| 눈 보호·놀이 시간·부모 확인 **기본 켜짐** | 있음 | 저장 v6: `eyeGuardOn`·`parentGateOn` 기본 true, `playLimitMin` 기본 10. v5→v6에서 눈 보호를 켬 |
 | 눈 보호 기준 30cm / 해제 34cm | 있음 | `services/eye_guard.dart` `EyeRules.tooCloseCm 30`, `clearCm 34` |
 | 각도 좌우 35° · 위아래 30° · 기울기 45° | 있음 | `maxYaw 35`, `maxPitch 30`, `maxRoll 45` |
 | 2~3초 지속 시에만 | 있음 | `closeHold 2s`, `angleHold 3s`, `clearHold 0.9s` |
 | 안드로이드 ML Kit / 웹 MediaPipe(앱 내장) | 있음 | `services/eye_sensor_io.dart` (google_mlkit_face_detection + camera), `services/eye_sensor_web.dart` + `web/eye_guard.js` + `web/mediapipe/` (CDN 없음) |
 | iOS ML Kit | 코드상 있음, 빌드 미확인 | `eye_sensor_io.dart`가 `Platform.isIOS` 지원 (bgra8888, 회전 처리) |
-| 부모님 거리 맞추기(보정) | 있음 | `calibrateNow`, 설정 `_EyeGuardCard` |
+| 부모님 거리 맞추기(보정) | 있음 | `calibrateNow` + 경고 거리 선택(`EyeGuard.tooCloseCm`, 풀림 = +4cm), 설정 `_EyeGuardCard` |
 | 덮개 "조금 더 멀리서 봐요" | 있음 | `widgets/eye_guard_overlay.dart` |
-| 하루 놀이 시간 (제한 없음·10·15·20·30·45·60분), "오늘은 여기까지!", 부모 확인 후 +15분, 다음 날 리셋 | **없음** | |
-| 눈 쉬기 10/20분(기본 10) → 20초 "창밖 먼 곳을 봐요", 산 그림 + 줄어드는 고리, 5분 이상 안 보면 쉰 것으로 | **없음** | |
+| 하루 놀이 시간 (제한 없음·10·15·20·30·45·60분), "오늘은 여기까지!", 부모 확인 후 +15분, 다음 날 리셋 | 있음 | 순수 로직 `services/play_clock.dart` `PlayClock`(시계 주입), 덮개 `widgets/play_guard_overlay.dart`(`app.dart`에서 전체 화면 위). 논 시간은 저장(30초마다·백그라운드 갈 때) |
+| 눈 쉬기 10/20분(기본 10) → 20초 "창밖 먼 곳을 봐요", 산 그림 + 줄어드는 고리, 5분 이상 안 보면 쉰 것으로 | 있음 | `PlayClock` + `EyeBreakCard`(`WindowViewPainter`, `ShrinkingRingPainter`, 공용 20fps 시계). 백그라운드 5분 이상이면 쉰 것. "오늘은 여기까지"가 20초 넘게 떠 있어도 쉰 것 |
 
 ## 8. 저장과 백업
 
 | 사양 | 상태 | 메모 |
 |---|---|---|
-| 기기 안에만 저장, 버전 번호 + 마이그레이션 | 있음 | `services/save_data.dart` v5, `migrate()` v0→v5, `services/storage_service.dart` (직전 값 백업 키) |
+| 기기 안에만 저장, 버전 번호 + 마이그레이션 | 있음 | `services/save_data.dart` **v6**. `migrate()` = 버전 단계 목록 `SaveData.steps`(n→n+1) + 매번 도는 멱등 정리 단계 `SaveData.repairs`(트랙 D 탈것 정리 자리). `services/storage_service.dart` (직전 값 백업 키) |
 | 없어진 탈것 스티커를 새 탈것으로 옮김 | 부분 | v3→v4 색깔별 탈것 통합은 있음. 자전거·킥보드 → 기차·열기구는 없음 |
-| 'ALOK1-' 백업 문자열 복사/붙여 넣기 복구 | **없음** | `SaveData.encode()` 재사용 가능 |
+| 'ALOK1-' 백업 문자열 복사/붙여 넣기 복구 | 있음 | `services/backup_code.dart`: `ALOK1-<base64url JSON>-<FNV-1a 체크섬>`, 버전 검사(새 버전 거절·예전 버전 마이그레이션), 띄어쓰기 무시, 잘못된 글자는 이유와 함께 거절. 카메라 보정·오늘 논 시간은 빼고 백업 |
 
 ## 9. UI/UX 원칙 1~9
 
@@ -121,7 +121,7 @@
 |---|---|---|---|
 | 1 | 목소리 먼저: 모든 문제·칭찬·안내 음성 | 있음 | `services/audio_service.dart`, `voice_lines.dart`, 409 조각 |
 | 1 | 물건·탈것·옷 누르면 이름 말하기 | 부분 | 상점은 있음. 홈 메뉴 버튼·놀이 물건·캐릭터 화면 등 '버튼 이름 읽기' 전반은 소실 |
-| 1 | 큰 노란 "다시 듣기" 62px, 6초마다 통통 | **부분** | 숫자·색깔 화면 `RoundIconButton(size: 52, yellowSoft)`. 62px 아님, 6초 튀기 없음 |
+| 1 | 큰 노란 "다시 듣기" 62px, 6초마다 통통 | **부분** | 모양·크기·짝 놀이는 `games/common/quiz_widgets.dart` `ReplayButton`(62px, 6초마다 통통). 숫자·색깔 화면은 아직 `RoundIconButton(size: 52, yellowSoft)` |
 | 2 | 놀이를 기구 그림으로 고르기, 단계 카드에 문제 그림 | 부분 | 놀이터 없음. 단계 카드 그림은 있음 |
 | 3 | 터치 60~72px, 눌리면 작아짐 + 효과음 | 있음(대부분) | `widgets/common.dart` `Pressable` (scale .94), `RoundIconButton` 기본 72. 다시 듣기 52px 예외. `test_preview/touch_audit_test.dart` |
 | 4 | 가로 밀기 금지, 자동 칸 크기, 많으면 큰 화살표 쪽 넘김 | **부분** | 가로 스크롤 남은 곳: `shop/item_widgets.dart` ThemeTabs, `screens/stage_picker.dart`, `vehicle/garage_screen.dart`. 화살표 페이저 위젯 없음 |
@@ -151,7 +151,7 @@
 | 안드로이드 `install_and_build.command`, arm 전용(armeabi-v7a, arm64-v8a) | 있음 | 저장소 루트 스크립트(caffeinate). `abiFilters` + `disable-abi-filtering=true`. release 키는 `android/key.properties`(git 제외) + 비밀번호 직접 입력, 없으면 debug 키 |
 | ML Kit Play 서비스 버전(용량 줄이기) | 있음 | `com.google.mlkit:face-detection` 제외 → `play-services-mlkit-face-detection:17.1.0`, 매니페스트 `com.google.mlkit.vision.DEPENDENCIES=face`. APK 89.6MB → 42.0MB |
 | 음성 `gen_voice.command` | 있음 | `tool/gen_voice.command` (목록 내보내기 → 없는 문장만 `assets/voice`에 녹음, manifest 합치기) |
-| 테스트 142개 | 부분 | 현재 120개 |
+| 테스트 142개 | 있음 | 239개 (트랙 B에서 53개 추가: `test/games_logic_test.dart`, `test/games_widget_test.dart`, 이후 트랙 C 합침) |
 
 ## 12. iOS 준비 상태
 
