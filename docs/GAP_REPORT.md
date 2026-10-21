@@ -147,10 +147,10 @@
 
 | 사양 | 상태 | 메모 |
 |---|---|---|
-| 웹 `--base-href /alokdalok/ --no-web-resources-cdn`, 서비스 워커, MediaPipe 내장 | 있음(스크립트 없음) | `web/mediapipe/` 포함. 빌드 명령은 README에만 |
-| 안드로이드 `install_and_build.command`, arm 전용(armeabi-v7a, arm64-v8a) | **없음** | 스크립트 없음. `android/app/build.gradle.kts`에 ABI 필터 없음, release가 debug 키 서명 |
-| ML Kit Play 서비스 버전(용량 줄이기) | **없음** | `google_mlkit_face_detection` 번들 모델 사용 중 (Android 매니페스트/gradle에 unbundled 설정 없음) |
-| 음성 `gen_voice.command` | 있음 | `tool/voice/gen_voice.command`, `export_lines_test.dart` |
+| 웹 `--base-href /alokdalok/ --no-web-resources-cdn`, 서비스 워커, MediaPipe 내장 | 있음 | `tool/build_web.sh`. Flutter 기본 SW는 자기 등록을 지우는 껍데기라 `web/offline_sw.js`(+`web/flutter_bootstrap.js`)로 교체, 파일 489개·47.6MB 미리 담음. 헤드리스 Chrome에서 서버를 끈 뒤 열리는 것 확인 |
+| 안드로이드 `install_and_build.command`, arm 전용(armeabi-v7a, arm64-v8a) | 있음 | 저장소 루트 스크립트(caffeinate). `abiFilters` + `disable-abi-filtering=true`. release 키는 `android/key.properties`(git 제외) + 비밀번호 직접 입력, 없으면 debug 키 |
+| ML Kit Play 서비스 버전(용량 줄이기) | 있음 | `com.google.mlkit:face-detection` 제외 → `play-services-mlkit-face-detection:17.1.0`, 매니페스트 `com.google.mlkit.vision.DEPENDENCIES=face`. APK 89.6MB → 42.0MB |
+| 음성 `gen_voice.command` | 있음 | `tool/gen_voice.command` (목록 내보내기 → 없는 문장만 `assets/voice`에 녹음, manifest 합치기) |
 | 테스트 142개 | 부분 | 현재 120개 |
 
 ## 12. iOS 준비 상태
@@ -159,12 +159,12 @@
 |---|---|---|
 | Info.plist `NSCameraUsageDescription` | 있음 | 한국어 설명 문구 있음 (`ios/Runner/Info.plist`) |
 | 가로 고정 | 있음 | `UISupportedInterfaceOrientations`(+~ipad) LandscapeLeft/Right만, `UIRequiresFullScreen = true`, `main.dart`에서 `setPreferredOrientations` |
-| 최소 iOS 버전 | 부분 | `IPHONEOS_DEPLOYMENT_TARGET = 15.0` (pbxproj). `Podfile`의 `platform :ios`는 주석. google_mlkit_face_detection 최신은 iOS 15.5+ 요구 가능 → `platform :ios, '15.5'` 이상으로 맞출 것 |
+| 최소 iOS 버전 | 있음 | `platform :ios, '15.5'`, pbxproj·모든 Pod 15.5 (ML Kit 요구) |
 | 눈 보호 센서 | 코드 준비됨 | `eye_sensor_io.dart`는 `google_mlkit_face_detection` + `camera` (Android 전용 API 아님, iOS 분기 있음). 실기기 검증 필요 |
-| Podfile | 기본형 | `use_frameworks!`. ML Kit은 arm64 시뮬레이터 미지원 → `EXCLUDED_ARCHS[sdk=iphonesimulator*] = arm64` post_install 설정이 필요할 수 있음 |
-| 서명·번들 ID | 미설정 | Team/번들 ID(`com.alokdalok.alokdalok`?) 확인 필요, `pod install` 미실행 (Pods 없음) |
+| Podfile | 있음 | iOS 27 시뮬레이터는 x86_64를 못 돌려서 arm64 제외 대신 `tool/ios/mlkit_sim_slices.py`로 arm64 시뮬레이터 사본(`Pods/MLKitSim`)을 만들어 시뮬레이터 빌드에서만 사용. `flutter build ios --simulator` 성공, iPhone 17e(iOS 27) 실행 확인 |
+| 서명·번들 ID | 사용자 몫 | 번들 ID `com.alokdalok.alokdalok`. Team(Apple 개발자 계정)·서명은 Xcode에서 사용자가 설정. `Podfile.lock` 커밋 |
 | 표시 이름 | 있음 | `CFBundleDisplayName = 알록달록 놀이터` |
-| 노치·홈 인디케이터 | 부분 | `SafeArea` 사용. `immersiveSticky`는 Android용 |
+| 노치·홈 인디케이터 | 있음 | `SafeArea` 사용, Info.plist `UIStatusBarHidden`, `UIRequiresFullScreen` |
 
 ## 13. 기타 정리할 것
 

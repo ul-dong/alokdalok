@@ -62,3 +62,6 @@ app.*.map.json
 # test_preview 결과물 (--update-goldens로 매번 다시 그림)
 /test_preview/shots/
 /test_preview/failures/
+
+# Kotlin 컴파일러 캐시
+/android/.kotlin/

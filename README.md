@@ -16,13 +16,20 @@ flutter run -d chrome           # 웹
 ## 빌드
 
 ```bash
-flutter build web --release --no-web-resources-cdn   # build/web (CanvasKit을 함께 담아 오프라인에서도 동작)
-flutter build apk --release                          # build/app/outputs/flutter-apk/app-release.apk
-flutter build ipa                                    # macOS + Xcode 필요
+./tool/build_web.sh            # 웹: build/web (base-href /alokdalok/, CDN 없음, 오프라인 서비스 워커 목록 생성)
+./install_and_build.command    # Android: 도구 설치(~/alokdev) + arm 전용 release APK → build/alokdalok.apk
+flutter build ios --simulator  # iOS 시뮬레이터 (Xcode + CocoaPods, 먼저 cd ios && pod install)
 ```
 
-> Android release 빌드는 현재 Flutter 기본 debug 키로 서명됩니다. 스토어 출시 전에 업로드 키를 만들어
-> `android/app/build.gradle.kts`의 `signingConfig`를 바꿔야 합니다.
+- **웹 오프라인:** Flutter 기본 서비스 워커는 이제 스스로 등록을 지우므로 `web/offline_sw.js`를 직접 등록한다
+  (`web/flutter_bootstrap.js`). `tool/build_web.sh`가 미리 담을 파일 목록 `offline_files.json`을 만들고
+  서비스 워커에 빌드 번호를 붙인다. 그냥 `flutter build web`만 하면 오프라인 목록이 빠진다.
+- **Android:** arm 전용(armeabi-v7a, arm64-v8a, `android/gradle.properties`의 `disable-abi-filtering`),
+  ML Kit 얼굴 인식은 Play 서비스(unbundled) 버전. release 서명은 `android/key.properties`(git 제외)에
+  키 위치만 적고, 비밀번호는 빌드 때 직접 입력한다(`ALOK_STORE_PASSWORD` 환경 변수). 키가 없으면 debug 키로 서명된다.
+- **iOS:** 최소 iOS 15.5(ML Kit 요구). ML Kit에는 arm64 시뮬레이터 조각이 없어서 `pod install` 때
+  `tool/ios/mlkit_sim_slices.py`가 시뮬레이터용 사본(`ios/Pods/MLKitSim`)을 만들고 시뮬레이터 빌드에서만 쓴다.
+  실기기 서명(Team, 번들 ID)은 Xcode에서 직접 설정한다.
 
 ## 테스트
 
@@ -84,8 +91,8 @@ assets/
   - "빨간 풍선이 / 세 개! / 정말 잘했어요!" 처럼 조각으로 나눠 녹음해서 수천 가지 문장을 만듭니다.
   - 조각 목록은 `lib/services/voice_lines.dart`. 문장을 바꾸면 목록도 맞춰야 합니다
     (`test/state_test.dart`의 '녹음 음성 팩' 테스트가 빠진 조각을 알려 줍니다).
-  - 다시 만들기: `flutter test tool/voice/export_lines_test.dart` → `tool/voice/lines.json`,
-    맥에서 `tool/voice/gen_voice.command`(Homebrew·Python 3.10·ffmpeg 필요) → `voice/out`을 `assets/voice`로.
+  - 다시 만들기: 맥에서 `tool/gen_voice.command`(Homebrew 필요). 문장 목록을 내보내고
+    (`tool/voice/export_lines_test.dart` → `tool/voice/lines.json`), 녹음이 없는 문장만 새로 만들어 `assets/voice`에 넣는다.
 - 녹음에 없는 말(아이 이름 등)과 설정에서 '기기'를 고르면 기기 음성 합성(TTS, `flutter_tts`)을 씁니다.
   음높이를 올리면 기계음이 일그러져 무섭게 들려서 올리지 않습니다.
 - 더 아이다운 목소리를 원하면 같은 파일 이름으로 사람 목소리를 녹음해 `assets/voice`를 바꾸면 됩니다.
