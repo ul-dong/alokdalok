@@ -26,4 +26,24 @@ void main() {
     ));
     await expectLater(find.byType(RepaintBoundary).first, matchesGoldenFile('zodiac.png'));
   });
+
+  // 크게 보기: 24마리를 원래 크기(200 x 240)로
+  testWidgets('zodiac big', (t) async {
+    t.view.physicalSize = const Size(1200, 960);
+    t.view.devicePixelRatio = 1;
+    await t.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: buildAppTheme(),
+      home: RepaintBoundary(
+        child: Container(
+          color: Colors.white,
+          child: Wrap(children: [
+            for (final z in Zodiac.values)
+              SizedBox(width: 200, height: 240, child: CustomPaint(painter: AnimalPainter(zodiac: z, items: const {}))),
+          ]),
+        ),
+      ),
+    ));
+    await expectLater(find.byType(RepaintBoundary).first, matchesGoldenFile('shots/zodiac_big.png'));
+  });
 }

@@ -9,7 +9,7 @@ void main() {
   testWidgets('outfits', (t) async {
     t.view.physicalSize = const Size(1200, 720);
     t.view.devicePixelRatio = 1;
-    final themes = OutfitTheme.values.skip(6).toList();
+    final themes = OutfitTheme.values.toList();
     await t.pumpWidget(MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
@@ -23,7 +23,7 @@ void main() {
                 height: 240,
                 child: CustomPaint(
                   painter: AnimalPainter(
-                    zodiac: Zodiac.values[themes.indexOf(th) % 12],
+                    zodiac: Zodiac.values[(themes.indexOf(th) * 7) % 24],
                     items: {for (final i in ItemCatalog.byTheme(th)) i.slot: i},
                   ),
                 ),

@@ -52,7 +52,8 @@ class RiderPose {
   Color get _sleeve => items[ItemSlot.outfit]?.colors.first ?? _skin;
   Color? get _shoe => items[ItemSlot.shoes]?.colors.first;
 
-  static Color _dim(Color c) => Color.lerp(c, const Color(0xFF3A2A22), .14)!;
+  /// 뒤쪽 팔다리는 조금만 진하게 (외곽선 없이 앞뒤를 나눈다)
+  static Color _dim(Color c) => Color.lerp(c, const Color(0xFF3A2A22), .12)!;
 
   /// 캐릭터 좌표 → 탈것 좌표
   static Offset map(Offset p, Offset seatAt, double scale) =>
@@ -148,12 +149,18 @@ class RiderPose {
     return (knee, foot);
   }
 
-  void _limb(Canvas c, List<Offset> pts, double w, double t, Color color) {
+  /// 팔·다리 한 줄기: 외곽선 없이 끝이 둥근 굵은 면 하나.
+  /// 어깨·엉덩이 끝은 몸 안쪽에서 시작해서 몸과 이음새 없이 붙는다.
+  void _limb(Canvas c, List<Offset> pts, double w, Color color) {
     final path = Path()..moveTo(pts.first.dx, pts.first.dy);
-    for (final p in pts.skip(1)) {
-      path.lineTo(p.dx, p.dy);
+    if (pts.length == 3) {
+      // 무릎은 둥글게 굽힌다 (꺾인 선이 보이지 않게)
+      path.quadraticBezierTo(pts[1].dx, pts[1].dy, pts[2].dx, pts[2].dy);
+    } else {
+      for (final p in pts.skip(1)) {
+        path.lineTo(p.dx, p.dy);
+      }
     }
-    c.drawPath(path, AnimalPainter.stroke(w + t * 2));
     c.drawPath(path, AnimalPainter.stroke(w, color));
   }
 
@@ -165,9 +172,8 @@ class RiderPose {
     double scale, {
     bool far = false,
   }) {
-    final t = AnimalPainter.lineWidth * scale;
     final skin = far ? _dim(_skin) : _skin;
-    _limb(c, [hip, knee, foot], legWidth * scale, t, skin);
+    _limb(c, [hip, knee, foot], legWidth * scale, skin);
     // 발: 앞을 향한 둥근 발 (신발을 신었으면 신발 색)
     final shoe = _shoe;
     final footColor = shoe ?? _tip;
@@ -186,7 +192,6 @@ class RiderPose {
       c.drawOval(r, Paint()..color = far ? _dim(_skin) : _skin);
       c.restore();
     }
-    c.drawOval(r, AnimalPainter.stroke(t));
     if (zodiac == Zodiac.velociraptor && shoe == null && !far) {
       // 갈고리 발톱 (발 위로 휘어 오른)
       final o = r.topCenter + Offset(2 * scale, 2 * scale);
@@ -210,7 +215,6 @@ class RiderPose {
         )
         ..close();
       c.drawPath(claw, Paint()..color = AnimalPainter.ivory);
-      c.drawPath(claw, AnimalPainter.stroke(t * .8));
     } else if (zodiac.isDino && shoe == null && !far) {
       // 발끝 발톱 세 개
       for (final dx in [-1.0, 0.0, 1.0]) {
@@ -230,7 +234,6 @@ class RiderPose {
     double scale, {
     bool far = false,
   }) {
-    final t = AnimalPainter.lineWidth * scale;
     // 티라노는 작은 팔: 가늘게
     final w = armWidth * scale * (zodiac == Zodiac.trex ? .72 : 1);
     if (zodiac == Zodiac.velociraptor && items[ItemSlot.outfit] == null) {
@@ -250,12 +253,10 @@ class RiderPose {
           ..close();
         final col = zodiac.look.accent;
         c.drawPath(f, Paint()..color = far ? _dim(col) : col);
-        c.drawPath(f, AnimalPainter.stroke(t * .7));
       }
     }
-    _limb(c, [shoulder, hand], w, t, far ? _dim(_sleeve) : _sleeve);
-    c.drawCircle(hand, w * .58, Paint()..color = far ? _dim(_tip) : _tip);
-    c.drawCircle(hand, w * .58, AnimalPainter.stroke(t));
+    _limb(c, [shoulder, hand], w, far ? _dim(_sleeve) : _sleeve);
+    c.drawCircle(hand, w * .6, Paint()..color = far ? _dim(_tip) : _tip);
     if (zodiac == Zodiac.iguanodon && !far) {
       // 엄지 가시 (손 위로 솟은 뿔)
       final spike = Path()
@@ -264,16 +265,15 @@ class RiderPose {
         ..lineTo(hand.dx + 4 * scale, hand.dy - 5 * scale)
         ..close();
       c.drawPath(spike, Paint()..color = AnimalPainter.ivory);
-      c.drawPath(spike, AnimalPainter.stroke(t * .8));
     }
   }
 
-  /// 손잡이 위에 손을 한 번 더 그려 꼭 잡은 것처럼 보이게 (날개·뱀 친구는 없음)
+  /// 손잡이 위에 손을 한 번 더 그려 꼭 잡은 것처럼 보이게 (날개·뱀 친구는 없음).
+  /// 손은 팔 끝과 같은 크기·같은 색이라 팔에서 손잡이까지 한 덩어리로 이어진다.
   void grip(Canvas c, Offset at, double scale) {
     if (_wings || _noLimbs) return;
-    final r = armWidth * scale * .58;
-    c.drawCircle(at, r, Paint()..color = _tip);
-    c.drawCircle(at, r, AnimalPainter.stroke(AnimalPainter.lineWidth * scale));
+    final w = armWidth * scale * (zodiac == Zodiac.trex ? .72 : 1);
+    c.drawCircle(at, w * .6, Paint()..color = _tip);
   }
 }
 

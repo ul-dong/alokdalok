@@ -13,7 +13,8 @@ class ItemArt {
 
   final Canvas c;
 
-  static const _ink = AnimalPainter.ink;
+  /// 단추·나사 같은 작은 점과 가는 선의 색 (외곽선은 쓰지 않는다)
+  static const _ink = AnimalPainter.feature;
   static const _metal = Color(0xFFC9D1DA);
   static const _gold = Color(0xFFFFCF4D);
 
@@ -153,7 +154,6 @@ class ItemArt {
           );
         }
         c.restore();
-        c.drawPath(dome, _line(_ink, 3.6));
         _fs(
           Path()..addRRect(
             RRect.fromLTRBR(30, 64, 170, 76, const Radius.circular(6)),
@@ -167,14 +167,7 @@ class ItemArt {
           pi * 1.05,
           pi * .9,
           false,
-          _line(_ink, 13),
-        );
-        c.drawArc(
-          const Rect.fromLTRB(32, 30, 168, 130),
-          pi * 1.05,
-          pi * .9,
-          false,
-          _line(_col(item, 1), 7),
+          _line(_col(item, 1), 10.5),
         );
         var merged = Path()
           ..addRRect(
@@ -290,7 +283,6 @@ class ItemArt {
           _line(_ink, 3),
         );
         c.restore();
-        c.drawPath(torsoPath, _line(_ink, 3.6));
         // 옷깃
         final collar = Path()
           ..moveTo(82, 142)
@@ -318,7 +310,6 @@ class ItemArt {
           Paint()..color = _gold,
         );
         c.restore();
-        c.drawPath(torsoPath, _line(_ink, 3.6));
         for (final m in [-1.0, 1.0]) {
           final collar = Path()
             ..moveTo(100 + m * 2, 142)
@@ -363,7 +354,6 @@ class ItemArt {
           Paint()..color = const Color(0xFF5C4A32),
         );
         c.restore();
-        c.drawPath(torsoPath, _line(_ink, 3.6));
         for (final m in [-1.0, 1.0]) {
           _fs(
             Path()..addRRect(
@@ -413,7 +403,6 @@ class ItemArt {
           );
         }
         c.restore();
-        c.drawPath(tunic, _line(_ink, 3.6));
       default:
         _outfitMore(item, happy: happy, torsoPath: torsoPath);
     }
@@ -533,7 +522,6 @@ class ItemArt {
             shoe,
             Paint()..color = _col(item, 0).withValues(alpha: .85),
           );
-          c.drawPath(shoe, _line(_ink, 4));
           c.drawPath(_star(Offset(x, 221), 5), Paint()..color = _col(item, 1));
           c.drawLine(
             Offset(x - 7, 216),
@@ -596,7 +584,6 @@ class ItemArt {
             RRect.fromLTRBR(52, 82, 148, 106, const Radius.circular(12)),
           );
         c.drawPath(band, Paint()..color = _col(item, 0).withValues(alpha: .7));
-        c.drawPath(band, _line(_ink, 4));
         c.drawLine(
           const Offset(62, 90),
           const Offset(84, 90),
@@ -815,8 +802,7 @@ class ItemArt {
           ..moveTo(146, 134)
           ..quadraticBezierTo(150, 112, 124, 150)
           ..quadraticBezierTo(110, 168, 116, 180);
-        c.drawPath(hose, _line(_ink, 8));
-        c.drawPath(hose, _line(const Color(0xFF6E6E6E), 4));
+        c.drawPath(hose, _line(const Color(0xFF7A7A80), 6.5));
       case 'veggiebasket':
         final strap = _line(Color.lerp(_col(item, 0), Colors.black, .3)!, 6);
         c.drawLine(const Offset(78, 144), const Offset(82, 196), strap);
@@ -869,7 +855,6 @@ class ItemArt {
           false,
           _line(Colors.white.withValues(alpha: .9), 7),
         );
-        c.drawOval(bubble, _line(_ink, 3.6));
         _fs(_rr(50, 140, 150, 158, 9), _col(item, 1));
         for (final x in [66.0, 100.0, 134.0]) {
           c.drawCircle(
@@ -885,14 +870,7 @@ class ItemArt {
           pi * 1.05,
           pi * .9,
           false,
-          _line(_ink, 12),
-        );
-        c.drawArc(
-          const Rect.fromLTRB(30, 30, 170, 132),
-          pi * 1.05,
-          pi * .9,
-          false,
-          _line(_col(item, 0), 6),
+          _line(_col(item, 0), 9.5),
         );
         _fs(
           Path()..addOval(
@@ -965,7 +943,6 @@ class ItemArt {
           Paint()..color = _col(item, 1),
         );
         c.restore();
-        c.drawPath(crown, _line(_ink, 3.6));
         c.drawArc(
           const Rect.fromLTRB(20, 46, 180, 72),
           pi * .15,
@@ -985,7 +962,6 @@ class ItemArt {
           c.drawLine(Offset(x, 10), Offset(x, 66), _line(_col(item, 1), 4));
         }
         c.restore();
-        c.drawPath(crown, _line(_ink, 3.6));
         final peak = Path()
           ..moveTo(56, 62)
           ..quadraticBezierTo(100, 86, 144, 62)
@@ -1053,7 +1029,6 @@ class ItemArt {
           Paint()..color = _col(item, 1),
         );
         c.restore();
-        c.drawPath(cone, _line(_ink, 3.6));
         _fs(_star(const Offset(96, 30), 8), _col(item, 1), width: 2.5);
         _fs(_star(const Offset(118, 40), 5), _col(item, 1), width: 2);
         c.drawCircle(const Offset(80, 44), 3, Paint()..color = _col(item, 1));
@@ -1139,7 +1114,6 @@ class ItemArt {
           Paint()..color = _col(item, 2),
         );
         c.restore();
-        c.drawPath(torsoPath, _line(_ink, 3.6));
         _fs(_rr(80, 154, 120, 182, 6), _col(item, 1), width: 3.5);
         for (final (i, col) in const [
           (0, Color(0xFFF26B5E)),
@@ -1197,7 +1171,6 @@ class ItemArt {
           _line(_dark(_col(item, 0), .12), 3),
         );
         c.restore();
-        c.drawPath(torsoPath, _line(_ink, 3.6));
         for (final x in [88.0, 112.0]) {
           for (final y in [166.0, 182.0, 198.0]) {
             c.drawCircle(Offset(x, y), 3.3, Paint()..color = _col(item, 2));
@@ -1233,7 +1206,6 @@ class ItemArt {
           Paint()..color = denim,
         );
         c.restore();
-        c.drawPath(torsoPath, _line(_ink, 3.6));
         _fs(_rr(78, 156, 122, 192, 6), denim, width: 4);
         c.drawLine(
           const Offset(62, 188),
@@ -1250,8 +1222,7 @@ class ItemArt {
           (Offset(72, 142), Offset(82, 160)),
           (Offset(128, 142), Offset(118, 160)),
         ]) {
-          c.drawLine(a, b, _line(_ink, 10));
-          c.drawLine(a, b, _line(denim, 5));
+          c.drawLine(a, b, _line(denim, 7.5));
           c.drawCircle(b, 3.5, Paint()..color = const Color(0xFFFFCF4D));
         }
         _sleeves(happy, _col(item, 1));
@@ -1267,7 +1238,6 @@ class ItemArt {
           Paint()..color = _dark(_col(item, 0), .3),
         );
         c.restore();
-        c.drawPath(torsoPath, _line(_ink, 3.6));
         // 빨간 목수건
         final scarf = Path()
           ..moveTo(78, 142)
@@ -1307,11 +1277,9 @@ class ItemArt {
             ..lineTo(100 + m * 18, 214)
             ..close();
           c.drawPath(vest, Paint()..color = _col(item, 2));
-          c.drawPath(vest, _line(_ink, 3));
         }
         c.drawRect(const Rect.fromLTWH(60, 192, 80, 9), Paint()..color = _ink);
         c.restore();
-        c.drawPath(torsoPath, _line(_ink, 3.6));
         _fs(_rr(92, 190, 108, 203, 3), const Color(0xFFFFCF4D), width: 3);
         _sleeves(happy, _col(item, 0), stripe: _col(item, 1));
       case 'robe':
@@ -1335,7 +1303,6 @@ class ItemArt {
           c.drawPath(_star(o, 5.5), Paint()..color = _col(item, 1));
         }
         c.restore();
-        c.drawPath(robe, _line(_ink, 3.6));
         // 허리 끈과 깃
         c.drawLine(
           const Offset(70, 190),
@@ -1367,7 +1334,6 @@ class ItemArt {
           );
         }
         c.restore();
-        c.drawPath(torsoPath, _line(_ink, 3.6));
         _sleeves(happy, _col(item, 0));
       case 'hero':
         _fs(torsoPath, _col(item, 0));
@@ -1378,7 +1344,6 @@ class ItemArt {
           Paint()..color = _col(item, 1),
         );
         c.restore();
-        c.drawPath(torsoPath, _line(_ink, 3.6));
         _fs(_rr(92, 192, 108, 205, 3), _col(item, 2), width: 3);
         _fs(
           Path()..addOval(
@@ -1410,7 +1375,6 @@ class ItemArt {
           _line(_ink, 3),
         );
         c.restore();
-        c.drawPath(torsoPath, _line(_ink, 3.6));
         c.drawLine(
           const Offset(62, 196),
           const Offset(138, 196),
@@ -1422,14 +1386,7 @@ class ItemArt {
             ..moveTo(90, 162)
             ..lineTo(110, 162)
             ..lineTo(98, 188),
-          _line(_ink, 9),
-        );
-        c.drawPath(
-          Path()
-            ..moveTo(90, 162)
-            ..lineTo(110, 162)
-            ..lineTo(98, 188),
-          _line(_col(item, 1), 5),
+          _line(_col(item, 1), 6.5),
         );
         final collar = Path()
           ..moveTo(86, 142)
@@ -1529,17 +1486,11 @@ class ItemArt {
           ..moveTo(80, 140)
           ..quadraticBezierTo(82, 176, 100, 180)
           ..quadraticBezierTo(118, 176, 120, 140);
-        c.drawPath(tube, _line(_ink, 8));
-        c.drawPath(tube, _line(_col(item, 0), 4));
+        c.drawPath(tube, _line(_col(item, 0), 6));
         c.drawLine(
           const Offset(100, 180),
           const Offset(106, 196),
-          _line(_ink, 8),
-        );
-        c.drawLine(
-          const Offset(100, 180),
-          const Offset(106, 196),
-          _line(_col(item, 0), 4),
+          _line(_col(item, 0), 5.5),
         );
         _fs(
           Path()..addOval(
@@ -1684,7 +1635,6 @@ class ItemArt {
           );
         }
         c.restore();
-        c.drawPath(basket, _line(_ink, 3.6));
       case 'dinotail':
         final tail = Path()
           ..moveTo(78, 186)
@@ -1718,7 +1668,6 @@ class ItemArt {
           Paint()..color = _dark(_col(item, 0), .15),
         );
         c.restore();
-        c.drawPath(cape, _line(_ink, 3.6));
       case 'ball':
         const o = Offset(156, 212);
         _fs(

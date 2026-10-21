@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../character/animal_painter.dart';
 import '../data/vehicles.dart';
 
-/// 스티커 그림. 흰 테두리가 있는 말랑한 스티커 느낌으로 그린다.
+/// 스티커 그림. 외곽선 없이 흰 테두리만 두른 말랑한 스티커 (친구·탈것과 같은 납작한 그림체).
 class StickerArt {
   StickerArt._();
 
@@ -18,7 +18,7 @@ class StickerArt {
     double r,
   ) {
     final shape = path(kind, o, r);
-    // 스티커 흰 테두리 + 얇은 외곽선
+    // 스티커 흰 테두리 (외곽선 없음)
     c.drawPath(
       shape,
       Paint()
@@ -28,7 +28,6 @@ class StickerArt {
         ..strokeJoin = StrokeJoin.round,
     );
     c.drawPath(shape, Paint()..color = color);
-    c.drawPath(shape, AnimalPainter.stroke(r * .1));
     _details(c, kind, o, r);
   }
 
@@ -181,7 +180,7 @@ class StickerArt {
 
   static void _details(Canvas c, StickerKind kind, Offset o, double r) {
     if (kind == StickerKind.smile) {
-      final ink = Paint()..color = AnimalPainter.ink;
+      final ink = Paint()..color = AnimalPainter.feature;
       c.drawCircle(o + Offset(-r * .35, -r * .2), r * .13, ink);
       c.drawCircle(o + Offset(r * .35, -r * .2), r * .13, ink);
       c.drawArc(
@@ -189,7 +188,7 @@ class StickerArt {
         .3,
         pi - .6,
         false,
-        AnimalPainter.stroke(r * .1),
+        AnimalPainter.stroke(r * .1, AnimalPainter.feature),
       );
     } else if (kind == StickerKind.flower) {
       c.drawCircle(o, r * .28, Paint()..color = const Color(0xFFFFE08A));
