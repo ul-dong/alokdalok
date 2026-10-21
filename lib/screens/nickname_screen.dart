@@ -222,7 +222,7 @@ class _ParentNotice extends StatelessWidget {
         SizedBox(width: 8),
         Expanded(
           child: Text(
-            '부모님께: 실명이나 연락처 대신 별명을 써 주세요. 닉네임은 이 기기 안에만 저장되고 어디로도 보내지 않아요. (한글·영문·숫자 8글자까지)',
+            '부모님께: 실명이나 연락처 대신 별명을 써 주세요. 닉네임은 이 기기 안에만 저장되고 어디로도 보내지 않아요. (한글, 영문, 숫자 8글자까지)',
             style: TextStyle(
               fontSize: 14,
               color: Palette.textSoft,

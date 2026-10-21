@@ -120,10 +120,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                     const Expanded(
                       child: FitBox(
                         alignment: Alignment.centerLeft,
-                        child: Text(
-                          '꾸미기 상점',
-                          style: TextStyle(fontSize: 28, color: Palette.text),
-                        ),
+                        child: TitleChip('꾸미기 상점'),
                       ),
                     ),
                   ],
@@ -141,7 +138,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                           : CharacterView(
                               equipped: _preview(state),
                               cheer: cheer,
-                              size: (c.maxHeight / 1.2).clamp(60.0, 220.0),
+                              size: (c.maxHeight / 1.2).clamp(60.0, 300.0),
                             ),
                     ),
                   ),

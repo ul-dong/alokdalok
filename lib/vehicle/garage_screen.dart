@@ -132,12 +132,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
                     ),
                     const SizedBox(width: 10),
                     if (!narrow) ...[
-                      const FitBox(
-                        child: Text(
-                          '탈것 꾸미기',
-                          style: TextStyle(fontSize: 28, color: Palette.text),
-                        ),
-                      ),
+                      const FitBox(child: TitleChip('탈것 꾸미기')),
                       const SizedBox(width: 12),
                     ],
                     Expanded(child: _chooser(state, mine)),
@@ -466,92 +461,105 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
     padding: const EdgeInsets.all(6),
     child: LayoutBuilder(
       builder: (context, c) {
-        const cols = 5, rows = 2, gap = 6.0;
+        const gap = 6.0;
         final n = Vehicles.stickerColors.length;
         // 색 동그라미는 스티커 칸의 0.9배(위아래 2씩 더 누를 수 있게).
-        // 스티커 두 줄 + 색 한 줄이 높이에 들어가게.
-        final cell = min(
+        // 넓은 칸: 스티커 5칸 두 줄 + 색 한 줄. 키 큰 칸(큰 화면): 스티커 3칸 네 줄 + 색 두 줄.
+        // 둘 중 칸이 더 커지는 배치를 고른다.
+        double fit(int cols, int rows, int colorRows) => min(
           (c.maxWidth - gap * (cols - 1)) / cols,
           min(
-            (c.maxHeight - gap * 2 - 8) / (rows + .9),
-            (c.maxWidth - gap * n) / n / .9,
+            (c.maxHeight - gap * (rows + colorRows) - 8) /
+                (rows + colorRows * .9),
+            (c.maxWidth - gap * (n / colorRows)) / (n / colorRows) / .9,
           ),
-        ).clamp(20.0, 90.0);
+        );
+        final wide = fit(5, 2, 1), tall = fit(3, 4, 2);
+        final cols = tall > wide * 1.15 ? 3 : 5;
+        final cell = (cols == 3 ? tall : wide).clamp(20.0, 110.0);
         final dot = cell * .9;
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: cell * cols + gap * (cols - 1),
-              child: Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: [
-                  for (final k in StickerKind.values)
-                    Pressable(
-                      onTap: () => setState(() {
-                        kind = k;
-                        eraser = false;
-                      }),
-                      semanticLabel: '스티커',
-                      child: Container(
-                        width: cell,
-                        height: cell,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(cell * .25),
-                          border: Border.all(
-                            color: !eraser && k == kind
-                                ? Palette.pink
-                                : Palette.creamDeep,
-                            width: !eraser && k == kind ? 4 : 2,
+        final perRow = cols == 3 ? n ~/ 2 : n;
+        return SizedBox(
+          width: c.maxWidth,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: cell * cols + gap * (cols - 1),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: gap,
+                  runSpacing: gap,
+                  children: [
+                    for (final k in StickerKind.values)
+                      Pressable(
+                        onTap: () => setState(() {
+                          kind = k;
+                          eraser = false;
+                        }),
+                        semanticLabel: '스티커',
+                        child: Container(
+                          width: cell,
+                          height: cell,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(cell * .25),
+                            border: Border.all(
+                              color: !eraser && k == kind
+                                  ? Palette.pink
+                                  : Palette.creamDeep,
+                              width: !eraser && k == kind ? 4 : 2,
+                            ),
+                          ),
+                          child: StickerIcon(
+                            kind: k,
+                            color: color,
+                            size: cell * .9,
                           ),
                         ),
-                        child: StickerIcon(
-                          kind: k,
-                          color: color,
-                          size: cell * .9,
-                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: gap),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (final col in Vehicles.stickerColors)
-                  Pressable(
-                    onTap: () => setState(() {
-                      color = col;
-                      eraser = false;
-                    }),
-                    semanticLabel: '색',
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: gap / 2,
-                        vertical: 2,
-                      ),
-                      child: Container(
-                        width: dot,
-                        height: dot,
-                        decoration: BoxDecoration(
-                          color: col,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: col == color && !eraser
-                                ? Palette.text
-                                : Colors.white,
-                            width: 3,
+              const SizedBox(height: gap),
+              SizedBox(
+                width: perRow * (dot + gap),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    for (final col in Vehicles.stickerColors)
+                      Pressable(
+                        onTap: () => setState(() {
+                          color = col;
+                          eraser = false;
+                        }),
+                        semanticLabel: '색',
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: gap / 2,
+                            vertical: 2,
+                          ),
+                          child: Container(
+                            width: dot,
+                            height: dot,
+                            decoration: BoxDecoration(
+                              color: col,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: col == color && !eraser
+                                    ? Palette.text
+                                    : Colors.white,
+                                width: 3,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     ),

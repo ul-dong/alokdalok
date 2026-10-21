@@ -30,7 +30,7 @@ class ThemeTabs extends StatelessWidget {
         initialIndex: tabs.indexOf(selected).clamp(0, tabs.length - 1),
         minCellWidth: 72,
         minCellHeight: 72,
-        maxCellWidth: 92,
+        maxCellWidth: 104,
         maxRows: 1,
         gap: 5,
         arrowSize: 64,
@@ -43,14 +43,14 @@ class ThemeTabs extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               decoration: BoxDecoration(
                 color: t == selected ? Palette.yellowSoft : Palette.cream,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(Radii.md),
                 border: Border.all(
                   color: t == selected ? Palette.yellow : Colors.white,
                   width: 4,
                 ),
-                boxShadow: const [
-                  BoxShadow(color: Palette.creamDeep, offset: Offset(0, 4)),
-                ],
+                boxShadow: Depth.flat(
+                  t == selected ? Palette.coinDeep : Palette.creamDeep,
+                ),
               ),
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Column(
@@ -76,7 +76,10 @@ class ThemeTabs extends StatelessWidget {
                   FitBox(
                     child: Text(
                       t?.label ?? '탈것',
-                      style: const TextStyle(fontSize: 15, color: Palette.text),
+                      style: const TextStyle(
+                        fontSize: TextSizes.small,
+                        color: Palette.text,
+                      ),
                     ),
                   ),
                 ],
@@ -108,12 +111,12 @@ class ItemTile extends StatelessWidget {
   final VoidCallback onTap;
   final bool showPrice;
 
-  /// 격자 칸 크기 (가장 작게 ~ 가장 크게). 가장 크게는 예전 격자(최대 128, 높이 비율 1/.95)와 같다.
+  /// 격자 칸 크기 (가장 작게 ~ 가장 크게). 큰 화면(1280)에서는 칸이 커져 빈 곳이 줄어든다.
   /// 가장 작게도 아이 손가락 기준(60~72px)보다 크다.
   static const minWidth = 68.0;
   static const minHeight = 80.0;
-  static const maxWidth = 128.0;
-  static const maxHeight = 135.0;
+  static const maxWidth = 176.0;
+  static const maxHeight = 186.0;
 
   /// 쪽 넘기는 화살표 크기 (좁은 칸에서도 옷이 두 개씩 보이게 조금 작게)
   static const arrowSize = 60.0;
