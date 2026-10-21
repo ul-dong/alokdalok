@@ -86,21 +86,22 @@ class QuizCard extends StatelessWidget {
               child: Column(
                 children: [
                   if (showText) ...[
+                    // 큰 화면에서는 문제 글도 조금 크게 (숫자·색깔 놀이 제목과 같은 크기까지)
                     SizedBox(
-                      height: 30,
+                      height: (c.maxHeight * .08).clamp(32.0, 42.0),
                       width: double.infinity,
                       child: FitBox(
                         alignment: Alignment.centerLeft,
                         child: Text(
                           prompt,
                           style: const TextStyle(
-                            fontSize: 26,
+                            fontSize: TextSizes.heading,
                             color: Palette.text,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: Gaps.sm),
                   ],
                   Expanded(
                     child: Stack(
