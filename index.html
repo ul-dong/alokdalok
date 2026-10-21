@@ -49,6 +49,12 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    // 인터넷 없이도 열리게 (한 번 연 뒤부터)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    }
+  </script>
   <script src="eye_guard.js"></script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
