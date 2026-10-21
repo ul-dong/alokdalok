@@ -132,6 +132,7 @@ class PagedGrid extends StatefulWidget {
     this.gap = 10,
     this.initialIndex = 0,
     this.arrowSize = 64,
+    this.arrowBuilder,
   });
 
   final int itemCount;
@@ -146,6 +147,9 @@ class PagedGrid extends StatefulWidget {
   /// 처음에 보일 칸 (이 칸이 있는 쪽을 연다)
   final int initialIndex;
   final double arrowSize;
+
+  /// 화살표 모양을 바꿀 때 (없으면 기본 [PageArrow]). 크기·이름("앞 쪽"/"다음 쪽")은 같게 만든다.
+  final PageArrowBuilder? arrowBuilder;
 
   /// 칸 배치를 고른다. 다 들어가면 화살표 없이, 아니면 화살표 자리를 빼고 계산한다.
   static GridPlan plan({
@@ -249,9 +253,10 @@ class _PagedGridState extends State<PagedGrid> {
       );
       if (!plan.paged) return Center(child: body);
 
+      final arrow = widget.arrowBuilder ?? PageArrow.new;
       return Row(
         children: [
-          PageArrow(
+          arrow(
             forward: false,
             size: widget.arrowSize,
             enabled: page > 0,
@@ -260,7 +265,7 @@ class _PagedGridState extends State<PagedGrid> {
           SizedBox(width: widget.gap),
           Expanded(child: Center(child: body)),
           SizedBox(width: widget.gap),
-          PageArrow(
+          arrow(
             forward: true,
             size: widget.arrowSize,
             enabled: page < pages - 1,
@@ -271,6 +276,16 @@ class _PagedGridState extends State<PagedGrid> {
     },
   );
 }
+
+/// 쪽 넘기는 화살표를 만드는 함수 ([PageArrow.new]와 같은 모양)
+typedef PageArrowBuilder =
+    Widget Function({
+      Key? key,
+      required bool forward,
+      required VoidCallback onTap,
+      bool enabled,
+      double size,
+    });
 
 /// 쪽 넘기는 큰 화살표. 더 넘길 쪽이 없으면 흐려진다.
 class PageArrow extends StatelessWidget {

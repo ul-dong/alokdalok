@@ -77,9 +77,45 @@ void main() {
       await t.pumpWidget(const SizedBox());
     });
 
+    testWidgets('eye guard overlay $w', (t) async {
+      t.view.physicalSize = size;
+      t.view.devicePixelRatio = 1;
+      var now = DateTime(2026, 10, 22, 9);
+      final eye = EyeGuard(now: () => now);
+      final s = await rich(eye: eye);
+      await t.pumpWidget(AlokdalokApp(state: s));
+      await _pump(t);
+      // 아주 가까운 얼굴이 3초 이어진다
+      for (var i = 0; i < 4; i++) {
+        eye.feed(const FaceReading(size: .9, yaw: 0, pitch: 0, roll: 0));
+        now = now.add(const Duration(seconds: 1));
+      }
+      eye.feed(const FaceReading(size: .9, yaw: 0, pitch: 0, roll: 0));
+      await _pump(t, 6);
+      expect(eye.alert, EyeAlert.tooClose);
+      await expectLater(
+        find.byType(MaterialApp).first,
+        matchesGoldenFile('shots/main_eye_guard_$w.png'),
+      );
+      await t.pumpWidget(const SizedBox());
+      await t.pump(const Duration(seconds: 9));
+    });
+  }
+
+  // 결과 화면: 아이폰 가로(932×430, 노치·홈 막대 안전 영역 포함)까지 네 크기
+  for (final (size, pad) in const [
+    (Size(568, 320), FakeViewPadding()),
+    (Size(844, 390), FakeViewPadding()),
+    (Size(932, 430), FakeViewPadding(left: 59, right: 59, bottom: 21)),
+    (Size(1280, 800), FakeViewPadding()),
+  ]) {
+    final w = size.width.toInt();
     testWidgets('result $w', (t) async {
       t.view.physicalSize = size;
       t.view.devicePixelRatio = 1;
+      t.view.padding = pad;
+      t.view.viewPadding = pad;
+      addTearDown(t.view.reset);
       final s = await rich();
       await t.pumpWidget(
         _app(
@@ -106,36 +142,13 @@ void main() {
         ),
       );
       await _pump(t, 25);
+      expect(t.takeException(), isNull);
       await expectLater(
         find.byType(MaterialApp).first,
         matchesGoldenFile('shots/main_result_$w.png'),
       );
       await t.pumpWidget(const SizedBox());
       await t.pump(const Duration(seconds: 3));
-    });
-
-    testWidgets('eye guard overlay $w', (t) async {
-      t.view.physicalSize = size;
-      t.view.devicePixelRatio = 1;
-      var now = DateTime(2026, 10, 22, 9);
-      final eye = EyeGuard(now: () => now);
-      final s = await rich(eye: eye);
-      await t.pumpWidget(AlokdalokApp(state: s));
-      await _pump(t);
-      // 아주 가까운 얼굴이 3초 이어진다
-      for (var i = 0; i < 4; i++) {
-        eye.feed(const FaceReading(size: .9, yaw: 0, pitch: 0, roll: 0));
-        now = now.add(const Duration(seconds: 1));
-      }
-      eye.feed(const FaceReading(size: .9, yaw: 0, pitch: 0, roll: 0));
-      await _pump(t, 6);
-      expect(eye.alert, EyeAlert.tooClose);
-      await expectLater(
-        find.byType(MaterialApp).first,
-        matchesGoldenFile('shots/main_eye_guard_$w.png'),
-      );
-      await t.pumpWidget(const SizedBox());
-      await t.pump(const Duration(seconds: 9));
     });
   }
 }

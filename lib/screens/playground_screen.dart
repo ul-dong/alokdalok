@@ -7,6 +7,7 @@ import '../services/game_state.dart';
 import '../widgets/common.dart';
 import 'playground_art.dart';
 import 'stage_picker.dart';
+import '../widgets/poke_character.dart';
 
 /// 놀이터: 목록 대신 놀이터 그림에서 기구를 눌러 놀이를 고른다.
 /// 미끄럼틀=숫자, 그네=색깔, 모래놀이터=모양, 시소=크기, 회전목마=짝 맞추기.
@@ -32,8 +33,6 @@ class PlaygroundScreen extends StatefulWidget {
 class _PlaygroundScreenState extends State<PlaygroundScreen> with ScreenMusic {
   @override
   String get musicTrack => 'home';
-
-  int _cheer = 0;
 
   @override
   void initState() {
@@ -106,13 +105,9 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> with ScreenMusic {
                       flex: 2,
                       child: Align(
                         alignment: Alignment.bottomCenter,
-                        child: Pressable(
-                          semanticLabel: '내 친구',
-                          speak: '안녕!',
-                          onTap: () => setState(() => _cheer++),
+                        child: PokeCharacter(
                           child: CharacterView(
                             equipped: state.equipped,
-                            cheer: _cheer,
                             size: charSize,
                           ),
                         ),
@@ -159,7 +154,7 @@ class PlaygroundRide extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Pressable(
     onTap: onTap,
-    semanticLabel: '${kind.equipment} ${kind.title}',
+    semanticLabel: kind.title,
     child: LayoutBuilder(
       builder: (context, c) {
         // 기구는 정사각형 칸에 그리고, 별은 기구 바로 위에 단다

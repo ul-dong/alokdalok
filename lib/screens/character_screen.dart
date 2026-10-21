@@ -14,6 +14,7 @@ import '../widgets/common.dart';
 import '../widgets/paged_grid.dart';
 import 'nickname_screen.dart';
 import 'zodiac_picker_screen.dart';
+import '../widgets/poke_character.dart';
 
 /// 내 캐릭터 (가로): 왼쪽에 내 친구와 이름·동물 바꾸기, 오른쪽에 가진 아이템 입고 벗기.
 class CharacterScreen extends StatefulWidget {
@@ -71,9 +72,7 @@ class _CharacterScreenState extends State<CharacterScreen> with ScreenMusic {
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, c) => Center(
-                      child: Pressable(
-                        onTap: () => setState(() => cheer++),
-                        semanticLabel: '내 친구',
+                      child: PokeCharacter(
                         child: CharacterView(
                           equipped: state.equipped,
                           cheer: cheer,
