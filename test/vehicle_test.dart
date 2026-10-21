@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:alokdalok/character/animal_painter.dart';
+import 'package:alokdalok/character/rider_pose.dart';
 import 'package:alokdalok/character/zodiac.dart';
 import 'package:alokdalok/data/item_catalog.dart';
 import 'package:alokdalok/data/vehicles.dart';
@@ -335,6 +336,43 @@ void main() {
             ).paint(Canvas(rec), const Size(300, 200));
             rec.endRecording().dispose();
           }
+        }
+      }
+    });
+
+    test('탈것에 타면 24마리 모두 얼굴이 가는 쪽(오른쪽)을 본다', () {
+      for (final z in Zodiac.values) {
+        expect(
+          RiderPose(zodiac: z).faceDirection,
+          FaceDirection.right,
+          reason: z.name,
+        );
+        expect(
+          AnimalPainter(zodiac: z, items: const {}).faceDirection,
+          FaceDirection.front,
+          reason: '서 있을 때(홈·결과·친구 고르기)는 정면 그대로',
+        );
+        // 코·부리 끝은 머리 오른쪽 가장자리(x 약 165) 밖으로 살짝 나온다
+        final nose = AnimalPainter.noseAt(z, sideways: true);
+        expect(nose.dx, greaterThan(160), reason: z.name);
+        expect(AnimalPainter.noseAt(z).dx, 100, reason: z.name);
+      }
+      // 귀·뿔·볏은 뒤쪽(왼쪽)으로
+      expect(AnimalPainter.earX(150, sideways: true), lessThan(150));
+      expect(AnimalPainter.earX(50, sideways: true), lessThan(50));
+      expect(AnimalPainter.earX(150), 150);
+    });
+
+    test('옆얼굴은 머리 아이템·장식을 써도 그려진다', () {
+      for (final z in Zodiac.values) {
+        for (final th in OutfitTheme.values) {
+          final rec = ui.PictureRecorder();
+          RiderPose(
+            zodiac: z,
+            items: {for (final i in ItemCatalog.byTheme(th)) i.slot: i},
+            mood: z.index.isEven ? CharMood.happy : CharMood.normal,
+          ).paint(Canvas(rec), seatAt: const Offset(150, 150), scale: .5);
+          rec.endRecording().dispose();
         }
       }
     });
