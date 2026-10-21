@@ -92,7 +92,8 @@ class _PressableState extends State<Pressable> {
 /// 놀이 화면의 물건(세는 물건, 견본 그림)을 누르면 이름을 말해 준다. (사양 UI 원칙 1)
 /// 정답 보기 칸에는 쓰지 않는다 — 보기를 누르는 것은 답을 고르는 동작이다.
 /// 효과음 없이 살짝 작아지기만 하고, [enabled]가 false면(같이 세는 중 등) 아무 일도 하지 않는다.
-class SayName extends StatelessWidget {
+/// 버튼이 아니라 덤으로 듣는 것이라 물건 크기 그대로 둔다 (많이 섞인 단계에서는 물건이 작다).
+class SayName extends StatefulWidget {
   const SayName({
     super.key,
     required this.name,
@@ -110,13 +111,29 @@ class SayName extends StatelessWidget {
   final String? semanticLabel;
 
   @override
-  Widget build(BuildContext context) => Pressable(
-    onTap: () {},
-    sound: null,
-    speak: name,
-    enabled: enabled,
-    semanticLabel: semanticLabel ?? name,
-    child: child,
+  State<SayName> createState() => _SayNameState();
+}
+
+class _SayNameState extends State<SayName> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: widget.semanticLabel ?? widget.name,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: widget.enabled ? (_) => setState(() => _down = true) : null,
+      onTapUp: widget.enabled ? (_) => setState(() => _down = false) : null,
+      onTapCancel: () => setState(() => _down = false),
+      onTap: widget.enabled
+          ? () => AppScope.read(context).audio.say(widget.name)
+          : null,
+      child: AnimatedScale(
+        scale: _down ? .94 : 1,
+        duration: const Duration(milliseconds: 90),
+        child: widget.child,
+      ),
+    ),
   );
 }
 
