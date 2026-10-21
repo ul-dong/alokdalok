@@ -10,7 +10,7 @@ import 'voice_lines.dart';
 import 'web_audio_stub.dart' if (dart.library.js_interop) 'web_audio.dart';
 
 /// 효과음 종류. 파일은 assets/audio/sfx/ 에 있고 tool/generate_sfx.py로 다시 만들 수 있다.
-enum Sfx { correct, tryAgain, tap, coin, fanfare, buy, stamp }
+enum Sfx { correct, tryAgain, tap, coin, fanfare, buy, stamp, poke }
 
 extension SfxFile on Sfx {
   String get asset => switch (this) {
@@ -21,6 +21,7 @@ extension SfxFile on Sfx {
     Sfx.fanfare => 'audio/sfx/fanfare.wav',
     Sfx.buy => 'audio/sfx/buy.wav',
     Sfx.stamp => 'audio/sfx/stamp.wav',
+    Sfx.poke => 'audio/sfx/poke.wav',
   };
 }
 
@@ -48,6 +49,9 @@ abstract class AudioService {
   Future<void> play(Sfx sfx);
   Future<void> say(String text);
   Future<void> stopVoice();
+
+  /// 캐릭터를 콕 눌렀을 때 나는 귀여운 소리 (assets/audio/sfx/poke.wav)
+  Future<void> playPoke() => play(Sfx.poke);
 
   /// 배경 음악 켜기/끄기 (설정)
   bool _musicOn = true;

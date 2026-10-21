@@ -10,6 +10,7 @@ import '../../services/audio_service.dart';
 import '../../services/game_state.dart';
 import '../../widgets/common.dart';
 import '../../widgets/hold_button.dart';
+import '../../widgets/poke_character.dart';
 import 'journey_trail.dart';
 import 'scene_game.dart';
 
@@ -284,6 +285,13 @@ class _ResultOverlayState extends State<_ResultOverlay> {
     });
   }
 
+  /// 오른쪽 내용(리본·별·코인·버튼)을 그리는 기준 크기. 칸에 맞춰 통째로 줄이거나 키운다.
+  static const contentSize = Size(420, 372);
+
+  /// 오른쪽 내용 배율의 범위. 아래 한계는 버튼(104)이 60px 아래로 줄지 않게.
+  static const minScale = .6;
+  static const maxScale = 1.3;
+
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
@@ -296,168 +304,218 @@ class _ResultOverlayState extends State<_ResultOverlay> {
         duration: const Duration(milliseconds: 260),
         builder: (_, t, child) => Opacity(opacity: t, child: child),
         child: Container(
-          color: const Color(0x99FFF1D6),
-          alignment: Alignment.center,
-          padding: const EdgeInsets.all(Gaps.lg),
-          // 작은 화면에서는 줄이고, 큰 화면에서는 조금 키운다 (1.2배까지)
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720, maxHeight: 740),
-            child: FittedBox(
-              child: SizedBox(
-                width: 600,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // 카드 둘레에 흩어진 색종이 (멈춰 있는 그림)
-                    const Positioned.fill(
-                      child: CustomPaint(painter: ConfettiPainter()),
+          color: const Color(0xCCFFF1D6),
+          child: Stack(
+            children: [
+              // 화면 가장자리에 흩어진 색종이 (멈춰 있는 그림)
+              const Positioned.fill(
+                child: CustomPaint(painter: ConfettiPainter()),
+              ),
+              SafeArea(
+                minimum: const EdgeInsets.all(10),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 1120,
+                      maxHeight: 660,
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
-                      child: _card(state, s, totalCoins),
+                    child: CreamCard(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // 왼쪽: 햇살 무늬 위에 크게 선 내 친구
+                          Expanded(flex: 9, child: _hero(state)),
+                          const SizedBox(width: 10),
+                          // 오른쪽: 리본, 별, 코인, 열린 단계, 버튼
+                          Expanded(
+                            flex: 11,
+                            child: LayoutBuilder(
+                              builder: (context, c) {
+                                final k = min(
+                                  c.maxWidth / contentSize.width,
+                                  c.maxHeight / contentSize.height,
+                                ).clamp(minScale, maxScale);
+                                return Center(
+                                  child: SizedBox(
+                                    width: contentSize.width * k,
+                                    height: contentSize.height * k,
+                                    child: FittedBox(
+                                      child: SizedBox.fromSize(
+                                        size: contentSize,
+                                        child: _content(s, totalCoins),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _card(GameState state, SessionSummary s, int totalCoins) => SizedBox(
-    width: 420,
-    child: Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.topCenter,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 30),
-          child: CreamCard(
-            padding: const EdgeInsets.fromLTRB(28, 44, 28, 22),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 캐릭터 뒤에 햇살 무늬
-                SizedBox(
-                  height: 150,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      const SizedBox(
-                        width: 220,
-                        height: 150,
-                        child: CustomPaint(painter: SunburstPainter()),
-                      ),
-                      CharacterView(
-                        equipped: state.equipped,
-                        cheer: _cheer,
-                        size: 118,
-                      ),
-                    ],
+  /// 왼쪽 무대: 옅은 노란 바탕 + 햇살 + 색종이 + 큰 캐릭터 (누르면 콕 반응)
+  Widget _hero(GameState state) => ClipRRect(
+    borderRadius: BorderRadius.circular(Radii.lg),
+    child: ColoredBox(
+      color: const Color(0xFFFFF5D9),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final size = min(
+            c.maxHeight * .86 / 1.2,
+            c.maxWidth * .82,
+          ).clamp(60.0, 420.0).toDouble();
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              const Positioned.fill(
+                child: CustomPaint(painter: SunburstPainter()),
+              ),
+              const Positioned.fill(
+                child: CustomPaint(
+                  painter: ConfettiPainter(
+                    count: 16,
+                    seed: 11,
+                    hole: Size(.62, .7),
                   ),
                 ),
-                const SizedBox(height: Gaps.sm),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    for (var i = 0; i < Economy.questionsPerSession; i++)
-                      _PopIn(
-                        delayMs: 200 + i * 120,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: StarIcon(
-                            // 가운데 별이 가장 크다 (왕관처럼)
-                            size: 40 + (2 - (i - 2).abs()) * 4.0,
-                            color: i < s.stars
-                                ? Palette.yellow
-                                : const Color(0xFFE6DCCB),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: Gaps.md),
-                _PopIn(
-                  delayMs: 850,
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(14, 8, 22, 8),
-                    decoration: chipDecoration(color: Palette.yellowSoft),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CoinIcon(size: 42),
-                        const SizedBox(width: Gaps.sm),
-                        Text(
-                          '+$totalCoins',
-                          style: const TextStyle(
-                            fontSize: TextSizes.hero,
-                            color: Palette.coinDeep,
-                            height: 1.1,
-                          ),
-                        ),
-                      ],
-                    ),
+              ),
+              // 발밑 그림자 무대
+              Positioned(
+                bottom: c.maxHeight * .07,
+                child: Container(
+                  width: size * .8,
+                  height: size * .12,
+                  decoration: BoxDecoration(
+                    color: const Color(0x22C98A1E),
+                    borderRadius: BorderRadius.circular(size),
                   ),
                 ),
-                if (s.reward.unlockedStage != null) ...[
-                  const SizedBox(height: Gaps.md),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.lock_open_rounded,
-                        size: 24,
-                        color: Color(0xFFE0607E),
-                      ),
-                      const SizedBox(width: Gaps.xs),
-                      Text(
-                        '${s.reward.unlockedStage}단계가 열렸어요!',
-                        style: const TextStyle(
-                          fontSize: TextSizes.label,
-                          color: Color(0xFFE0607E),
-                        ),
-                      ),
-                    ],
+              ),
+              Positioned(
+                bottom: c.maxHeight * .07 + size * .04,
+                child: PokeCharacter(
+                  child: CharacterView(
+                    equipped: state.equipped,
+                    cheer: _cheer,
+                    size: size,
                   ),
-                ],
-                const SizedBox(height: Gaps.lg + 2),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _BigChoice(
-                      icon: Icons.replay_rounded,
-                      label: '또 하기',
-                      color: Palette.pink,
-                      onTap: widget.onReplay,
-                    ),
-                    if (widget.onNext != null) ...[
-                      const SizedBox(width: Gaps.lg),
-                      _BigChoice(
-                        icon: Icons.arrow_forward_rounded,
-                        label: '다음 단계',
-                        color: Palette.mint,
-                        onTap: widget.onNext!,
-                      ),
-                    ],
-                    const SizedBox(width: Gaps.lg),
-                    _BigChoice(
-                      icon: Icons.home_rounded,
-                      label: '집으로',
-                      color: Palette.sky,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                  ],
                 ),
-              ],
-            ),
-          ),
-        ),
-        // 위에 걸린 리본 이름표
-        const Positioned(top: 0, child: _Ribbon(text: '정말 잘했어요!')),
-      ],
+              ),
+            ],
+          );
+        },
+      ),
     ),
+  );
+
+  Widget _content(SessionSummary s, int totalCoins) => Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      const _Ribbon(text: '정말 잘했어요!'),
+      const SizedBox(height: Gaps.sm),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (var i = 0; i < Economy.questionsPerSession; i++)
+            _PopIn(
+              delayMs: 200 + i * 120,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: StarIcon(
+                  // 가운데 별이 가장 크다 (왕관처럼)
+                  size: 44 + (2 - (i - 2).abs()) * 5.0,
+                  color: i < s.stars ? Palette.yellow : const Color(0xFFE6DCCB),
+                ),
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(height: Gaps.md),
+      FitBox(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _PopIn(
+              delayMs: 850,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 8, 22, 8),
+                decoration: chipDecoration(color: Palette.yellowSoft),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CoinIcon(size: 42),
+                    const SizedBox(width: Gaps.sm),
+                    Text(
+                      '+$totalCoins',
+                      style: const TextStyle(
+                        fontSize: TextSizes.hero,
+                        color: Palette.coinDeep,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (s.reward.unlockedStage != null) ...[
+              const SizedBox(width: Gaps.lg),
+              const Icon(
+                Icons.lock_open_rounded,
+                size: 26,
+                color: Color(0xFFE0607E),
+              ),
+              const SizedBox(width: Gaps.xs),
+              Text(
+                '${s.reward.unlockedStage}단계가 열렸어요!',
+                style: const TextStyle(
+                  fontSize: TextSizes.label,
+                  color: Color(0xFFE0607E),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      const SizedBox(height: Gaps.lg + 2),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _BigChoice(
+            icon: Icons.replay_rounded,
+            label: '또 하기',
+            color: Palette.pink,
+            onTap: widget.onReplay,
+          ),
+          if (widget.onNext != null) ...[
+            const SizedBox(width: Gaps.lg + 4),
+            _BigChoice(
+              icon: Icons.arrow_forward_rounded,
+              label: '다음 단계',
+              color: Palette.mint,
+              onTap: widget.onNext!,
+            ),
+          ],
+          const SizedBox(width: Gaps.lg + 4),
+          _BigChoice(
+            icon: Icons.home_rounded,
+            label: '집으로',
+            color: Palette.sky,
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
+    ],
   );
 }
 
@@ -572,9 +630,14 @@ class SunburstPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// 결과 카드 둘레의 색종이·별 (정해진 자리, 움직이지 않음)
+/// 결과 화면의 색종이·별 (정해진 자리, 움직이지 않음).
+/// [hole]은 가운데를 비워 둘 타원 크기(칸에 대한 비율)로, 그 안에는 뿌리지 않는다.
 class ConfettiPainter extends CustomPainter {
-  const ConfettiPainter();
+  const ConfettiPainter({this.count = 40, this.seed = 3, this.hole});
+
+  final int count;
+  final int seed;
+  final Size? hole;
 
   static const _colors = [
     Color(0xFFF59AB5),
@@ -587,14 +650,19 @@ class ConfettiPainter extends CustomPainter {
 
   @override
   void paint(Canvas c, Size s) {
-    final rnd = Random(3);
-    for (var i = 0; i < 34; i++) {
-      // 가운데 카드 자리(가로 420)는 비우고 양옆에만
-      final left = i.isEven;
-      final x = left
-          ? 8 + rnd.nextDouble() * (s.width / 2 - 230)
-          : s.width / 2 + 222 + rnd.nextDouble() * (s.width / 2 - 230);
-      final y = 10 + rnd.nextDouble() * (s.height - 20);
+    final rnd = Random(seed);
+    for (var i = 0; i < count; i++) {
+      var x = 0.0, y = 0.0;
+      // 가운데 구멍 밖에 떨어질 때까지 몇 번 다시 뽑는다
+      for (var tries = 0; tries < 8; tries++) {
+        x = 8 + rnd.nextDouble() * (s.width - 16);
+        y = 8 + rnd.nextDouble() * (s.height - 16);
+        final h = hole;
+        if (h == null) break;
+        final dx = (x - s.width / 2) / (s.width * h.width / 2);
+        final dy = (y - s.height / 2) / (s.height * h.height / 2);
+        if (dx * dx + dy * dy > 1) break;
+      }
       final col = _colors[i % _colors.length];
       c.save();
       c.translate(x, y);

@@ -14,6 +14,7 @@ import 'character_screen.dart';
 import 'playground_art.dart';
 import 'playground_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/poke_character.dart';
 
 /// 메인 화면 (가로). 왼쪽에 내 캐릭터, 오른쪽에 큰 버튼 세 개
 /// (놀이터 가기 · 내 캐릭터 · 꾸미기 상점). 구석의 작은 톱니바퀴는 부모 확인을 거쳐 설정으로.
@@ -33,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
   @override
   String get musicTrack => 'home';
 
-  int _cheer = 0;
   static bool _greeted = false;
 
   @override
@@ -95,15 +95,10 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                               animal: state.zodiac.look.animal,
                             ),
                             const SizedBox(height: Gaps.sm),
-                            Pressable(
+                            PokeCharacter(
                               semanticLabel: '내 친구 쓰다듬기',
-                              onTap: () {
-                                setState(() => _cheer++);
-                                state.audio.say('안녕!');
-                              },
                               child: CharacterView(
                                 equipped: state.equipped,
-                                cheer: _cheer,
                                 size: charSize,
                               ),
                             ),

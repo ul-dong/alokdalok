@@ -22,6 +22,7 @@ import 'package:alokdalok/widgets/hold_button.dart';
 import 'package:alokdalok/widgets/listen_again_button.dart';
 import 'package:alokdalok/widgets/paged_grid.dart';
 import 'package:alokdalok/widgets/parental_gate.dart';
+import 'package:alokdalok/widgets/poke_character.dart';
 import 'package:alokdalok/widgets/screen_fit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -195,8 +196,14 @@ void main() {
         HomeScreen.characterLabel,
         HomeScreen.shopLabel,
         HomeScreen.settingsLabel,
-        '내 친구 쓰다듬기',
       });
+      // 내 친구는 버튼이 아니라 콕 누르면 반응하는 캐릭터
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is PokeCharacter && w.semanticLabel == '내 친구 쓰다듬기',
+        ),
+        findsOneWidget,
+      );
 
       await t.tap(pressable(HomeScreen.playgroundLabel));
       await settle(t, 800);
@@ -257,7 +264,7 @@ void main() {
       await t.pumpWidget(wrap(s, const PlaygroundScreen()));
       await settle(t);
       for (final k in GameKind.values) {
-        expect(pressable('${k.equipment} ${k.title}'), findsOneWidget);
+        expect(pressable(k.title), findsOneWidget);
         expect(find.text(k.title), findsOneWidget, reason: '이름표');
       }
       int starsOn(GameKind k) => find
@@ -272,22 +279,44 @@ void main() {
       expect(starsOn(GameKind.number), 3);
       expect(starsOn(GameKind.color), 1);
       expect(starsOn(GameKind.shape), 0);
-      expect(pressable('내 친구'), findsOneWidget);
+      expect(find.byType(PokeCharacter), findsOneWidget);
       await settle(t, 400);
       expect(audioOf(s).spoken, contains(PlaygroundScreen.greeting));
     });
 
-    testWidgets('미끄럼틀을 누르면 이름을 말하고 숫자 단계 고르기로 간다', (t) async {
+    testWidgets('미끄럼틀을 누르면 기구 이름 대신 놀이 이름을 말하고 숫자 단계 고르기로 간다', (t) async {
       await setSize(t, const Size(844, 390));
       final s = await makeState();
       await t.pumpWidget(wrap(s, const PlaygroundScreen()));
       await settle(t);
-      await t.tap(pressable('미끄럼틀 숫자 놀이'));
+      // 기구 그림(이름표 위쪽)을 누른다
+      final ride = find.byWidgetPredicate(
+        (w) => w is PlaygroundRide && w.kind == GameKind.number,
+      );
+      final box = t.getRect(ride);
+      await t.tapAt(Offset(box.center.dx, box.top + box.height * .4));
       await settle(t, 800);
-      expect(audioOf(s).spoken.last, '미끄럼틀! 숫자 놀이를 해 볼까요?');
+      expect(audioOf(s).spoken, contains('숫자 놀이!'));
+      expect(audioOf(s).spoken.join(), isNot(contains('미끄럼틀')));
       final picker = t.widget<StagePicker>(find.byType(StagePicker));
       expect(picker.game, GameKind.number);
     });
+
+    for (final k in GameKind.values) {
+      testWidgets('놀이터 이름표 "${k.title}"를 눌러도 같은 놀이 이름을 말한다', (t) async {
+        await setSize(t, const Size(844, 390));
+        final s = await makeState();
+        await t.pumpWidget(wrap(s, const PlaygroundScreen()));
+        await settle(t);
+        audioOf(s).spoken.clear();
+        await t.tap(find.text(k.title));
+        await t.pump();
+        expect(audioOf(s).spoken.first, '${k.title}!');
+        expect(audioOf(s).spoken.first, k.invite);
+        await settle(t, 800);
+        expect(t.widget<StagePicker>(find.byType(StagePicker)).game, k);
+      });
+    }
 
     testWidgets('모래놀이터·시소·회전목마는 단계 고르기를 거쳐 실제 놀이로 간다', (t) async {
       await setSize(t, const Size(844, 390));
@@ -299,7 +328,7 @@ void main() {
       ]) {
         await t.pumpWidget(wrap(s, const PlaygroundScreen()));
         await settle(t);
-        await t.tap(pressable('${k.equipment} ${k.title}'));
+        await t.tap(pressable(k.title));
         await settle(t, 800);
         expect(audioOf(s).spoken.last, k.invite);
         expect(t.widget<StagePicker>(find.byType(StagePicker)).game, k);
@@ -664,13 +693,19 @@ void main() {
       expect(s.clearedStages(GameKind.color), isEmpty);
     });
 
-    test('기구 이름과 놀이 이름', () {
-      expect(GameKind.number.equipment, '미끄럼틀');
-      expect(GameKind.color.equipment, '그네');
-      expect(GameKind.shape.equipment, '모래놀이터');
-      expect(GameKind.size.equipment, '시소');
-      expect(GameKind.match.equipment, '회전목마');
-      expect(GameKind.match.invite, '회전목마! 짝 맞추기를 해 볼까요?');
+    test('놀이터 기구를 누르면 하는 말은 놀이 이름', () {
+      expect(GameKind.number.invite, '숫자 놀이!');
+      expect(GameKind.color.invite, '색깔 놀이!');
+      expect(GameKind.shape.invite, '모양 놀이!');
+      expect(GameKind.size.invite, '크기 놀이!');
+      expect(GameKind.match.invite, '짝 맞추기!');
+      final lines = VoiceLines.all();
+      for (final k in GameKind.values) {
+        expect(lines, contains(k.invite), reason: '녹음 문장 목록');
+      }
+      for (final old in ['미끄럼틀!', '그네!', '모래놀이터!', '시소!', '회전목마!']) {
+        expect(lines, isNot(contains(old)));
+      }
     });
   });
 }
