@@ -65,22 +65,11 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
         background: const SceneBackground(groundLevel: .8),
         child: Row(
           children: [
-            // 왼쪽: 구석의 작은 톱니바퀴 + 내 캐릭터
+            // 왼쪽: 내 캐릭터 (왼쪽 위는 다른 화면의 "집으로" 자리라 비워 둔다)
             Expanded(
               flex: 4,
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      RoundIconButton(
-                        icon: Icons.settings_rounded,
-                        label: HomeScreen.settingsLabel,
-                        size: 60,
-                        onTap: _openSettings,
-                      ),
-                      const Spacer(),
-                    ],
-                  ),
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, c) {
@@ -167,6 +156,13 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                             onTap: () => _go(const ShopScreen()),
                           ),
                         ),
+                        const SizedBox(width: Gaps.sm),
+                        // 오른쪽 아래 구석의 작은 톱니바퀴: 다른 화면의 왼쪽 위
+                        // "집으로/뒤로" 버튼과 겹치지 않는 자리 (두 번 눌러도 부모 확인이 뜨지 않게)
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: _SettingsCorner(onTap: _openSettings),
+                        ),
                       ],
                     ),
                   ),
@@ -179,6 +175,38 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
       ),
     );
   }
+}
+
+/// 설정 톱니바퀴: 눈에 덜 띄는 작은 그림, 누르는 칸은 60px
+class _SettingsCorner extends StatelessWidget {
+  const _SettingsCorner({required this.onTap});
+  final VoidCallback onTap;
+
+  static const touch = 60.0;
+
+  @override
+  Widget build(BuildContext context) => Pressable(
+    onTap: onTap,
+    semanticLabel: HomeScreen.settingsLabel,
+    child: SizedBox.square(
+      dimension: touch,
+      child: Center(
+        child: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .55),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.settings_rounded,
+            size: 26,
+            color: Palette.textSoft,
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _NamePill extends StatelessWidget {

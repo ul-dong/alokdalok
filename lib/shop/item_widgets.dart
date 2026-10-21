@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../character/item_thumb.dart';
@@ -47,11 +49,10 @@ class ThemeTabs extends StatelessWidget {
             semanticLabel: t?.label ?? '탈것',
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
+              // 납작한 탭: 고른 탭은 진한 노랑 면(테두리 자리) 안에 밝은 노랑 면.
+              // 외곽선 대신 같은 계열의 진한 색 면이 둘레를 감싼다.
               decoration: flat
-                  ? BoxDecoration(
-                      color: on ? ShopStyle.tabOn : ShopStyle.surface,
-                      borderRadius: BorderRadius.circular(Radii.md),
-                    )
+                  ? ShopStyle.tab(selected: on)
                   : BoxDecoration(
                       color: t == selected ? Palette.yellowSoft : Palette.cream,
                       borderRadius: BorderRadius.circular(Radii.md),
@@ -63,44 +64,70 @@ class ThemeTabs extends StatelessWidget {
                         t == selected ? Palette.coinDeep : Palette.creamDeep,
                       ),
                     ),
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: FitBox(
-                      child: t == null
-                          ? SizedBox(
-                              width: 60,
-                              height: 40,
-                              child: Icon(
-                                Icons.directions_car_rounded,
-                                size: 40,
-                                color: flat
-                                    ? ShopStyle.carIcon
-                                    : const Color(0xFFF26B5E),
+              padding: flat
+                  ? const EdgeInsets.all(ShopStyle.tabRing)
+                  : const EdgeInsets.symmetric(vertical: 2),
+              child: _TabFace(
+                flat: flat,
+                on: on,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: FitBox(
+                        child: t == null
+                            ? SizedBox(
+                                width: 60,
+                                height: 40,
+                                child: Icon(
+                                  Icons.directions_car_rounded,
+                                  size: 40,
+                                  color: flat
+                                      ? ShopStyle.carIcon
+                                      : const Color(0xFFF26B5E),
+                                ),
+                              )
+                            : ItemThumb(
+                                item: ItemCatalog.byId(t.sampleId)!,
+                                size: 46,
                               ),
-                            )
-                          : ItemThumb(
-                              item: ItemCatalog.byId(t.sampleId)!,
-                              size: 46,
-                            ),
-                    ),
-                  ),
-                  FitBox(
-                    child: Text(
-                      t?.label ?? '탈것',
-                      style: const TextStyle(
-                        fontSize: TextSizes.small,
-                        color: Palette.text,
                       ),
                     ),
-                  ),
-                ],
+                    FitBox(
+                      child: Text(
+                        t?.label ?? '탈것',
+                        style: const TextStyle(
+                          fontSize: TextSizes.small,
+                          color: Palette.text,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
         },
       ),
+    );
+  }
+}
+
+/// 탭 안쪽 면. 납작한 탭에서 고른 탭은 밝은 노랑 면이 진한 노랑 둘레 안에 놓인다.
+class _TabFace extends StatelessWidget {
+  const _TabFace({required this.flat, required this.on, required this.child});
+  final bool flat;
+  final bool on;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!flat) return child;
+    return Container(
+      decoration: BoxDecoration(
+        color: on ? ShopStyle.tabOn : ShopStyle.surface,
+        borderRadius: BorderRadius.circular(Radii.md - ShopStyle.tabRing / 2),
+      ),
+      child: child,
     );
   }
 }
@@ -128,12 +155,15 @@ class ItemTile extends StatelessWidget {
   /// 상점용 납작한 모양 (외곽선·두께 없이 파스텔 단색 면, 고른 칸은 분홍 면)
   final bool flat;
 
-  /// 격자 칸 크기 (가장 작게 ~ 가장 크게). 큰 화면(1280)에서는 칸이 커져 빈 곳이 줄어든다.
-  /// 가장 작게도 아이 손가락 기준(60~72px)보다 크다.
-  static const minWidth = 68.0;
+  /// 격자 칸 크기 (가장 작게 ~ 가장 크게). 칸은 정사각형([aspect])이고,
+  /// 큰 화면(1280)에서는 칸이 커져 빈 곳이 줄어든다. 가장 작게도 아이 손가락 기준(60~72px)보다 크다.
+  static const minWidth = 80.0;
   static const minHeight = 80.0;
-  static const maxWidth = 176.0;
-  static const maxHeight = 186.0;
+  static const maxWidth = 230.0;
+  static const maxHeight = 230.0;
+
+  /// 칸 모양 (높이/너비): 정사각형
+  static const aspect = 1.0;
 
   /// 쪽 넘기는 화살표 크기 (좁은 칸에서도 옷이 두 개씩 보이게 조금 작게)
   static const arrowSize = 60.0;
@@ -157,55 +187,92 @@ class ItemTile extends StatelessWidget {
                 BoxShadow(color: Palette.creamDeep, offset: Offset(0, 5)),
               ],
             ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(6, 6, 6, 30),
-              child: FitBox(child: ItemThumb(item: item, size: 96)),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 6,
-            child: Center(
-              child: owned
-                  ? Icon(
-                      equipped
-                          ? Icons.check_circle_rounded
-                          : Icons.favorite_rounded,
-                      color: equipped
-                          ? (flat
-                                ? ShopStyle.mintDeep
-                                : const Color(0xFF5CBF8A))
-                          : (flat ? ShopStyle.pinkDeep : Palette.pink),
-                      size: 26,
-                    )
-                  : !showPrice
-                  ? const SizedBox.shrink()
-                  : flat
-                  ? PriceTag(price: item.price)
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CoinIcon(size: 22),
-                        const SizedBox(width: 3),
-                        Text(
-                          '${item.price}',
-                          style: const TextStyle(
-                            fontSize: TextSizes.button,
-                            color: Palette.coinDeep,
+      child: LayoutBuilder(
+        builder: (context, c) {
+          // 그림이 칸을 거의 다 채운다. 가격·하트는 그림 아래쪽에 겹쳐 놓는다
+          // (모자·장식 그림은 아래쪽이 흐려지는 자리라 가려지지 않는다).
+          final side = c.biggest.shortestSide;
+          final badge = (side * .2).clamp(22.0, 34.0);
+          final inset = (side * .05).clamp(3.0, 8.0);
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    inset,
+                    inset,
+                    inset,
+                    inset + badge * .45,
+                  ),
+                  child: Center(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(Radii.md),
+                      child: ItemThumb(
+                        item: item,
+                        size: max(
+                          1.0,
+                          min(
+                            c.maxWidth - inset * 2,
+                            c.maxHeight - inset * 2 - badge * .45,
                           ),
                         ),
-                      ],
+                      ),
                     ),
-            ),
-          ),
-        ],
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: inset,
+                child: Center(child: _badge(badge)),
+              ),
+            ],
+          );
+        },
       ),
     ),
   );
+
+  Widget _badge(double h) {
+    if (owned) {
+      return Container(
+        width: h * 1.25,
+        height: h * 1.25,
+        decoration: BoxDecoration(
+          color: flat ? ShopStyle.surface : Palette.cream,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          equipped ? Icons.check_circle_rounded : Icons.favorite_rounded,
+          color: equipped
+              ? (flat ? ShopStyle.mintDeep : const Color(0xFF5CBF8A))
+              : (flat ? ShopStyle.pinkDeep : Palette.pink),
+          size: h,
+        ),
+      );
+    }
+    if (!showPrice) return const SizedBox.shrink();
+    if (flat) return PriceTag(price: item.price, height: h);
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: h * .3),
+      decoration: BoxDecoration(
+        color: Palette.cream,
+        borderRadius: BorderRadius.circular(h / 2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CoinIcon(size: h * .85),
+          const SizedBox(width: 3),
+          Text(
+            '${item.price}',
+            style: TextStyle(fontSize: h * .8, color: Palette.coinDeep),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// 구매 확인 창을 띄우고, "네"를 누르면 true.
@@ -360,8 +427,18 @@ class ShopStyle {
   /// 칸·탭·이름표의 바탕 (따뜻한 흰색)
   static const surface = Color(0xFFFFFCF5);
 
-  /// 고른 테마 탭
+  /// 고른 테마 탭 (안쪽 면 · 둘레 면)
   static const tabOn = Color(0xFFFFE9A8);
+  static const tabOnRing = Color(0xFFF5B92E);
+
+  /// 탭 둘레 두께 (고른 탭은 진한 색, 안 고른 탭은 바탕색이라 보이지 않는다)
+  static const tabRing = 4.0;
+
+  /// 테마 탭 바깥 면
+  static BoxDecoration tab({required bool selected}) => BoxDecoration(
+    color: selected ? tabOnRing : surface,
+    borderRadius: BorderRadius.circular(Radii.md),
+  );
 
   /// 고른 아이템 칸
   static const tileOn = Color(0xFFFFDCE7);

@@ -41,4 +41,40 @@ void main() {
       matchesGoldenFile('shots/thumbs.png'),
     );
   });
+
+  // 크게 보기: 첫 18개를 상점 큰 칸 크기(180)로. shots/thumbs_big.png
+  testWidgets('item thumbs big', (t) async {
+    t.view.physicalSize = const Size(1140, 570);
+    t.view.devicePixelRatio = 1;
+    await t.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: buildAppTheme(),
+        home: RepaintBoundary(
+          child: Container(
+            color: const Color(0xFFFFF6E6),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final (i, item) in ItemCatalog.all.take(18).indexed)
+                  Container(
+                    color: Colors.white,
+                    child: ItemThumb(
+                      item: item,
+                      size: 180,
+                      zodiac: Zodiac.values[i % 24],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await expectLater(
+      find.byType(RepaintBoundary).first,
+      matchesGoldenFile('shots/thumbs_big.png'),
+    );
+  });
 }

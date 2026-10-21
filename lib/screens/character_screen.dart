@@ -183,6 +183,7 @@ class _CharacterScreenState extends State<CharacterScreen> with ScreenMusic {
                           maxCellHeight: ItemTile.maxHeight,
                           arrowSize: ItemTile.arrowSize,
                           gap: 12,
+                          cellAspect: ItemTile.aspect,
                           itemCount: mine.length,
                           itemBuilder: (_, i) {
                             final item = mine[i];

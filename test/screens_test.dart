@@ -1,6 +1,15 @@
 import 'dart:math';
 
+import 'dart:ui' as ui;
+
 import 'package:alokdalok/app.dart';
+import 'package:alokdalok/character/item_art.dart';
+import 'package:alokdalok/character/item_thumb.dart';
+import 'package:alokdalok/character/zodiac.dart';
+import 'package:alokdalok/data/item_catalog.dart';
+import 'package:alokdalok/games/common/journey_trail.dart';
+import 'package:alokdalok/screens/bag_screen.dart';
+import 'package:alokdalok/shop/item_widgets.dart';
 import 'package:alokdalok/data/game_kinds.dart';
 import 'package:alokdalok/games/match_game/match_game_screen.dart';
 import 'package:alokdalok/games/number_game/number_game_screen.dart';
@@ -707,5 +716,361 @@ void main() {
         expect(lines, isNot(contains(old)));
       }
     });
+  });
+
+  group('홈 설정 버튼 자리 (집으로를 두 번 눌러도 설정이 뜨지 않게)', () {
+    for (final size in sizes) {
+      testWidgets('톱니바퀴는 오른쪽 아래, 다른 화면의 왼쪽 위 버튼과 겹치지 않는다 (${nameOf(size)})', (
+        t,
+      ) async {
+        await setSize(t, size);
+        final s = await makeState();
+        await t.pumpWidget(AlokdalokApp(state: s));
+        await settle(t);
+        final gear = t.getRect(pressable(HomeScreen.settingsLabel));
+        // 아주 낮은 화면은 전체가 축소되므로 축소 전 크기로 잰다
+        final k = MinHeightScaler.scaleFor(size);
+        expect(gear.width / k, greaterThan(59.9), reason: '누르는 칸 60px');
+        expect(gear.height / k, greaterThan(59.9), reason: '누르는 칸 60px');
+        expect(gear.center.dx, greaterThan(size.width * .75), reason: '오른쪽');
+        expect(gear.center.dy, greaterThan(size.height * .6), reason: '아래쪽');
+        // 홈 위에 다른 화면을 올려(같은 화면 배율) 왼쪽 위 버튼 자리를 잰다
+        final nav = t.state<NavigatorState>(find.byType(Navigator).first);
+        for (final (page, label) in <(Widget, String)>[
+          (const ShopScreen(), '집으로'),
+          (const PlaygroundScreen(), '집으로'),
+          (const StagePicker(game: GameKind.number), '놀이터로'),
+          (const CharacterScreen(), '집으로'),
+          (const ZodiacPickerScreen(), '뒤로'),
+          (const BagScreen(), '집으로'),
+        ]) {
+          nav.push(softRoute(page));
+          await settle(t, 800);
+          final back = t.getRect(pressable(label).last);
+          expect(
+            back.inflate(12).overlaps(gear),
+            isFalse,
+            reason: '${page.runtimeType}의 $label',
+          );
+          nav.pop();
+          await settle(t, 800);
+        }
+        expect(t.takeException(), isNull);
+      });
+    }
+  });
+
+  group('상점 물건 칸 (정사각형, 부위 확대)', () {
+    testWidgets('미리보기 영역 표가 실제 아이템 그림과 맞다', (t) async {
+      final wrong = <String>[];
+      await t.runAsync(() async {
+        for (final item in ItemCatalog.all) {
+          final rec = ui.PictureRecorder();
+          final c = Canvas(rec)..translate(100, 100);
+          final art = ItemArt(c);
+          switch (item.slot) {
+            case ItemSlot.head:
+              art.head(item);
+            case ItemSlot.shoes:
+              art.shoes(item);
+            case ItemSlot.accessory:
+              art.accessory(item);
+            case ItemSlot.outfit:
+              art.outfit(item, happy: false);
+            case ItemSlot.back:
+              art
+                ..backBehind(item)
+                ..backFront(item);
+          }
+          final img = await rec.endRecording().toImage(400, 440);
+          final bytes = (await img.toByteData())!;
+          var l = 999, top = 999, r = -1, b = -1;
+          for (var y = 0; y < 440; y++) {
+            for (var x = 0; x < 400; x++) {
+              if (bytes.getUint8((y * 400 + x) * 4 + 3) > 20) {
+                l = min(l, x);
+                r = max(r, x);
+                top = min(top, y);
+                b = max(b, y);
+              }
+            }
+          }
+          final drawn = Rect.fromLTRB(
+            l - 100.0,
+            top - 100.0,
+            r - 99.0,
+            b - 99.0,
+          );
+          final table = ItemThumb.bounds[item.id];
+          if (table == null ||
+              (table.left - drawn.left).abs() > 2 ||
+              (table.top - drawn.top).abs() > 2 ||
+              (table.right - drawn.right).abs() > 2 ||
+              (table.bottom - drawn.bottom).abs() > 2) {
+            wrong.add("'${item.id}': $drawn");
+          }
+        }
+      });
+      expect(wrong, isEmpty, reason: 'ItemThumb.bounds 값을 고쳐 주세요');
+    });
+
+    test('아이템이 칸 안에 온전히 들어가고, 모자·신발은 전신보다 크게 확대된다', () {
+      for (final item in ItemCatalog.all) {
+        final f = ItemThumb.focus(item);
+        expect(f.width, closeTo(f.height, 1e-9), reason: item.id);
+        expect(
+          f.contains(ItemThumb.bounds[item.id]!.topLeft) &&
+              f.contains(
+                ItemThumb.bounds[item.id]!.bottomRight - const Offset(.01, .01),
+              ),
+          isTrue,
+          reason: '${item.id} 잘리지 않음',
+        );
+        // 예전에는 친구 전신·상반신(약 208~252)을 보여 줬다
+        if (item.slot == ItemSlot.head || item.slot == ItemSlot.shoes) {
+          expect(f.width, lessThan(205), reason: '${item.id} 확대');
+        }
+      }
+      // 작은 왕관은 머리 부분만 크게
+      expect(
+        ItemThumb.focus(ItemCatalog.byId('crown_gold')!).width,
+        lessThan(150),
+      );
+    });
+
+    for (final size in sizes) {
+      testWidgets('상점·내 캐릭터 물건 칸은 정사각형이고 한 쪽에 다 들어간다 (${nameOf(size)})', (
+        t,
+      ) async {
+        await setSize(t, size);
+        final s = await makeState();
+        for (var i = 0; i < 80; i++) {
+          await s.rewardCorrect(firstTry: true);
+        }
+        for (final i in ItemCatalog.byTheme(OutfitTheme.robot)) {
+          await s.purchase(i.id);
+        }
+        final most = OutfitTheme.values
+            .map((th) => ItemCatalog.byTheme(th).length)
+            .reduce(max);
+        for (final page in const [ShopScreen(), CharacterScreen()]) {
+          await t.pumpWidget(wrap(s, page));
+          await settle(t);
+          expect(t.takeException(), isNull);
+          final tiles = find.byType(ItemTile);
+          expect(
+            tiles,
+            findsNWidgets(ItemCatalog.byTheme(OutfitTheme.robot).length),
+            reason: '$page',
+          );
+          for (final e in tiles.evaluate()) {
+            final sz = (e.renderObject! as RenderBox).size;
+            expect(
+              (sz.width - sz.height).abs(),
+              lessThan(1.5),
+              reason: '정사각형 $sz',
+            );
+            expect(sz.width, greaterThanOrEqualTo(ItemTile.minWidth));
+          }
+          // 가장 많은 테마도 화살표 없이 한 쪽에 들어간다
+          final grid = find.ancestor(
+            of: tiles.first,
+            matching: find.byType(PagedGrid),
+          );
+          final plan = PagedGrid.plan(
+            area: t.getSize(grid.first),
+            count: most,
+            minCellWidth: ItemTile.minWidth,
+            minCellHeight: ItemTile.minHeight,
+            maxCellWidth: ItemTile.maxWidth,
+            maxCellHeight: ItemTile.maxHeight,
+            arrowSize: ItemTile.arrowSize,
+            gap: 12,
+            cellAspect: ItemTile.aspect,
+          );
+          expect(plan.paged, isFalse, reason: '$page $plan');
+          await t.pumpWidget(const SizedBox());
+        }
+      });
+    }
+
+    test('칸 모양을 고정하면 정사각형으로 나온다', () {
+      final p = PagedGrid.plan(
+        area: const Size(470, 280),
+        count: 5,
+        minCellWidth: 80,
+        minCellHeight: 80,
+        cellAspect: 1,
+      );
+      expect(p.cellWidth, p.cellHeight);
+      expect(p.cols * p.rows, greaterThanOrEqualTo(5));
+      expect(p.cellWidth, greaterThan(120), reason: '두 줄로 크게');
+    });
+
+    testWidgets('상점 테마 탭: 고른 탭은 진한 노랑 둘레와 노랑 면으로 구별된다', (t) async {
+      await setSize(t, const Size(844, 390));
+      final s = await makeState();
+      await t.pumpWidget(wrap(s, const ShopScreen()));
+      await settle(t);
+      BoxDecoration outer(String label) =>
+          t
+                  .widget<AnimatedContainer>(
+                    find.descendant(
+                      of: pressable(label),
+                      matching: find.byType(AnimatedContainer),
+                    ),
+                  )
+                  .decoration!
+              as BoxDecoration;
+      expect(outer('로봇').color, ShopStyle.tabOnRing);
+      expect(outer('공주').color, ShopStyle.surface);
+      await t.tap(pressable('공주'));
+      await settle(t, 400);
+      expect(outer('공주').color, ShopStyle.tabOnRing);
+      expect(outer('로봇').color, ShopStyle.surface);
+      // 둘레 안쪽 면도 고른 탭만 노랑
+      final faces = find.descendant(
+        of: pressable('공주'),
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is Container &&
+              w.decoration is BoxDecoration &&
+              (w.decoration! as BoxDecoration).color == ShopStyle.tabOn,
+        ),
+      );
+      expect(faces, findsOneWidget);
+    });
+  });
+
+  group('친구 고르기 (한 쪽에 6마리)', () {
+    testWidgets('지금 친구가 있는 쪽을 열고, 큰 화살표와 점으로 넘긴다', (t) async {
+      await setSize(t, const Size(844, 390));
+      final s = await makeState();
+      await s.setZodiac(Zodiac.dog);
+      await t.pumpWidget(wrap(s, const ZodiacPickerScreen()));
+      await settle(t);
+      expect(find.byType(ZodiacTile), findsNWidgets(FriendPager.perPage));
+      expect(
+        pressable(Zodiac.dog.look.animal),
+        findsOneWidget,
+        reason: '두 번째 쪽',
+      );
+      expect(pressable(Zodiac.rat.look.animal), findsNothing);
+      final dots = t.widget<PageDots>(find.byType(PageDots));
+      expect((dots.count, dots.current), (2, 1));
+      for (final label in ['앞 쪽', '다음 쪽']) {
+        final sz = t.getSize(pressable(label));
+        expect(sz.width, greaterThanOrEqualTo(52), reason: label);
+        expect(sz.height, greaterThanOrEqualTo(88), reason: label);
+      }
+      // 칸 안에는 이름 글씨가 없고, 고른 친구 이름은 왼쪽 이름표에 크게
+      expect(
+        find.descendant(
+          of: find.byType(ZodiacTile),
+          matching: find.byType(Text),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(ZodiacPickerScreen.namePlateKey),
+          matching: find.text(Zodiac.dog.look.animal),
+        ),
+        findsOneWidget,
+      );
+      await t.tap(pressable('앞 쪽'));
+      await settle(t, 400);
+      expect(pressable(Zodiac.rat.look.animal), findsOneWidget);
+      expect(t.widget<PageDots>(find.byType(PageDots)).current, 0);
+      await t.tap(pressable(Zodiac.rabbit.look.animal));
+      await settle(t, 300);
+      expect(
+        find.descendant(
+          of: find.byKey(ZodiacPickerScreen.namePlateKey),
+          matching: find.text(Zodiac.rabbit.look.animal),
+        ),
+        findsOneWidget,
+      );
+      // 공룡도 같은 방식 (6마리씩 두 쪽)
+      await t.tap(pressable('공룡'));
+      await settle(t, 400);
+      expect(find.byType(ZodiacTile), findsNWidgets(6));
+      expect(pressable(Zodiac.trex.look.animal), findsOneWidget);
+      await t.tap(pressable('다음 쪽'));
+      await settle(t, 400);
+      expect(pressable(Zodiac.dilophosaurus.look.animal), findsOneWidget);
+      expect(t.widget<PageDots>(find.byType(PageDots)).current, 1);
+    });
+
+    for (final size in sizes) {
+      for (final onboarding in [true, false]) {
+        testWidgets(
+          '${onboarding ? '첫 실행' : '친구 바꾸기'}: 얼굴 칸이 크고 넘치지 않는다 (${nameOf(size)})',
+          (t) async {
+            await setSize(t, size);
+            final s = await makeState();
+            await s.setZodiac(Zodiac.spinosaurus);
+            await t.pumpWidget(
+              wrap(s, ZodiacPickerScreen(onboarding: onboarding)),
+            );
+            await settle(t);
+            expect(t.takeException(), isNull);
+            expect(find.byType(ZodiacTile), findsNWidgets(6));
+            expect(
+              pressable(Zodiac.spinosaurus.look.animal),
+              findsOneWidget,
+              reason: '공룡 탭의 두 번째 쪽을 연다',
+            );
+            for (final e in find.byType(ZodiacTile).evaluate()) {
+              final sz = (e.renderObject! as RenderBox).size;
+              expect(sz.width, greaterThanOrEqualTo(70), reason: '$sz');
+              expect((sz.width - sz.height).abs(), lessThan(1), reason: '$sz');
+            }
+          },
+        );
+      }
+    }
+  });
+
+  group('단계 고르기 카드', () {
+    for (final size in sizes) {
+      testWidgets('골인 길은 낮게, 잠긴 카드는 흐리게 + 큰 자물쇠 (${nameOf(size)})', (t) async {
+        await setSize(t, size);
+        final s = await makeState();
+        await t.pumpWidget(wrap(s, const StagePicker(game: GameKind.color)));
+        await settle(t);
+        expect(t.takeException(), isNull);
+        final trail = t.getSize(find.byType(JourneyTrail)).height / size.height;
+        expect(trail, inInclusiveRange(.15, .2), reason: '화면 높이의 15~20%');
+        final open = pressable('1단계');
+        final locked = pressable('2단계 아직 열리지 않음');
+        expect(
+          find.descendant(of: open, matching: find.byType(BigLock)),
+          findsNothing,
+        );
+        expect(
+          find.descendant(of: locked, matching: find.byType(BigLock)),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: locked, matching: find.byType(ColorFiltered)),
+          findsOneWidget,
+          reason: '잠긴 그림은 회색',
+        );
+        final lock = t.getSize(
+          find.descendant(of: locked, matching: find.byType(BigLock)),
+        );
+        final card = t.getSize(locked);
+        expect(
+          max(lock.width / card.width, lock.height / card.height),
+          greaterThan(.4),
+          reason: '자물쇠가 크다',
+        );
+        expect(
+          t.getSize(open).width,
+          greaterThanOrEqualTo(StagePicker.minCardWidth),
+        );
+      });
+    }
   });
 }
