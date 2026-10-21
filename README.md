@@ -1,6 +1,6 @@
 # 알록달록 꼬마 놀이터
 
-만 3세 전후 유아용 숫자·색깔 학습 게임 (Flutter + Flame, iOS / Android / Web 단일 코드베이스).
+만 3세 전후 유아용 숫자·색깔·모양·크기·짝 맞추기 학습 놀이 (Flutter + Flame, iOS / Android / Web 단일 코드베이스).
 
 글을 읽지 못해도 그림·음성만으로 놀 수 있고, 틀려도 혼나지 않는 편안한 놀이를 목표로 합니다.
 회원가입·서버·광고·추적·현금 결제·확률형 뽑기가 없습니다.
@@ -50,10 +50,10 @@ lib/
   main.dart, app.dart          앱 시작(가로 고정), 첫 실행이면 12지신 친구 고르기 → 이름 짓기
   core/palette.dart            파스텔 색상표 (모든 그림이 공유)
   core/economy.dart            코인 보상량·한 판 문제 수 (밸런스 조정은 여기만)
-  data/item_catalog.dart       옷 17테마 70종 + 이전 아이템 환불표
-  data/vehicles.dart           탈것 7종(킥보드·자전거·자동차·오토바이·탱크·비행기·우주선, 종류별 1대),
+  data/item_catalog.dart       옷 17테마 71종 + 이전 아이템 환불표
+  data/vehicles.dart           탈것 7종(열기구·기차·자동차·오토바이·탱크·비행기·우주선, 종류별 1대),
                                색칠 9색(한 번 사면 모든 탈것에), 스티커 10종·6색·최대 12장
-  data/stages.dart             숫자 8단계(4단계부터 섞어 놓고 한 가지만 세기)·색깔 5단계
+  data/stages.dart             숫자 8단계(4단계부터 섞어 놓고 한 가지만 세기)·색깔·모양·크기·짝 맞추기 각 5단계
   data/game_objects.dart       사물 종류, 색 이름, 조사(이/가, 을/를), 셈 단위(개/마리)
   character/zodiac.dart        12지신 동물과 색
   character/animal_painter.dart 자체 제작 납작한 꼬마 동물 그림 (굵은 갈색 외곽선, 레이어 순서 고정)
@@ -64,8 +64,9 @@ lib/
   games/common/game_frame.dart 놀이 공통 틀 (상태줄, 문제 카드, 아래쪽 골인 길, 일시정지, 결과)
   games/number_game/           숫자 놀이 로직(number_round) + 화면
   games/color_game/            색깔 놀이 로직(color_round) + 화면
+  games/shape_game/, size_game/, match_game/  모양·크기·짝 맞추기 (로직 + 화면, 공용 QuizCard·QuizGrid)
   shop/                        꾸미기 상점 (옷 테마 탭 + 탈것 탭)
-  screens/                     메인, 단계 선택(골인 길), 내 캐릭터, 내 가방, 설정, 친구 고르기, 이름
+  screens/                     홈(큰 버튼 3개), 놀이터, 단계 고르기(골인 길), 내 캐릭터, 설정, 친구 고르기, 이름 (내 가방 bag_screen은 홈에서 빠져 지금은 쓰지 않음)
   services/                    저장(버전·백업·복구), 음성/효과음, 앱 상태
 assets/
   fonts/Jua-Regular.ttf        SIL OFL 1.1 (assets/licenses/Jua-OFL.txt, 앱 '오픈소스 라이선스'에 표시)
@@ -87,7 +88,7 @@ assets/
 ## 음성 안내
 
 - 기본은 **녹음 목소리**입니다. 무료 오픈소스 음성 모델 MeloTTS(MIT 라이선스, 한국어 모델)로 만든
-  문장 조각 409개(`assets/voice/*.mp3`, 약 3MB)를 이어 붙여 말합니다.
+  문장 조각 576개(`assets/voice/*.mp3`, 약 4.5MB)를 이어 붙여 말합니다.
   - "빨간 풍선이 / 세 개! / 정말 잘했어요!" 처럼 조각으로 나눠 녹음해서 수천 가지 문장을 만듭니다.
   - 조각 목록은 `lib/services/voice_lines.dart`. 문장을 바꾸면 목록도 맞춰야 합니다
     (`test/state_test.dart`의 '녹음 음성 팩' 테스트가 빠진 조각을 알려 줍니다).
