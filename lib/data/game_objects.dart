@@ -83,3 +83,34 @@ class GameColor {
   @override
   String toString() => id;
 }
+
+/// 모양 놀이(모래놀이터)에 나오는 모양. 그림은 lib/games/shape_game/shape_art.dart.
+enum ShapeKind { circle, triangle, square, star, heart, diamond }
+
+extension ShapeKindInfo on ShapeKind {
+  String get ko => switch (this) {
+    ShapeKind.circle => '동그라미',
+    ShapeKind.triangle => '세모',
+    ShapeKind.square => '네모',
+    ShapeKind.star => '별',
+    ShapeKind.heart => '하트',
+    ShapeKind.diamond => '다이아',
+  };
+
+  /// 동그라미를 / 별을
+  String get object => '$ko${hasBatchim(ko) ? '을' : '를'}';
+
+  /// "이건 세모예요." / "이건 별이에요."
+  String get thisIs => '이건 $ko${hasBatchim(ko) ? '이에요.' : '예요.'}';
+
+  /// 돌려도 모양이 그대로인지 (동그라미)
+  bool get rotationFree => this == ShapeKind.circle;
+}
+
+/// 크기 놀이에서 묻는 쪽
+enum SizeAsk { big, small }
+
+extension SizeAskInfo on SizeAsk {
+  /// '큰' / '작은'
+  String get adjective => this == SizeAsk.big ? '큰' : '작은';
+}

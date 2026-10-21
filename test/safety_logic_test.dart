@@ -609,6 +609,46 @@ void main() {
     });
   });
 
+  group('모양·크기·짝 놀이 진행 (트랙 B 필드)', () {
+    test('v6 저장·불러오기와 ALOK1- 백업 왕복에 모두 들어간다', () async {
+      final s = await stateAt(FakeClock());
+      await s.completeSession(GameKind.shape, 1);
+      await s.completeSession(GameKind.shape, 2);
+      await s.completeSession(GameKind.size, 1);
+      await s.completeSession(GameKind.match, 1);
+
+      final saved = SaveData.decode((s.storage as MemoryStorage).raw);
+      expect(saved.shapeStageUnlocked, 3);
+      expect(saved.shapeStageCleared, {1, 2});
+      expect(saved.sizeStageUnlocked, 2);
+      expect(saved.sizeStageCleared, {1});
+      expect(saved.matchStageUnlocked, 2);
+      expect(saved.matchStageCleared, {1});
+
+      final b = await stateAt(FakeClock());
+      expect(await b.restoreBackup(s.exportBackup()), isNull);
+      for (final g in [GameKind.shape, GameKind.size, GameKind.match]) {
+        expect(b.unlockedStage(g), s.unlockedStage(g), reason: g.name);
+        expect(b.clearedStages(g), s.clearedStages(g), reason: g.name);
+      }
+    });
+
+    test('예전(v5) 저장값·백업에는 없으니 1단계부터, 범위 밖 값은 버린다', () {
+      final old = SaveData.decode(jsonEncode({'version': 5, 'coins': 12}));
+      expect(old.shapeStageUnlocked, 1);
+      expect(old.sizeStageCleared, isEmpty);
+      final r = BackupCode.decode(
+        craft({
+          'version': 6,
+          'shapeStageUnlocked': 999,
+          'matchStageCleared': [1, 999, 'x'],
+        }),
+      );
+      expect(r.data!.shapeStageUnlocked, 1);
+      expect(r.data!.matchStageCleared, {1});
+    });
+  });
+
   group('부모 확인 문제', () {
     test('두 수는 언제나 6~9 (합 12~18)', () {
       final r = Random(1);

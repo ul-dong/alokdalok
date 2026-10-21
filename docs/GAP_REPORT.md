@@ -38,13 +38,13 @@
 | └ 정답·오답 모두 "하나, 둘…" 세기 + 도장 "쾅" + 보기 자리에 큰 숫자, 물건 가리지 않음 | 있음 | `_startCountingHint`, `games/common/stamp.dart`, `Sfx.stamp` |
 | └ 원색, 단계마다 다양, 많으면 줄 맞춤 | 있음 | `objectRows()` 줄 맞춤, 단계별 색 목록 |
 | 색깔 놀이 (그네), 5단계 | 있음 | `games/color_game/`, `Stages.color` 5단계 (`swatchFromStart`, `mixedShapes`) |
-| 모양 놀이 (모래놀이터) | **없음** | 동그라미·세모·네모·별·하트·다이아 / 같은 색·회전·견본과 같은 모양 |
-| 크기 놀이 (시소) | **없음** | 큰 것/작은 것, 3개 이상 "가장", 차이 감소 |
-| 짝 맞추기 (회전목마) | **없음** | 뒤집지 않음, 2→6쌍, 마지막 같은 물건 다른 색 |
+| 모양 놀이 (모래놀이터) | 있음 (트랙 B) | `games/shape_game/` (`shape_round.dart` 순수 로직, `shape_art.dart` 그림), `Stages.shape` 5단계: 쉬운 세 모양+견본 → 여섯 모양 → 같은 색 → 회전 → 견본과 같은 모양 |
+| 크기 놀이 (시소) | 있음 (트랙 B) | `games/size_game/`, `Stages.size` 5단계: 보기 2→2→3→3→4, 3개 이상은 "가장 큰/작은", 이웃 크기 비율 2.2→1.2로 감소 |
+| 짝 맞추기 (회전목마) | 있음 (트랙 B) | `games/match_game/`, `Stages.match` 2→3→4→5→6쌍, 카드 모두 보임, 5단계는 같은 물건 다른 색. 한 문제 = 카드 한 판 |
 | 공통 흐름: 정답→효과음·칭찬·코인→다음, 결과(별·코인, 또 하기/다음 단계/집으로) | 있음 | `game_frame.dart` 결과 화면 |
 | 단계마다 계절 배경·음악 | 있음 | `scene_game.dart` `seasonForStage`, 계절 음악 4곡 |
 | 1번 틀림 그림 힌트, 2번 틀림 정답 빛남, 틀린 보기 흐려짐 | 있음 | 숫자(`wrongPicks`, `glow`, opacity .35), 색깔(`faded`, `glow`) |
-| `GameKind` 확장 | 없음 | `services/game_state.dart` `enum GameKind { number, color }`, `SaveData`에 숫자·색깔 진행만 |
+| `GameKind` 확장 | 있음 (트랙 B) | `enum GameKind { number, color, shape, size, match }` + `title`·`stageCount`. 진입: `games/game_entry.dart` `gameScreen(kind, stageId)`·`openGame(context, kind, stageId)`·`stageArt(kind, stageId)`. `SaveData`에 `shape/size/matchStageUnlocked·Cleared` 추가(버전 5 유지, 없으면 1단계부터) |
 
 ## 3. 캐릭터 (24마리)
 
@@ -121,7 +121,7 @@
 |---|---|---|---|
 | 1 | 목소리 먼저: 모든 문제·칭찬·안내 음성 | 있음 | `services/audio_service.dart`, `voice_lines.dart`, 409 조각 |
 | 1 | 물건·탈것·옷 누르면 이름 말하기 | 부분 | 상점은 있음. 홈 메뉴 버튼·놀이 물건·캐릭터 화면 등 '버튼 이름 읽기' 전반은 소실 |
-| 1 | 큰 노란 "다시 듣기" 62px, 6초마다 통통 | **부분** | 숫자·색깔 화면 `RoundIconButton(size: 52, yellowSoft)`. 62px 아님, 6초 튀기 없음 |
+| 1 | 큰 노란 "다시 듣기" 62px, 6초마다 통통 | **부분** | 모양·크기·짝 놀이는 `games/common/quiz_widgets.dart` `ReplayButton`(62px, 6초마다 통통). 숫자·색깔 화면은 아직 `RoundIconButton(size: 52, yellowSoft)` |
 | 2 | 놀이를 기구 그림으로 고르기, 단계 카드에 문제 그림 | 부분 | 놀이터 없음. 단계 카드 그림은 있음 |
 | 3 | 터치 60~72px, 눌리면 작아짐 + 효과음 | 있음(대부분) | `widgets/common.dart` `Pressable` (scale .94), `RoundIconButton` 기본 72. 다시 듣기 52px 예외. `test_preview/touch_audit_test.dart` |
 | 4 | 가로 밀기 금지, 자동 칸 크기, 많으면 큰 화살표 쪽 넘김 | **부분** | 가로 스크롤 남은 곳: `shop/item_widgets.dart` ThemeTabs, `screens/stage_picker.dart`, `vehicle/garage_screen.dart`. 화살표 페이저 위젯 없음 |
@@ -151,7 +151,7 @@
 | 안드로이드 `install_and_build.command`, arm 전용(armeabi-v7a, arm64-v8a) | **없음** | 스크립트 없음. `android/app/build.gradle.kts`에 ABI 필터 없음, release가 debug 키 서명 |
 | ML Kit Play 서비스 버전(용량 줄이기) | **없음** | `google_mlkit_face_detection` 번들 모델 사용 중 (Android 매니페스트/gradle에 unbundled 설정 없음) |
 | 음성 `gen_voice.command` | 있음 | `tool/voice/gen_voice.command`, `export_lines_test.dart` |
-| 테스트 142개 | 부분 | 현재 120개 |
+| 테스트 142개 | 있음 | 173개 (트랙 B에서 53개 추가: `test/games_logic_test.dart`, `test/games_widget_test.dart`) |
 
 ## 12. iOS 준비 상태
 

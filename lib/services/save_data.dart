@@ -47,7 +47,15 @@ class SaveData {
     required this.stickers,
     required this.paints,
     required this.voiceStyle,
-  });
+    this.shapeStageUnlocked = 1,
+    this.sizeStageUnlocked = 1,
+    this.matchStageUnlocked = 1,
+    Set<int>? shapeStageCleared,
+    Set<int>? sizeStageCleared,
+    Set<int>? matchStageCleared,
+  }) : shapeStageCleared = shapeStageCleared ?? {},
+       sizeStageCleared = sizeStageCleared ?? {},
+       matchStageCleared = matchStageCleared ?? {};
 
   static const int currentVersion = 6;
 
@@ -65,6 +73,14 @@ class SaveData {
   int colorStageUnlocked;
   Set<int> numberStageCleared;
   Set<int> colorStageCleared;
+
+  /// 모양·크기·짝 맞추기 놀이 진행 (없던 예전 저장값은 1단계부터, 버전 변경 없음)
+  int shapeStageUnlocked;
+  int sizeStageUnlocked;
+  int matchStageUnlocked;
+  Set<int> shapeStageCleared;
+  Set<int> sizeStageCleared;
+  Set<int> matchStageCleared;
   int sessionsPlayed;
   int stars;
   bool voiceOn;
@@ -157,6 +173,12 @@ class SaveData {
     'colorStageUnlocked': colorStageUnlocked,
     'numberStageCleared': numberStageCleared.toList()..sort(),
     'colorStageCleared': colorStageCleared.toList()..sort(),
+    'shapeStageUnlocked': shapeStageUnlocked,
+    'sizeStageUnlocked': sizeStageUnlocked,
+    'matchStageUnlocked': matchStageUnlocked,
+    'shapeStageCleared': shapeStageCleared.toList()..sort(),
+    'sizeStageCleared': sizeStageCleared.toList()..sort(),
+    'matchStageCleared': matchStageCleared.toList()..sort(),
     'sessionsPlayed': sessionsPlayed,
     'stars': stars,
     'voiceOn': voiceOn,
@@ -371,6 +393,15 @@ class SaveData {
     d.colorStageUnlocked = _int(json['colorStageUnlocked'], 1, 1, maxColor);
     d.numberStageCleared = _intSet(json['numberStageCleared'], 1, maxNumber);
     d.colorStageCleared = _intSet(json['colorStageCleared'], 1, maxColor);
+    final maxShape = Stages.shape.length;
+    final maxSize = Stages.size.length;
+    final maxMatch = Stages.match.length;
+    d.shapeStageUnlocked = _int(json['shapeStageUnlocked'], 1, 1, maxShape);
+    d.sizeStageUnlocked = _int(json['sizeStageUnlocked'], 1, 1, maxSize);
+    d.matchStageUnlocked = _int(json['matchStageUnlocked'], 1, 1, maxMatch);
+    d.shapeStageCleared = _intSet(json['shapeStageCleared'], 1, maxShape);
+    d.sizeStageCleared = _intSet(json['sizeStageCleared'], 1, maxSize);
+    d.matchStageCleared = _intSet(json['matchStageCleared'], 1, maxMatch);
     d.sessionsPlayed = _int(json['sessionsPlayed'], 0, 0, 1 << 30);
     d.stars = _int(json['stars'], 0, 0, 1 << 30);
     d.voiceOn = json['voiceOn'] is bool ? json['voiceOn'] as bool : true;
