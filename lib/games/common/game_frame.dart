@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../../character/animal_painter.dart';
@@ -182,9 +184,9 @@ class _PauseOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Positioned.fill(
     child: Container(
-      color: const Color(0x663E2A20),
+      color: const Color(0x803E2A20),
       alignment: Alignment.center,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(Gaps.lg),
       child: FitBox(
         child: CreamCard(
           padding: const EdgeInsets.all(28),
@@ -239,17 +241,19 @@ class _BigChoice extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Color.lerp(color, Colors.black, .15)!,
-                offset: const Offset(0, 6),
-              ),
-            ],
+            border: Border.all(color: Colors.white, width: 4),
+            boxShadow: Depth.raised(Depth.edgeOf(color)),
           ),
-          child: Icon(icon, size: 64, color: Colors.white),
+          child: Icon(icon, size: 60, color: Colors.white),
         ),
-        const SizedBox(height: 8),
-        Text(label, style: const TextStyle(fontSize: 22, color: Palette.text)),
+        const SizedBox(height: Gaps.sm + 2),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: TextSizes.label,
+            color: Palette.text,
+          ),
+        ),
       ],
     ),
   );
@@ -286,108 +290,34 @@ class _ResultOverlayState extends State<_ResultOverlay> {
     final s = widget.summary;
     final totalCoins = s.coins + s.reward.total;
     return Positioned.fill(
-      child: Container(
-        color: const Color(0x553E2A20),
-        alignment: Alignment.center,
-        padding: const EdgeInsets.all(20),
-        child: FitBox(
-          child: CreamCard(
-            padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
-            child: SizedBox(
-              width: 380,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    '정말 잘했어요!',
-                    style: TextStyle(fontSize: 34, color: Palette.text),
-                  ),
-                  const SizedBox(height: 6),
-                  CharacterView(
-                    equipped: state.equipped,
-                    cheer: _cheer,
-                    size: 140,
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      for (var i = 0; i < Economy.questionsPerSession; i++)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: StarIcon(
-                            size: 40,
-                            color: i < s.stars
-                                ? Palette.yellow
-                                : const Color(0xFFE6DCCB),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
+      // 어두운 막 대신 따뜻한 크림빛 막: 축하하는 밝은 분위기 (번쩍임 없이 한 번 서서히)
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 260),
+        builder: (_, t, child) => Opacity(opacity: t, child: child),
+        child: Container(
+          color: const Color(0x99FFF1D6),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.all(Gaps.lg),
+          // 작은 화면에서는 줄이고, 큰 화면에서는 조금 키운다 (1.2배까지)
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720, maxHeight: 740),
+            child: FittedBox(
+              child: SizedBox(
+                width: 600,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // 카드 둘레에 흩어진 색종이 (멈춰 있는 그림)
+                    const Positioned.fill(
+                      child: CustomPaint(painter: ConfettiPainter()),
                     ),
-                    decoration: BoxDecoration(
-                      color: Palette.yellowSoft,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CoinIcon(size: 40),
-                        const SizedBox(width: 8),
-                        Text(
-                          '+$totalCoins',
-                          style: const TextStyle(
-                            fontSize: 36,
-                            color: Palette.coinDeep,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (s.reward.unlockedStage != null) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      '${s.reward.unlockedStage}단계가 열렸어요!',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        color: Color(0xFFE0607E),
-                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
+                      child: _card(state, s, totalCoins),
                     ),
                   ],
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _BigChoice(
-                        icon: Icons.replay_rounded,
-                        label: '또 하기',
-                        color: Palette.pink,
-                        onTap: widget.onReplay,
-                      ),
-                      if (widget.onNext != null) ...[
-                        const SizedBox(width: 14),
-                        _BigChoice(
-                          icon: Icons.arrow_forward_rounded,
-                          label: '다음 단계',
-                          color: Palette.mint,
-                          onTap: widget.onNext!,
-                        ),
-                      ],
-                      const SizedBox(width: 14),
-                      _BigChoice(
-                        icon: Icons.home_rounded,
-                        label: '집으로',
-                        color: Palette.sky,
-                        onTap: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -395,6 +325,308 @@ class _ResultOverlayState extends State<_ResultOverlay> {
       ),
     );
   }
+
+  Widget _card(GameState state, SessionSummary s, int totalCoins) => SizedBox(
+    width: 420,
+    child: Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.topCenter,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 30),
+          child: CreamCard(
+            padding: const EdgeInsets.fromLTRB(28, 44, 28, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 캐릭터 뒤에 햇살 무늬
+                SizedBox(
+                  height: 150,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 220,
+                        height: 150,
+                        child: CustomPaint(painter: SunburstPainter()),
+                      ),
+                      CharacterView(
+                        equipped: state.equipped,
+                        cheer: _cheer,
+                        size: 118,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: Gaps.sm),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < Economy.questionsPerSession; i++)
+                      _PopIn(
+                        delayMs: 200 + i * 120,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: StarIcon(
+                            // 가운데 별이 가장 크다 (왕관처럼)
+                            size: 40 + (2 - (i - 2).abs()) * 4.0,
+                            color: i < s.stars
+                                ? Palette.yellow
+                                : const Color(0xFFE6DCCB),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: Gaps.md),
+                _PopIn(
+                  delayMs: 850,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(14, 8, 22, 8),
+                    decoration: chipDecoration(color: Palette.yellowSoft),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CoinIcon(size: 42),
+                        const SizedBox(width: Gaps.sm),
+                        Text(
+                          '+$totalCoins',
+                          style: const TextStyle(
+                            fontSize: TextSizes.hero,
+                            color: Palette.coinDeep,
+                            height: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (s.reward.unlockedStage != null) ...[
+                  const SizedBox(height: Gaps.md),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.lock_open_rounded,
+                        size: 24,
+                        color: Color(0xFFE0607E),
+                      ),
+                      const SizedBox(width: Gaps.xs),
+                      Text(
+                        '${s.reward.unlockedStage}단계가 열렸어요!',
+                        style: const TextStyle(
+                          fontSize: TextSizes.label,
+                          color: Color(0xFFE0607E),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: Gaps.lg + 2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _BigChoice(
+                      icon: Icons.replay_rounded,
+                      label: '또 하기',
+                      color: Palette.pink,
+                      onTap: widget.onReplay,
+                    ),
+                    if (widget.onNext != null) ...[
+                      const SizedBox(width: Gaps.lg),
+                      _BigChoice(
+                        icon: Icons.arrow_forward_rounded,
+                        label: '다음 단계',
+                        color: Palette.mint,
+                        onTap: widget.onNext!,
+                      ),
+                    ],
+                    const SizedBox(width: Gaps.lg),
+                    _BigChoice(
+                      icon: Icons.home_rounded,
+                      label: '집으로',
+                      color: Palette.sky,
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        // 위에 걸린 리본 이름표
+        const Positioned(top: 0, child: _Ribbon(text: '정말 잘했어요!')),
+      ],
+    ),
+  );
+}
+
+/// 한 번만 통 튀어나온다 (계속 움직이지 않는다)
+class _PopIn extends StatelessWidget {
+  const _PopIn({required this.delayMs, required this.child});
+  final int delayMs;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = delayMs + 360;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: total),
+      builder: (_, t, c) {
+        final local = ((t * total - delayMs) / 360).clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: Curves.easeOutBack.transform(local),
+          child: c,
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+/// 분홍 리본 이름표 (양 끝이 V자로 갈라진 띠)
+class _Ribbon extends StatelessWidget {
+  const _Ribbon({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    painter: const _RibbonPainter(),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(56, 10, 56, 16),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: TextSizes.heading + 2,
+          color: Colors.white,
+          height: 1.1,
+          shadows: [Shadow(color: Color(0x55A8405E), offset: Offset(0, 2))],
+        ),
+      ),
+    ),
+  );
+}
+
+class _RibbonPainter extends CustomPainter {
+  const _RibbonPainter();
+
+  @override
+  void paint(Canvas c, Size s) {
+    final w = s.width, h = s.height - 6;
+    final ol = Paint()
+      ..color = Palette.outline
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeJoin = StrokeJoin.round;
+    // 뒤쪽 꼬리 (조금 어둡게)
+    const tailColor = Color(0xFFE07C9C);
+    for (final left in [true, false]) {
+      final x0 = left ? 0.0 : w;
+      final d = left ? 1.0 : -1.0;
+      final tail = Path()
+        ..moveTo(x0 + d * 30, 12)
+        ..lineTo(x0, 12)
+        ..lineTo(x0 + d * 14, h * .5 + 10)
+        ..lineTo(x0, h + 6)
+        ..lineTo(x0 + d * 30, h + 6)
+        ..close();
+      c.drawPath(tail, Paint()..color = tailColor);
+      c.drawPath(tail, ol);
+    }
+    final band = RRect.fromRectAndRadius(
+      Rect.fromLTWH(20, 0, w - 40, h),
+      const Radius.circular(14),
+    );
+    c.drawRRect(band.shift(const Offset(0, 4)), Paint()..color = tailColor);
+    c.drawRRect(band, Paint()..color = Palette.pink);
+    c.drawRRect(band, ol);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// 캐릭터 뒤의 햇살 무늬 (멈춰 있는 옅은 노란 빛살)
+class SunburstPainter extends CustomPainter {
+  const SunburstPainter();
+
+  @override
+  void paint(Canvas c, Size s) {
+    final o = Offset(s.width / 2, s.height * .55);
+    final r = s.width * .55;
+    c.drawCircle(o, r * .5, Paint()..color = const Color(0x55FFE08A));
+    final ray = Paint()..color = const Color(0x33FFCF4D);
+    for (var i = 0; i < 12; i++) {
+      final a = i * pi / 6;
+      final p = Path()
+        ..moveTo(o.dx, o.dy)
+        ..lineTo(o.dx + cos(a - .13) * r, o.dy + sin(a - .13) * r)
+        ..lineTo(o.dx + cos(a + .13) * r, o.dy + sin(a + .13) * r)
+        ..close();
+      c.drawPath(p, ray);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// 결과 카드 둘레의 색종이·별 (정해진 자리, 움직이지 않음)
+class ConfettiPainter extends CustomPainter {
+  const ConfettiPainter();
+
+  static const _colors = [
+    Color(0xFFF59AB5),
+    Color(0xFFFFCF4D),
+    Color(0xFF8ED6B5),
+    Color(0xFF6FB7E8),
+    Color(0xFFC6B5E8),
+    Color(0xFFFF9A5A),
+  ];
+
+  @override
+  void paint(Canvas c, Size s) {
+    final rnd = Random(3);
+    for (var i = 0; i < 34; i++) {
+      // 가운데 카드 자리(가로 420)는 비우고 양옆에만
+      final left = i.isEven;
+      final x = left
+          ? 8 + rnd.nextDouble() * (s.width / 2 - 230)
+          : s.width / 2 + 222 + rnd.nextDouble() * (s.width / 2 - 230);
+      final y = 10 + rnd.nextDouble() * (s.height - 20);
+      final col = _colors[i % _colors.length];
+      c.save();
+      c.translate(x, y);
+      c.rotate(rnd.nextDouble() * pi);
+      switch (i % 3) {
+        case 0:
+          c.drawRRect(
+            RRect.fromRectAndRadius(
+              const Rect.fromLTWH(-7, -3.5, 14, 7),
+              const Radius.circular(2),
+            ),
+            Paint()..color = col,
+          );
+        case 1:
+          c.drawCircle(Offset.zero, 5, Paint()..color = col);
+        default:
+          final p = Path();
+          for (var k = 0; k < 10; k++) {
+            final a = -pi / 2 + k * pi / 5;
+            final rr = k.isEven ? 9.0 : 4.0;
+            k == 0
+                ? p.moveTo(cos(a) * rr, sin(a) * rr)
+                : p.lineTo(cos(a) * rr, sin(a) * rr);
+          }
+          c.drawPath(p..close(), Paint()..color = col);
+      }
+      c.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// 정답 때 "+2" 코인이 위로 떠오르는 작은 표시
