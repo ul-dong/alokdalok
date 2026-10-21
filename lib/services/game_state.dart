@@ -230,7 +230,7 @@ class GameState extends ChangeNotifier {
   List<PlacedSticker> stickersOf(String vehicleId) =>
       List.unmodifiable(_d.stickers[vehicleId] ?? const []);
 
-  /// 탈것도 게임 코인으로만 산다. 사면 바로 탄다.
+  /// 탈것도 게임 코인으로만 산다. 타는 것은 "탑승!"을 눌러야 한다 ([setRide]).
   Future<PurchaseResult> buyVehicle(String id) async {
     final v = Vehicles.byId(id);
     if (v == null) return PurchaseResult.unknownItem;
@@ -238,7 +238,6 @@ class GameState extends ChangeNotifier {
     if (_d.coins < v.price) return PurchaseResult.notEnoughCoins;
     _d.coins -= v.price;
     _d.owned.add(id);
-    _d.ride = id;
     await _commit();
     return PurchaseResult.ok;
   }

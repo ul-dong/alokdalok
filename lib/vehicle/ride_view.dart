@@ -4,13 +4,15 @@ import 'package:flutter/material.dart';
 
 import '../core/slow_clock.dart';
 
+import '../character/animal_painter.dart';
 import '../character/character_view.dart';
 import '../data/vehicles.dart';
 import '../widgets/common.dart';
 import 'vehicle_painter.dart';
 
 /// 지금 고른 탈것에 내 친구가 탄 모습. 탈것이 없으면 걸어 다니는 친구를 보여 준다.
-/// [cheer]가 바뀌면 한 번 폴짝, [moving]이면 바퀴가 굴러가고 불꽃이 흔들린다.
+/// 탄 친구는 가는 쪽(오른쪽)을 보고 앉는다 (`RiderPose`, 24마리 공통 변환).
+/// [cheer]가 바뀌면 웃으며 한 번 폴짝, [moving]이면 바퀴가 굴러가고 불꽃이 흔들린다.
 class RideView extends StatefulWidget {
   const RideView({
     super.key,
@@ -128,6 +130,7 @@ class _RideViewState extends State<RideView> with TickerProviderStateMixin {
                   items: items,
                   phase: widget.moving ? (_loopT * 32).floorToDouble() / 32 : 0,
                   moving: widget.moving,
+                  mood: _hop.isAnimating ? CharMood.happy : CharMood.normal,
                 ),
               ),
             ),

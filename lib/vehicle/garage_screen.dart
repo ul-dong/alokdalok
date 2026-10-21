@@ -94,6 +94,17 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
     }
   }
 
+  /// 색칠에서 코인이 모자란 색을 눌렀을 때 (모으자는 안내와 진행 막대를 보여 준다)
+  VehiclePaint? wanted;
+
+  void _pickVehicle(GameState state, Vehicle v) {
+    setState(() {
+      vehicleId = v.id;
+      wanted = null;
+    });
+    state.audio.say(v.name);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
@@ -102,158 +113,258 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
 
     return LandscapePage(
       background: const SceneBackground(groundLevel: .9),
-      child: Column(
-        children: [
-          Row(
+      child: LayoutBuilder(
+        builder: (context, page) {
+          // 좁은 화면에서는 꾸미기 판을 넓게 (스티커 칸이 너무 작아지지 않게)
+          final narrow = page.maxWidth < 700;
+          return Column(
             children: [
-              RoundIconButton(
-                icon: Icons.home_rounded,
-                label: '집으로',
-                size: 60,
-                onTap: () => Navigator.of(context).pop(),
-              ),
-              const SizedBox(width: 10),
-              const FitBox(
-                child: Text(
-                  '탈것 꾸미기',
-                  style: TextStyle(fontSize: 28, color: Palette.text),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      for (final m in mine)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Pressable(
-                            onTap: () => setState(() => vehicleId = m.id),
-                            semanticLabel: m.name,
-                            child: Container(
-                              width: 84,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                color: Palette.cream,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: m.id == vehicleId
-                                      ? Palette.yellow
-                                      : Colors.white,
-                                  width: 4,
-                                ),
-                              ),
-                              child: CustomPaint(
-                                painter: VehiclePainter(
-                                  vehicle: m,
-                                  paint: state.paintOf(m.id),
-                                  stickers: state.stickersOf(m.id),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: v == null
-                ? Center(
-                    child: CreamCard(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            '상점에서 탈것을 사면\n스티커를 붙이고 색칠할 수 있어요',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 22,
-                              color: Palette.textSoft,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          PillButton(
-                            color: Palette.yellow,
-                            edge: Palette.coinDeep,
-                            onTap: () => Navigator.of(context).pushReplacement(
-                              softRoute(
-                                const ShopScreen(startWithVehicles: true),
-                              ),
-                            ),
-                            semanticLabel: '상점 가기',
-                            child: const Text(
-                              '상점 가기',
-                              style: TextStyle(
-                                fontSize: 22,
-                                color: Palette.text,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+              SizedBox(
+                height: 60,
+                child: Row(
+                  children: [
+                    RoundIconButton(
+                      icon: Icons.home_rounded,
+                      label: '집으로',
+                      size: 60,
+                      onTap: () => Navigator.of(context).pop(),
                     ),
-                  )
-                : Row(
-                    children: [
-                      // 왼쪽: 탈것 (누르면 스티커가 붙는다)
-                      Expanded(
-                        flex: 6,
-                        child: Column(
-                          children: [
-                            Expanded(
-                              child: LayoutBuilder(
-                                builder: (context, c) {
-                                  final w = min(c.maxWidth, c.maxHeight * 1.5);
-                                  return Center(
-                                    child: GestureDetector(
-                                      behavior: HitTestBehavior.opaque,
-                                      onTapUp: (d) => painting
-                                          ? null
-                                          : _tap(
-                                              d.localPosition,
-                                              Size(w, w * 2 / 3),
-                                              v,
-                                            ),
-                                      child: Semantics(
-                                        label: '${v.name}, 눌러서 스티커 붙이기',
-                                        child: RideView(
-                                          width: w,
-                                          cheer: cheer,
-                                          vehicleId: v.id,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            Text(
-                              painting
-                                  ? '오른쪽에서 색을 골라요'
-                                  : eraser
-                                  ? '지울 스티커를 눌러요'
-                                  : '탈것을 눌러서 붙여요',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                color: Palette.textSoft,
-                              ),
-                            ),
-                          ],
+                    const SizedBox(width: 10),
+                    if (!narrow) ...[
+                      const FitBox(
+                        child: Text(
+                          '탈것 꾸미기',
+                          style: TextStyle(fontSize: 28, color: Palette.text),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // 오른쪽: 스티커·색·도구
-                      Expanded(flex: 4, child: _panel(state, v)),
                     ],
-                  ),
+                    Expanded(child: _chooser(state, mine)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: v == null
+                    ? _noVehicle()
+                    : Row(
+                        children: [
+                          // 왼쪽: 탈것 (누르면 스티커가 붙는다) + 탑승
+                          Expanded(
+                            flex: narrow ? 4 : 6,
+                            child: Column(
+                              children: [
+                                Expanded(child: _vehicleView(v)),
+                                const SizedBox(height: 6),
+                                SizedBox(
+                                  height: 56,
+                                  child: _bottomBar(state, v),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // 오른쪽: 스티커·색
+                          Expanded(
+                            flex: narrow ? 6 : 4,
+                            child: _panel(state, v),
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// 가진 탈것 고르기. 모두 들어가면 한 줄로, 아니면 큰 화살표로 하나씩 넘긴다 (밀어서 보기 없음).
+  Widget _chooser(GameState state, List<Vehicle> mine) {
+    if (mine.isEmpty) return const SizedBox();
+    Widget chip(Vehicle m, double w) => Pressable(
+      onTap: () => _pickVehicle(state, m),
+      semanticLabel: m.name,
+      child: Container(
+        width: w,
+        height: 56,
+        decoration: BoxDecoration(
+          color: Palette.cream,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: m.id == vehicleId ? Palette.yellow : Colors.white,
+            width: 4,
+          ),
+        ),
+        child: CustomPaint(
+          painter: VehiclePainter(
+            vehicle: m,
+            paint: state.paintOf(m.id),
+            stickers: state.stickersOf(m.id),
+          ),
+        ),
+      ),
+    );
+    return LayoutBuilder(
+      builder: (context, c) {
+        const chipW = 76.0, gap = 8.0;
+        if (mine.length * (chipW + gap) <= c.maxWidth) {
+          return Row(
+            children: [
+              for (final m in mine)
+                Padding(
+                  padding: const EdgeInsets.only(right: gap),
+                  child: chip(m, chipW),
+                ),
+            ],
+          );
+        }
+        final i = max(0, mine.indexWhere((m) => m.id == vehicleId));
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            RoundIconButton(
+              icon: Icons.chevron_left_rounded,
+              label: '앞 탈것',
+              size: 56,
+              onTap: () => _pickVehicle(
+                state,
+                mine[(i - 1 + mine.length) % mine.length],
+              ),
+            ),
+            const SizedBox(width: gap),
+            chip(mine[i], min(110.0, max(chipW, c.maxWidth - 2 * (56 + gap)))),
+            const SizedBox(width: gap),
+            RoundIconButton(
+              icon: Icons.chevron_right_rounded,
+              label: '다음 탈것',
+              size: 56,
+              onTap: () => _pickVehicle(state, mine[(i + 1) % mine.length]),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _noVehicle() => Center(
+    child: CreamCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            '상점에서 탈것을 사면\n스티커를 붙이고 색칠할 수 있어요',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 22, color: Palette.textSoft),
+          ),
+          const SizedBox(height: 12),
+          PillButton(
+            color: Palette.yellow,
+            edge: Palette.coinDeep,
+            onTap: () => Navigator.of(context).pushReplacement(
+              softRoute(const ShopScreen(startWithVehicles: true)),
+            ),
+            semanticLabel: '상점 가기',
+            child: const Text(
+              '상점 가기',
+              style: TextStyle(fontSize: 22, color: Palette.text),
+            ),
           ),
         ],
       ),
+    ),
+  );
+
+  Widget _vehicleView(Vehicle v) => LayoutBuilder(
+    builder: (context, c) {
+      final w = min(c.maxWidth, c.maxHeight * 1.5);
+      return Center(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapUp: (d) =>
+              painting ? null : _tap(d.localPosition, Size(w, w * 2 / 3), v),
+          child: Semantics(
+            label: '${v.name}, 눌러서 스티커 붙이기',
+            child: RideView(width: w, cheer: cheer, vehicleId: v.id),
+          ),
+        ),
+      );
+    },
+  );
+
+  /// 탈것 아래: 지우개(스티커) 또는 코인 안내(색칠) + 탑승 버튼
+  Widget _bottomBar(GameState state, Vehicle v) {
+    final riding = state.ride == v.id;
+    final short =
+        painting && wanted != null && state.coins < Vehicles.paintPrice;
+    return Row(
+      children: [
+        Expanded(
+          flex: short ? 3 : 1,
+          child: short
+              ? _NeedCoins(coins: state.coins, price: Vehicles.paintPrice)
+              : painting
+              ? const Center(
+                  child: FitBox(
+                    child: Text(
+                      '오른쪽에서 색을 골라요',
+                      style: TextStyle(fontSize: 18, color: Palette.textSoft),
+                    ),
+                  ),
+                )
+              : PillButton(
+                  height: 52,
+                  glow: eraser,
+                  onTap: () => setState(() => eraser = !eraser),
+                  semanticLabel: '지우개',
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: const FitBox(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.auto_fix_normal_rounded,
+                          size: 28,
+                          color: Palette.text,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          '지우개',
+                          style: TextStyle(fontSize: 20, color: Palette.text),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: short ? 2 : 1,
+          child: PillButton(
+            height: 52,
+            // 지금 고른 탈것에 안 타고 있으면 노랗게 반짝이며 "탑승"을 눌러 보라고 알려 준다
+            color: riding ? Palette.mint : Palette.yellow,
+            edge: riding ? const Color(0xFF6DB894) : Palette.coinDeep,
+            glow: !riding,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            onTap: () {
+              state.setRide(riding ? null : v.id);
+              if (!riding) state.audio.say('출발!');
+              setState(() => cheer++);
+            },
+            semanticLabel: riding ? '내리기' : '탑승',
+            child: FitBox(
+              child: Text(
+                riding ? '타는 중' : '탑승!',
+                style: TextStyle(
+                  fontSize: 20,
+                  color: riding ? Colors.white : Palette.text,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -272,9 +383,11 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
                       ? const Color(0xFFD9718F)
                       : Palette.creamDeep,
                   semanticLabel: label,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   onTap: () => setState(() {
                     painting = paintMode;
                     eraser = false;
+                    wanted = null;
                   }),
                   child: FitBox(
                     child: Text(
@@ -298,11 +411,11 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
     ],
   );
 
-  /// 색칠: 한 번 산 색은 가진 모든 탈것에 칠할 수 있다. 처음 색은 공짜.
+  /// 색칠: 탈것마다 색을 따로 산다 (한 색 10코인). 처음 색은 공짜.
   Widget _paintPanel(GameState state, Vehicle v) {
     final current = state.paintOf(v.id).id;
     return CreamCard(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(8),
       child: LayoutBuilder(
         builder: (context, c) {
           const cols = 3, rows = 3, gap = 8.0;
@@ -311,19 +424,22 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
             (c.maxHeight - gap * (rows - 1)) / rows,
           );
           return Center(
-            child: Wrap(
-              spacing: gap,
-              runSpacing: gap,
-              children: [
-                for (final p in Vehicles.paints)
-                  _PaintChip(
-                    paint: p,
-                    size: cell,
-                    selected: p.id == current,
-                    usable: state.canPaint(v.id, p.id),
-                    onTap: () => _choosePaint(state, v, p),
-                  ),
-              ],
+            child: SizedBox(
+              width: cell * cols + gap * (cols - 1),
+              child: Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  for (final p in Vehicles.paints)
+                    _PaintChip(
+                      paint: p,
+                      size: cell,
+                      selected: p.id == current,
+                      usable: state.canPaint(v.id, p.id),
+                      onTap: () => _choosePaint(state, v, p),
+                    ),
+                ],
+              ),
             ),
           );
         },
@@ -333,6 +449,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
 
   Future<void> _choosePaint(GameState state, Vehicle v, VehiclePaint p) async {
     if (state.canPaint(v.id, p.id)) {
+      setState(() => wanted = null);
       await state.setPaint(v.id, p.id);
       state.audio.play(Sfx.tap);
       state.audio.say('${p.name}으로 칠했어요!');
@@ -340,11 +457,14 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
       return;
     }
     if (state.coins < Vehicles.paintPrice) {
+      // 결제 화면 대신 놀이로 모으자고 안내한다 (탈것 아래에 진행 막대)
+      setState(() => wanted = p);
       state.audio.say(
         '${p.name}은 코인 ${Vehicles.paintPrice}개가 필요해요. 놀이하면서 모아 볼까요?',
       );
       return;
     }
+    setState(() => wanted = null);
     state.audio.say(p.name);
     final yes = await confirmBuy(
       context,
@@ -367,156 +487,146 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
     }
   }
 
+  /// 스티커 10종(5 x 2)과 색 6가지를 한 화면에. 밀어서 보기 없이 칸 크기를 맞춘다.
   Widget _stickerPanel(GameState state, Vehicle v) => CreamCard(
-    padding: const EdgeInsets.all(10),
-    child: Column(
-      children: [
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, c) {
-              const cols = 5, rows = 2, gap = 6.0;
-              // 아이 손가락으로 누르기 좋게 최소 52. 자리가 모자라면 위아래로 밀어서 본다.
-              final cell = max(
-                52.0,
-                min(
-                  (c.maxWidth - gap * (cols - 1)) / cols,
-                  (c.maxHeight - gap) / rows,
-                ),
-              );
-              return SingleChildScrollView(
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: gap,
-                  runSpacing: gap,
-                  children: [
-                    for (final k in StickerKind.values)
-                      Pressable(
-                        onTap: () => setState(() {
-                          kind = k;
-                          eraser = false;
-                        }),
-                        semanticLabel: '스티커',
-                        child: Container(
-                          width: cell,
-                          height: cell,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: !eraser && k == kind
-                                  ? Palette.pink
-                                  : Palette.creamDeep,
-                              width: !eraser && k == kind ? 4 : 2,
-                            ),
-                          ),
-                          child: StickerIcon(
-                            kind: k,
-                            color: color,
-                            size: cell * .9,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              );
-            },
+    padding: const EdgeInsets.all(6),
+    child: LayoutBuilder(
+      builder: (context, c) {
+        const cols = 5, rows = 2, gap = 6.0;
+        final n = Vehicles.stickerColors.length;
+        // 색 동그라미는 스티커 칸의 0.9배(위아래 2씩 더 누를 수 있게).
+        // 스티커 두 줄 + 색 한 줄이 높이에 들어가게.
+        final cell = min(
+          (c.maxWidth - gap * (cols - 1)) / cols,
+          min(
+            (c.maxHeight - gap * 2 - 8) / (rows + .9),
+            (c.maxWidth - gap * n) / n / .9,
           ),
-        ),
-        const SizedBox(height: 8),
-        LayoutBuilder(
-          builder: (context, c) {
-            final n = Vehicles.stickerColors.length;
-            final d = max(48.0, min(56.0, (c.maxWidth / n) - 6));
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
+        ).clamp(20.0, 90.0);
+        final dot = cell * .9;
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: cell * cols + gap * (cols - 1),
+              child: Wrap(
+                spacing: gap,
+                runSpacing: gap,
                 children: [
-                  for (final col in Vehicles.stickerColors)
+                  for (final k in StickerKind.values)
                     Pressable(
                       onTap: () => setState(() {
-                        color = col;
+                        kind = k;
                         eraser = false;
                       }),
-                      semanticLabel: '색',
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 3),
-                        child: Container(
-                          width: d,
-                          height: d,
-                          decoration: BoxDecoration(
-                            color: col,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: col == color && !eraser
-                                  ? Palette.text
-                                  : Colors.white,
-                              width: 3,
-                            ),
+                      semanticLabel: '스티커',
+                      child: Container(
+                        width: cell,
+                        height: cell,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(cell * .25),
+                          border: Border.all(
+                            color: !eraser && k == kind
+                                ? Palette.pink
+                                : Palette.creamDeep,
+                            width: !eraser && k == kind ? 4 : 2,
                           ),
+                        ),
+                        child: StickerIcon(
+                          kind: k,
+                          color: color,
+                          size: cell * .9,
                         ),
                       ),
                     ),
                 ],
               ),
-            );
-          },
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: PillButton(
-                height: 56,
-                glow: eraser,
-                onTap: () => setState(() => eraser = !eraser),
-                semanticLabel: '지우개',
-                child: const FitBox(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.auto_fix_normal_rounded,
-                        size: 28,
-                        color: Palette.text,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        '지우개',
-                        style: TextStyle(fontSize: 20, color: Palette.text),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: PillButton(
-                height: 56,
-                // 지금 고른 탈것에 안 타고 있으면 노랗게 반짝이며 "탑승"을 눌러 보라고 알려 준다
-                color: state.ride == v.id ? Palette.mint : Palette.yellow,
-                edge: state.ride == v.id
-                    ? const Color(0xFF6DB894)
-                    : Palette.coinDeep,
-                glow: state.ride != v.id,
-                onTap: () {
-                  state.setRide(state.ride == v.id ? null : v.id);
-                  if (state.ride == v.id) state.audio.say('출발!');
-                  setState(() => cheer++);
-                },
-                semanticLabel: state.ride == v.id ? '내리기' : '탑승',
+            const SizedBox(height: gap),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (final col in Vehicles.stickerColors)
+                  Pressable(
+                    onTap: () => setState(() {
+                      color = col;
+                      eraser = false;
+                    }),
+                    semanticLabel: '색',
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: gap / 2,
+                        vertical: 2,
+                      ),
+                      child: Container(
+                        width: dot,
+                        height: dot,
+                        decoration: BoxDecoration(
+                          color: col,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: col == color && !eraser
+                                ? Palette.text
+                                : Colors.white,
+                            width: 3,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+/// 코인이 모자랄 때: "놀이하면서 코인을 모아요" + 진행 막대 (결제 화면으로 보내지 않는다)
+class _NeedCoins extends StatelessWidget {
+  const _NeedCoins({required this.coins, required this.price});
+  final int coins;
+  final int price;
+
+  @override
+  Widget build(BuildContext context) => CreamCard(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    radius: 26,
+    child: Row(
+      children: [
+        const CoinIcon(size: 28),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Flexible(
                 child: FitBox(
+                  alignment: Alignment.centerLeft,
                   child: Text(
-                    state.ride == v.id ? '타는 중' : '탑승!',
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: state.ride == v.id ? Colors.white : Palette.text,
+                    '놀이하면서 코인을 모아요 ($coins/$price)',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Palette.textSoft,
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: (coins / price).clamp(0.0, 1.0),
+                  minHeight: 10,
+                  color: Palette.coin,
+                  backgroundColor: Palette.creamDeep,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     ),

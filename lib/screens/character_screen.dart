@@ -7,6 +7,7 @@ import '../data/item_catalog.dart';
 import '../games/common/scene_game.dart';
 import '../data/vehicles.dart';
 import '../shop/item_widgets.dart';
+import '../vehicle/fit_grid.dart';
 import '../vehicle/garage_screen.dart';
 import '../vehicle/vehicle_painter.dart';
 import '../shop/shop_screen.dart';
@@ -208,15 +209,30 @@ class _CharacterScreenState extends State<CharacterScreen> with ScreenMusic {
   }
 }
 
-/// 내 탈것: 누르면 타고/내리고, 꾸미기 버튼으로 스티커·색칠하러 간다.
-class _VehicleShelf extends StatelessWidget {
+/// 내 탈것: 누르면 고르고(이름을 말해 준다), 아래 "탑승!"을 눌러야 탄다.
+/// 꾸미기 버튼으로 스티커·색칠하러 간다.
+class _VehicleShelf extends StatefulWidget {
   const _VehicleShelf({required this.vehicles, required this.onChanged});
   final List<Vehicle> vehicles;
   final VoidCallback onChanged;
 
   @override
+  State<_VehicleShelf> createState() => _VehicleShelfState();
+}
+
+class _VehicleShelfState extends State<_VehicleShelf> {
+  String? selected;
+
+  @override
+  void initState() {
+    super.initState();
+    selected = AppScope.read(context).ride;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final vehicles = widget.vehicles;
     if (vehicles.isEmpty) {
       return _Empty(
         onShop: () => Navigator.of(
@@ -224,78 +240,154 @@ class _VehicleShelf extends StatelessWidget {
         ).pushReplacement(softRoute(const ShopScreen(startWithVehicles: true))),
       );
     }
-    return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 220,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.15,
-      ),
-      itemCount: vehicles.length,
-      itemBuilder: (_, i) {
-        final v = vehicles[i];
-        final riding = state.ride == v.id;
-        return Container(
-          decoration: BoxDecoration(
-            color: Palette.cream,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: riding ? const Color(0xFF5CBF8A) : Colors.white,
-              width: riding ? 5 : 3,
-            ),
-            boxShadow: const [
-              BoxShadow(color: Palette.creamDeep, offset: Offset(0, 5)),
-            ],
+    final picked = selected == null ? null : Vehicles.byId(selected!);
+    return Column(
+      children: [
+        Expanded(
+          // 가진 탈것이 한 화면에 모두 들어가게 (밀어서 보기 없음)
+          child: FitGrid(
+            count: vehicles.length,
+            aspect: 1.4,
+            itemBuilder: (context, i) {
+              final v = vehicles[i];
+              return _VehicleCard(
+                vehicle: v,
+                selected: v.id == selected,
+                riding: state.ride == v.id,
+                onTap: () {
+                  setState(() => selected = v.id);
+                  state.audio.say(v.name);
+                },
+              );
+            },
           ),
-          padding: const EdgeInsets.all(6),
-          child: Column(
-            children: [
-              Expanded(
-                child: Pressable(
-                  onTap: () {
-                    state.setRide(riding ? null : v.id);
-                    onChanged();
-                  },
-                  semanticLabel: riding ? '${v.name} 내리기' : '${v.name} 타기',
-                  child: CustomPaint(
-                    size: Size.infinite,
-                    painter: VehiclePainter(
-                      vehicle: v,
-                      paint: state.paintOf(v.id),
-                      stickers: state.stickersOf(v.id),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 60,
+          child: picked == null
+              ? const Center(
+                  child: FitBox(
+                    child: Text(
+                      '타고 싶은 걸 눌러요',
+                      style: TextStyle(fontSize: 22, color: Palette.textSoft),
                     ),
                   ),
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: PillButton(
+                        height: 56,
+                        color: state.ride == picked.id
+                            ? Colors.white
+                            : Palette.mint,
+                        edge: state.ride == picked.id
+                            ? Palette.creamDeep
+                            : const Color(0xFF6DB894),
+                        glow: state.ride != picked.id,
+                        onTap: () {
+                          final boarding = state.ride != picked.id;
+                          state.setRide(boarding ? picked.id : null);
+                          if (boarding) state.audio.say('출발!');
+                          widget.onChanged();
+                        },
+                        semanticLabel: state.ride == picked.id ? '내리기' : '탑승',
+                        child: FitBox(
+                          child: Text(
+                            state.ride == picked.id ? '내리기' : '탑승!',
+                            style: TextStyle(
+                              fontSize: 24,
+                              color: state.ride == picked.id
+                                  ? Palette.text
+                                  : Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: PillButton(
+                        height: 56,
+                        color: Palette.yellowSoft,
+                        edge: const Color(0xFFF0D88A),
+                        onTap: () => Navigator.of(
+                          context,
+                        ).push(softRoute(GarageScreen(vehicleId: picked.id))),
+                        semanticLabel: '탈것 꾸미기',
+                        child: const FitBox(
+                          child: Text(
+                            '꾸미기',
+                            style: TextStyle(fontSize: 24, color: Palette.text),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 탈것 한 칸: 고르면 분홍 테두리, 타고 있으면 초록 체크
+class _VehicleCard extends StatelessWidget {
+  const _VehicleCard({
+    required this.vehicle,
+    required this.selected,
+    required this.riding,
+    required this.onTap,
+  });
+  final Vehicle vehicle;
+  final bool selected;
+  final bool riding;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    return Pressable(
+      onTap: onTap,
+      semanticLabel: riding ? '${vehicle.name}, 타는 중' : vehicle.name,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Palette.cream,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? Palette.pink : Colors.white,
+            width: selected ? 5 : 3,
+          ),
+          boxShadow: const [
+            BoxShadow(color: Palette.creamDeep, offset: Offset(0, 4)),
+          ],
+        ),
+        padding: const EdgeInsets.all(4),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: VehiclePainter(
+                  vehicle: vehicle,
+                  paint: state.paintOf(vehicle.id),
+                  stickers: state.stickersOf(vehicle.id),
                 ),
               ),
-              Row(
-                children: [
-                  Icon(
-                    riding
-                        ? Icons.check_circle_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    color: riding ? const Color(0xFF5CBF8A) : Palette.textSoft,
-                    size: 26,
-                  ),
-                  const Spacer(),
-                  PillButton(
-                    height: 44,
-                    color: Palette.yellowSoft,
-                    edge: const Color(0xFFF0D88A),
-                    onTap: () =>
-                        Navigator.of(context)
-                            .push(softRoute(GarageScreen(vehicleId: v.id))),
-                    semanticLabel: '탈것 꾸미기',
-                    child: const Text(
-                      '꾸미기',
-                      style: TextStyle(fontSize: 18, color: Palette.text),
-                    ),
-                  ),
-                ],
+            ),
+            if (riding)
+              const Positioned(
+                top: 0,
+                right: 0,
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  color: Color(0xFF5CBF8A),
+                  size: 26,
+                ),
               ),
-            ],
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }

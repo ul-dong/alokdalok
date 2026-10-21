@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../character/animal_painter.dart';
+import '../character/rider_pose.dart';
 import '../character/zodiac.dart';
 import '../data/item_catalog.dart';
 import '../data/vehicles.dart';
@@ -20,6 +21,7 @@ class VehiclePainter extends CustomPainter {
     this.items = const {},
     this.phase = 0,
     this.moving = false,
+    this.mood = CharMood.normal,
   }) : color = paint ?? Vehicles.defaultPaintOf(vehicle);
 
   final Vehicle vehicle;
@@ -33,6 +35,9 @@ class VehiclePainter extends CustomPainter {
   /// 0~1 반복 값 (바퀴·불꽃·프로펠러 움직임)
   final double phase;
   final bool moving;
+
+  /// 탄 친구의 표정 (폴짝 뛸 때 웃는 얼굴)
+  final CharMood mood;
 
   static const Size design = Size(300, 200);
   static const ink = AnimalPainter.ink;
@@ -56,8 +61,7 @@ class VehiclePainter extends CustomPainter {
     VehicleKind.tank => 16,
     VehicleKind.airplane => 15,
     VehicleKind.motorcycle => 14,
-    VehicleKind.bicycle => 12,
-    VehicleKind.kickboard => 11,
+    VehicleKind.train || VehicleKind.balloon => 17,
   };
 
   // ---------------- 차체 모양 (스티커를 붙일 수 있는 영역) ----------------
@@ -117,22 +121,6 @@ class VehiclePainter extends CustomPainter {
     ..lineTo(96, 132)
     ..close();
 
-  static Path _bikeGuard() => Path()
-    ..addRRect(RRect.fromLTRBR(64, 138, 150, 160, const Radius.circular(11)));
-
-  static Path _bikeBasket() => Path()
-    ..moveTo(220, 72)
-    ..lineTo(284, 72)
-    ..lineTo(275, 112)
-    ..lineTo(229, 112)
-    ..close();
-
-  static Path _kickDeck() => Path()
-    ..addRRect(RRect.fromLTRBR(50, 150, 242, 168, const Radius.circular(9)));
-
-  static Path _kickPlate() => Path()
-    ..addRRect(RRect.fromLTRBR(203, 118, 231, 158, const Radius.circular(11)));
-
   static Path _planeBody() => Path()
     ..moveTo(40, 108)
     ..quadraticBezierTo(46, 92, 80, 92)
@@ -150,6 +138,28 @@ class VehiclePainter extends CustomPainter {
     ..lineTo(88, 98)
     ..close();
 
+  // 기차: 뒤쪽 기관실 아래 판 + 앞쪽 보일러 (넓은 스티커 자리 두 곳)
+  static Path _trainCab() => Path()
+    ..addRRect(RRect.fromLTRBR(30, 106, 128, 150, const Radius.circular(8)));
+
+  static Path _trainBoiler() => Path()
+    ..moveTo(126, 92)
+    ..lineTo(240, 92)
+    ..quadraticBezierTo(264, 92, 264, 119)
+    ..quadraticBezierTo(264, 146, 240, 146)
+    ..lineTo(126, 146)
+    ..close();
+
+  // 열기구: 큰 풍선 전체가 스티커 자리
+  static Path _balloonEnvelope() => Path()
+    ..moveTo(150, 0)
+    ..cubicTo(200, 0, 234, 20, 234, 46)
+    ..cubicTo(234, 68, 196, 80, 172, 88)
+    ..lineTo(128, 88)
+    ..cubicTo(104, 80, 66, 68, 66, 46)
+    ..cubicTo(66, 20, 100, 0, 150, 0)
+    ..close();
+
   static Path _union(Path a, Path b) => Path.combine(PathOperation.union, a, b);
 
   /// 스티커를 붙일 수 있는 차체 영역 (설계 좌표)
@@ -158,8 +168,8 @@ class VehiclePainter extends CustomPainter {
     VehicleKind.rocket => _rocketBody(),
     VehicleKind.tank => _union(_tankHull(), _tankTurret()),
     VehicleKind.motorcycle => _motoBody(),
-    VehicleKind.bicycle => _union(_bikeGuard(), _bikeBasket()),
-    VehicleKind.kickboard => _union(_kickDeck(), _kickPlate()),
+    VehicleKind.train => _union(_trainCab(), _trainBoiler()),
+    VehicleKind.balloon => _balloonEnvelope(),
     VehicleKind.airplane => _union(_planeBody(), _planeFin()),
   };
 
@@ -190,10 +200,10 @@ class VehiclePainter extends CustomPainter {
         _tank(canvas);
       case VehicleKind.motorcycle:
         _motorcycle(canvas);
-      case VehicleKind.bicycle:
-        _bicycle(canvas);
-      case VehicleKind.kickboard:
-        _kickboard(canvas);
+      case VehicleKind.train:
+        _train(canvas);
+      case VehicleKind.balloon:
+        _balloon(canvas);
       case VehicleKind.airplane:
         _airplane(canvas);
     }
@@ -204,121 +214,56 @@ class VehiclePainter extends CustomPainter {
 
   double get _spin => moving ? phase * 2 * pi * 3 : 0.0;
 
-  void _rider(Canvas c, Offset headAt, double scale, {Rect? clip}) {
-    if (zodiac == null) return;
+  /// 탄 친구 (옆을 보고 앉은 자세, [RiderPose]). 친구가 없으면 null.
+  RiderPose? get _pose => zodiac == null
+      ? null
+      : RiderPose(zodiac: zodiac!, items: items, mood: mood);
+
+  /// [seatAt]에 앉히고 손·발을 [hand]·[foot]로 뻗는다. [clip] 밖은 가린다.
+  void _ride(
+    Canvas c,
+    Offset seatAt,
+    double scale, {
+    Offset? hand,
+    Offset? foot,
+    bool legs = false,
+    Rect? clip,
+  }) {
+    final pose = _pose;
+    if (pose == null) return;
     c.save();
     if (clip != null) c.clipRect(clip);
-    c.translate(
-      headAt.dx - AnimalPainter.headCenter.dx * scale,
-      headAt.dy - AnimalPainter.headCenter.dy * scale,
+    pose.paint(
+      c,
+      seatAt: seatAt,
+      scale: scale,
+      hand: hand,
+      foot: foot,
+      legs: legs,
     );
-    c.scale(scale);
-    AnimalPainter(zodiac: zodiac!, items: items).paint(c, AnimalPainter.design);
     c.restore();
   }
 
-  /// 탈것 위의 친구: 몸은 그대로 두고, 팔은 손잡이로, 다리는 페달·발판으로 뻗어 그린다.
-  /// [hands]·[feet]는 (뒤쪽, 앞쪽) 순서. [feet]가 없으면 서 있는 자세(원래 발).
-  void _riderPosed(
-    Canvas c,
-    Offset headAt,
-    double scale, {
-    required (Offset, Offset) hands,
-    (Offset, Offset)? feet,
-  }) {
-    final z = zodiac;
-    if (z == null) return;
-    if (z == Zodiac.snake) {
-      _rider(c, headAt, scale);
-      return;
-    }
-    Offset tr(double x, double y) => Offset(
-      headAt.dx + (x - AnimalPainter.headCenter.dx) * scale,
-      headAt.dy + (y - AnimalPainter.headCenter.dy) * scale,
+  /// 자동차 운전대 (옆에서 본 모습이라 길쭉한 고리) + 잡은 손
+  void _steering(Canvas c, Offset o, Offset hand, double scale) {
+    c.drawLine(o + const Offset(12, 14), o, AnimalPainter.stroke(6));
+    c.drawLine(
+      o + const Offset(12, 14),
+      o,
+      AnimalPainter.stroke(3, _metalDark),
     );
-    final look = z.look;
-    final skin = z == Zodiac.sheep ? look.accent : look.fur;
-    final hooves = const {
-      Zodiac.ox,
-      Zodiac.horse,
-      Zodiac.sheep,
-      Zodiac.pig,
-    }.contains(z);
-    final tipColor = hooves ? const Color(0xFF8A817C) : skin;
-    final sleeve = items[ItemSlot.outfit]?.colors.first ?? skin;
-    final shoe = items[ItemSlot.shoes]?.colors.first;
-    final wings = z == Zodiac.rooster || z == Zodiac.pteranodon;
-    final w = 15 * scale;
-    final t = AnimalPainter.lineWidth * scale;
-
-    void limb(List<Offset> pts, Color color, Color tip, double tipR) {
-      final path = Path()..moveTo(pts.first.dx, pts.first.dy);
-      for (final p in pts.skip(1)) {
-        path.lineTo(p.dx, p.dy);
-      }
-      c.drawPath(path, AnimalPainter.stroke(w + t * 2));
-      c.drawPath(path, AnimalPainter.stroke(w, color));
-      final end = pts.last;
-      c.drawCircle(end, tipR, Paint()..color = tip);
-      c.drawCircle(end, tipR, AnimalPainter.stroke(t));
-    }
-
-    List<Offset> leg(Offset hip, Offset foot) {
-      // 무릎은 앞(오른쪽)·위로 살짝
-      final mid = Offset((hip.dx + foot.dx) / 2, (hip.dy + foot.dy) / 2);
-      return [hip, mid + Offset(12 * scale * 2, -8 * scale * 2), foot];
-    }
-
-    final shoulderFar = tr(72, 158), shoulderNear = tr(128, 158);
-    final hipFar = tr(90, 204), hipNear = tr(110, 204);
-    // 뒤쪽 팔·다리 (몸 뒤)
-    if (feet != null) {
-      limb(leg(hipFar, feet.$1), skin, shoe ?? tipColor, w * .62);
-    }
-    if (!wings) limb([shoulderFar, hands.$1], sleeve, tipColor, w * .58);
-    // 몸
     c.save();
-    c.translate(
-      headAt.dx - AnimalPainter.headCenter.dx * scale,
-      headAt.dy - AnimalPainter.headCenter.dy * scale,
-    );
-    c.scale(scale);
-    AnimalPainter(
-      zodiac: z,
-      items: items,
-      drawLegs: feet == null,
-      drawArms: false,
-    ).paint(c, AnimalPainter.design);
+    c.translate(o.dx, o.dy);
+    c.rotate(-.5);
+    final ring = Rect.fromCenter(center: Offset.zero, width: 9, height: 28);
+    c.drawOval(ring, AnimalPainter.stroke(7));
+    c.drawOval(ring, AnimalPainter.stroke(3.5, const Color(0xFF3D3D3D)));
     c.restore();
-    // 앞쪽 팔·다리
-    if (feet != null) {
-      limb(leg(hipNear, feet.$2), skin, shoe ?? tipColor, w * .62);
-    }
-    if (!wings) limb([shoulderNear, hands.$2], sleeve, tipColor, w * .58);
+    _grip(c, hand, scale);
   }
 
-  /// 손잡이 위에 손을 한 번 더 그려 꼭 잡은 것처럼 보이게
-  void _hand(Canvas c, Offset at, double scale) {
-    final z = zodiac;
-    if (z == null ||
-        z == Zodiac.snake ||
-        z == Zodiac.rooster ||
-        z == Zodiac.pteranodon) {
-      return;
-    }
-    final hooves = const {
-      Zodiac.ox,
-      Zodiac.horse,
-      Zodiac.sheep,
-      Zodiac.pig,
-    }.contains(z);
-    final col = hooves
-        ? const Color(0xFF8A817C)
-        : (z == Zodiac.sheep ? z.look.accent : z.look.fur);
-    final r = 15 * scale * .58;
-    c.drawCircle(at, r, Paint()..color = col);
-    c.drawCircle(at, r, AnimalPainter.stroke(AnimalPainter.lineWidth * scale));
-  }
+  /// 손잡이 위에 손을 한 번 더 그려 꼭 잡은 것처럼
+  void _grip(Canvas c, Offset at, double scale) => _pose?.grip(c, at, scale);
 
   void _shadow(Canvas c, Rect r) =>
       c.drawOval(r, Paint()..color = const Color(0x22000000));
@@ -496,7 +441,10 @@ class VehiclePainter extends CustomPainter {
       Paint()..color = _tint(_leather, .25),
     );
     c.drawRRect(seat, AnimalPainter.stroke(4));
-    _rider(c, const Offset(142, 52), .58);
+    // 친구 (옆을 보고 앉아 운전대를 잡는다. 다리는 차 안이라 안 보인다)
+    const carHand = Offset(177, 79);
+    _ride(c, const Offset(140, 120), .58, hand: carHand);
+    _steering(c, const Offset(181, 85), carHand, .58);
     // 앞유리 + 틀
     final glass = Path()
       ..moveTo(176, 100)
@@ -631,7 +579,18 @@ class VehiclePainter extends CustomPainter {
     c.drawPath(dome, Paint()..color = _glass);
     c.save();
     c.clipPath(dome);
-    _rider(c, const Offset(165, 50), .52);
+    // 친구 (옆을 보고 앉아 조종간을 잡는다)
+    const lever = Offset(192, 71);
+    _ride(c, const Offset(158, 111), .52, hand: lever);
+    c.drawLine(const Offset(202, 92), lever, AnimalPainter.stroke(5));
+    c.drawLine(const Offset(202, 92), lever, AnimalPainter.stroke(2.4, _metal));
+    _grip(c, lever, .52);
+    c.drawCircle(
+      lever + const Offset(-1, -6),
+      4,
+      Paint()..color = const Color(0xFFF26B5E),
+    );
+    c.drawCircle(lever + const Offset(-1, -6), 4, AnimalPainter.stroke(2));
     c.restore();
     c.drawPath(dome, Paint()..color = const Color(0x33FFFFFF));
     c.drawArc(
@@ -705,10 +664,13 @@ class VehiclePainter extends CustomPainter {
     // 열린 뚜껑
     final lid = Path()..addOval(const Rect.fromLTRB(108, 56, 140, 70));
     AnimalPainter.fillStroke(c, lid, _shade(_body, .3), width: 3.5);
-    _rider(
+    // 친구 (포탑 해치에서 옆을 보고, 손은 포탑 가장자리에)
+    const tankHand = Offset(176, 78);
+    _ride(
       c,
-      const Offset(152, 50),
+      const Offset(150, 107),
       .48,
+      hand: tankHand,
       clip: const Rect.fromLTRB(0, 0, 300, 92),
     );
     // 포신
@@ -746,6 +708,7 @@ class VehiclePainter extends CustomPainter {
     _stickers(c, all);
     c.drawPath(turret, AnimalPainter.stroke());
     c.drawPath(hull, AnimalPainter.stroke());
+    _grip(c, tankHand, .48);
     // 해치 테두리
     c.drawLine(
       const Offset(126, 78),
@@ -802,14 +765,15 @@ class VehiclePainter extends CustomPainter {
     _tube(c, const Offset(66, 156), const Offset(132, 140), 7, _metalDark);
     // 앞 포크
     _tube(c, const Offset(236, 156), const Offset(214, 86), 7, _metal);
-    // 친구 (안장에 앉아 손잡이를 잡고 발판에 발)
-    final peg = Offset(146, 146);
-    _riderPosed(
+    // 친구 (안장에 앉아 옆을 보고, 손은 손잡이·발은 발판에). 앞쪽 다리는 차체 위에 그린다.
+    const motoSeat = Offset(136, 100), motoHand = Offset(176, 78);
+    const motoFoot = Offset(166, 113);
+    _pose?.paintBack(
       c,
-      const Offset(128, 40),
-      .52,
-      hands: (const Offset(184, 82), const Offset(191, 81)),
-      feet: (peg + const Offset(-6, 2), peg),
+      seatAt: motoSeat,
+      scale: .52,
+      hand: motoHand,
+      foot: motoFoot,
     );
     // 안장
     final seat = RRect.fromLTRBR(84, 96, 162, 110, const Radius.circular(7));
@@ -867,13 +831,24 @@ class VehiclePainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 8,
     );
+    // 발판
+    final pegR = RRect.fromLTRBR(158, 118, 180, 124, const Radius.circular(3));
+    c.drawRRect(pegR, Paint()..color = const Color(0xFF3D3D3D));
+    c.drawRRect(pegR, AnimalPainter.stroke(2.5));
     // 핸들 (뒤로 휜 손잡이), 거울, 전조등
-    _tube(c, const Offset(214, 88), const Offset(194, 81), 5, _metalDark);
-    final mgrip = RRect.fromLTRBR(180, 76, 196, 86, const Radius.circular(4));
+    _tube(c, const Offset(214, 88), const Offset(184, 79), 5, _metalDark);
+    final mgrip = RRect.fromLTRBR(168, 73, 186, 83, const Radius.circular(4));
     c.drawRRect(mgrip, Paint()..color = const Color(0xFF3D3D3D));
     c.drawRRect(mgrip, AnimalPainter.stroke(2.5));
-    // 손잡이를 잡은 손 (핸들 위에 다시 그린다)
-    _hand(c, const Offset(191, 81), .52);
+    // 앞쪽 다리·팔, 손잡이를 잡은 손
+    _pose?.paintFront(
+      c,
+      seatAt: motoSeat,
+      scale: .52,
+      hand: motoHand,
+      foot: motoFoot,
+    );
+    _grip(c, motoHand, .52);
     c.drawLine(
       const Offset(212, 82),
       const Offset(206, 62),
@@ -884,151 +859,246 @@ class VehiclePainter extends CustomPainter {
     _lamp(c, const Offset(232, 100), 11);
   }
 
-  // ---------------- 자전거 ----------------
+  // ---------------- 기차 ----------------
 
-  void _bicycle(Canvas c) {
-    _shadow(c, const Rect.fromLTRB(32, 180, 274, 194));
-    const rear = Offset(70, 150), front = Offset(232, 150);
-    const bb = Offset(142, 152), seatTop = Offset(118, 112);
-    const head = Offset(206, 106), headLow = Offset(214, 122);
-    _spokeWheel(c, rear, 34);
-    _spokeWheel(c, front, 34);
-    // 프레임
-    for (final (a, b) in const [
-      (rear, bb),
-      (rear, seatTop),
-      (bb, Offset(118, 114)),
-      (Offset(120, 118), head),
-      (bb, headLow),
-      (headLow, front),
-      (head, headLow),
-    ]) {
-      _tube(c, a, b, 6, _body);
-    }
-    // 안장
-    _tube(c, seatTop, const Offset(117, 104), 4, _metalDark);
-    final saddle = RRect.fromLTRBR(98, 98, 136, 108, const Radius.circular(6));
-    c.drawRRect(saddle, Paint()..color = _leather);
-    c.drawRRect(saddle, AnimalPainter.stroke(3.5));
-    // 핸들 (뒤로 휘어 손에 닿게) + 종
-    _tube(c, head, const Offset(184, 94), 4, _metalDark);
-    final bell = Path()..addOval(const Rect.fromLTRB(196, 90, 206, 99));
-    AnimalPainter.fillStroke(c, bell, const Color(0xFFFFCF4D), width: 2.5);
-    // 페달 (돈다) — 친구 발이 페달을 밟는다
-    final a = _spin;
-    final pedalNear = bb + Offset(cos(a), sin(a)) * 16;
-    final pedalFar = bb - Offset(cos(a), sin(a)) * 16;
-    for (final p in [pedalFar, pedalNear]) {
-      c.drawLine(bb, p, AnimalPainter.stroke(5));
-      c.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: p, width: 16, height: 6),
-          const Radius.circular(2),
-        ),
-        Paint()..color = const Color(0xFF3D3D3D),
-      );
-    }
-    c.drawCircle(bb, 8, Paint()..color = _metal);
-    c.drawCircle(bb, 8, AnimalPainter.stroke(3));
-    // 친구 (안장에 앉아 페달을 밟는다)
-    _riderPosed(
-      c,
-      const Offset(116, 48),
-      .48,
-      hands: (const Offset(176, 96), const Offset(183, 94)),
-      feet: (pedalFar + const Offset(0, -3), pedalNear + const Offset(0, -3)),
+  /// 장난감 증기 기관차: 뒤쪽 기관실(친구가 창으로 내다본다) + 앞쪽 둥근 보일러.
+  /// 다리는 기관실 안이라 보이지 않고, 스티커 자리는 기관실 판과 보일러 두 곳으로 넓다.
+  void _train(Canvas c) {
+    _shadow(c, const Rect.fromLTRB(24, 182, 284, 196));
+    // 선로
+    c.drawRRect(
+      RRect.fromLTRBR(14, 184, 290, 190, const Radius.circular(3)),
+      Paint()..color = const Color(0xFFB08A6A),
     );
-    final grip = RRect.fromLTRBR(172, 89, 186, 99, const Radius.circular(4));
-    c.drawRRect(grip, Paint()..color = _trim);
-    c.drawRRect(grip, AnimalPainter.stroke(2.5));
-    _hand(c, const Offset(183, 94), .48);
-    // 체인 덮개 (스티커 자리)
-    final guard = _bikeGuard();
-    _paintBody(c, guard, shadeFrom: .6);
-    // 앞 바구니 (스티커 자리)
-    final basket = _bikeBasket();
-    const wicker = Color(0xFFE8C07A);
+    // 연기 (굴뚝에서 뒤로 퐁퐁)
+    if (moving) {
+      for (var i = 0; i < 3; i++) {
+        final t = (phase * 2 + i / 3) % 1.0;
+        c.drawCircle(
+          Offset(236 - t * 60, 34 - t * 26),
+          6 + t * 10,
+          Paint()..color = Colors.white.withValues(alpha: .85 * (1 - t)),
+        );
+      }
+    }
+    _speedLines(c, 22, [96, 124]);
+    // 굴뚝
+    final stack = Path()
+      ..moveTo(226, 92)
+      ..lineTo(229, 56)
+      ..lineTo(222, 44)
+      ..lineTo(254, 44)
+      ..lineTo(247, 56)
+      ..lineTo(250, 92)
+      ..close();
+    AnimalPainter.fillStroke(c, stack, const Color(0xFF4A4250), width: 4);
+    c.drawRRect(
+      RRect.fromLTRBR(221, 42, 255, 50, const Radius.circular(3)),
+      Paint()..color = _trim,
+    );
+    c.drawRRect(
+      RRect.fromLTRBR(221, 42, 255, 50, const Radius.circular(3)),
+      AnimalPainter.stroke(3),
+    );
+    // 증기 돔 (보일러 위 둥근 혹)
+    final dome = Path()
+      ..moveTo(170, 94)
+      ..quadraticBezierTo(170, 72, 186, 72)
+      ..quadraticBezierTo(202, 72, 202, 94)
+      ..close();
+    AnimalPainter.fillStroke(c, dome, _trim, width: 4);
+    // 친구 (기관실 창으로 앞을 보고, 손은 창틀에)
+    const cabHand = Offset(112, 104);
+    _ride(
+      c,
+      const Offset(80, 138),
+      .44,
+      hand: cabHand,
+      clip: const Rect.fromLTRB(38, 46, 120, 150),
+    );
+    // 기관실 기둥과 지붕
+    for (final r in const [
+      Rect.fromLTRB(30, 50, 42, 110),
+      Rect.fromLTRB(116, 50, 128, 110),
+    ]) {
+      final pillar = RRect.fromRectAndRadius(r, const Radius.circular(3));
+      c.drawRRect(pillar, Paint()..color = _shade(_body, .12));
+      c.drawRRect(pillar, AnimalPainter.stroke(3.5));
+    }
+    final roof = Path()
+      ..moveTo(18, 52)
+      ..quadraticBezierTo(80, 28, 142, 52)
+      ..lineTo(142, 58)
+      ..lineTo(18, 58)
+      ..close();
+    AnimalPainter.fillStroke(c, roof, _trim);
+    // 아래 받침(차대)
+    final frame = RRect.fromLTRBR(26, 146, 272, 162, const Radius.circular(6));
+    c.drawRRect(frame, Paint()..color = const Color(0xFF4A4250));
+    c.drawRRect(frame, AnimalPainter.stroke());
+    // 기관실 판 + 보일러 (스티커 자리)
+    final cab = _trainCab();
+    final boiler = _trainBoiler();
+    _paintBody(c, cab, stickersOn: false);
+    c.drawPath(boiler, Paint()..color = _body);
+    c.save();
+    c.clipPath(boiler);
+    c.drawRect(
+      const Rect.fromLTRB(120, 134, 270, 150),
+      Paint()..color = _shade(_body, .16),
+    );
+    c.drawRect(
+      const Rect.fromLTRB(120, 90, 270, 100),
+      Paint()..color = _tint(_body, .4),
+    );
+    c.restore();
+    _stickers(c, _union(cab, boiler));
+    c.drawPath(boiler, AnimalPainter.stroke());
+    c.drawPath(cab, AnimalPainter.stroke());
+    // 보일러 띠 (스티커 위에 얇게)
+    for (final x in [158.0, 212.0]) {
+      c.drawLine(Offset(x, 94), Offset(x, 144), AnimalPainter.stroke(4, _trim));
+    }
+    // 창틀을 잡은 손
+    _grip(c, cabHand, .44);
+    // 앞 등과 앞판
+    _lamp(c, const Offset(258, 82), 8);
+    c.drawLine(
+      const Offset(258, 90),
+      const Offset(258, 94),
+      AnimalPainter.stroke(4),
+    );
+    // 장애물 막이 (앞쪽 아래 세모)
+    final catcher = Path()
+      ..moveTo(262, 150)
+      ..lineTo(290, 182)
+      ..lineTo(256, 182)
+      ..close();
+    AnimalPainter.fillStroke(c, catcher, _trim);
+    for (final x in [266.0, 274.0]) {
+      c.drawLine(Offset(x, 158), Offset(x - 4, 182), AnimalPainter.stroke(2.5));
+    }
+    // 바퀴 (뒤 큰 바퀴 둘, 앞 작은 바퀴) + 연결 막대
+    const wheels = [(64.0, 22.0), (112.0, 22.0), (176.0, 18.0), (226.0, 18.0)];
+    for (final (x, r) in wheels) {
+      _wheel(c, Offset(x, 182 - r), r, hub: _trim, bolts: 6, rim: .66);
+    }
+    final a = _spin;
+    final rod = Offset(cos(a), sin(a)) * 8;
+    c.drawLine(
+      const Offset(64, 160) + rod,
+      const Offset(112, 160) + rod,
+      AnimalPainter.stroke(7),
+    );
+    c.drawLine(
+      const Offset(64, 160) + rod,
+      const Offset(112, 160) + rod,
+      AnimalPainter.stroke(3.5, _metal),
+    );
+  }
+
+  // ---------------- 열기구 ----------------
+
+  /// 큰 풍선(전체가 스티커 자리) 아래 바구니에 친구가 타고 옆을 본다.
+  /// 다리는 바구니 안이라 보이지 않는다.
+  void _balloon(Canvas c) {
+    // 지나가는 구름 (날 때)
+    if (moving) {
+      for (var i = 0; i < 2; i++) {
+        final t = (phase + i * .5) % 1.0;
+        final o = Offset(300 - t * 320, 140 + i * 30.0);
+        final cloud = Paint()..color = Colors.white.withValues(alpha: .8);
+        for (final (dx, r) in const [(-12.0, 8.0), (0.0, 11.0), (12.0, 8.0)]) {
+          c.drawCircle(o + Offset(dx, 0), r, cloud);
+        }
+      }
+    }
+    // 줄 (뒤쪽 두 가닥)
+    final rope = AnimalPainter.stroke(2.6);
+    c.drawLine(const Offset(132, 94), const Offset(106, 150), rope);
+    c.drawLine(const Offset(168, 94), const Offset(194, 150), rope);
+    // 풍선
+    final env = _balloonEnvelope();
+    c.drawPath(env, Paint()..color = _body);
+    c.save();
+    c.clipPath(env);
+    // 세로 줄무늬 두 줄 (포인트 색)
+    c.drawOval(const Rect.fromLTRB(96, -40, 204, 128), Paint()..color = _trim);
+    c.drawOval(const Rect.fromLTRB(124, -40, 176, 128), Paint()..color = _body);
+    // 그늘과 반사광
+    c.drawOval(
+      const Rect.fromLTRB(40, 50, 260, 126),
+      Paint()..color = _shade(_body, .14).withValues(alpha: .55),
+    );
+    c.drawOval(
+      const Rect.fromLTRB(92, 8, 126, 30),
+      Paint()..color = Colors.white.withValues(alpha: .45),
+    );
+    c.restore();
+    _stickers(c, env);
+    c.drawPath(env, AnimalPainter.stroke());
+    // 풍선 아래 치마
+    final skirt = RRect.fromLTRBR(128, 86, 172, 95, const Radius.circular(4));
+    c.drawRRect(skirt, Paint()..color = _shade(_trim, .2));
+    c.drawRRect(skirt, AnimalPainter.stroke(3.5));
+    // 불꽃 (날 때)
+    if (moving) {
+      final f = 1 + sin(phase * 2 * pi * 6) * .25;
+      for (final (w, col) in [
+        (12.0, const Color(0xFFFFB13B)),
+        (6.0, const Color(0xFFFFE57A)),
+      ]) {
+        c.drawOval(
+          Rect.fromCenter(
+            center: const Offset(150, 87),
+            width: w,
+            height: w * 1.8 * f,
+          ),
+          Paint()..color = col,
+        );
+      }
+    }
+    // 친구 (바구니 안에서 옆을 본다)
+    const basketHand = Offset(170, 150);
+    _ride(
+      c,
+      const Offset(136, 171),
+      .42,
+      hand: basketHand,
+      clip: const Rect.fromLTRB(100, 0, 200, 190),
+    );
+    // 바구니
+    final basket = Path()
+      ..moveTo(100, 152)
+      ..lineTo(200, 152)
+      ..lineTo(193, 192)
+      ..quadraticBezierTo(150, 197, 107, 192)
+      ..close();
+    const wicker = Color(0xFFE8B66A);
     c.drawPath(basket, Paint()..color = wicker);
     c.save();
     c.clipPath(basket);
     final weave = Paint()
-      ..color = _shade(wicker, .25)
-      ..strokeWidth = 2;
-    for (var y = 80.0; y < 112; y += 8) {
-      c.drawLine(Offset(216, y), Offset(288, y), weave);
+      ..color = _shade(wicker, .28)
+      ..strokeWidth = 2.2;
+    for (var y = 160.0; y < 194; y += 8) {
+      c.drawLine(Offset(100, y), Offset(200, y), weave);
     }
-    for (var x = 226.0; x < 286; x += 10) {
-      c.drawLine(Offset(x, 70), Offset(x - 3, 114), weave);
+    for (var x = 112.0; x < 196; x += 12) {
+      c.drawLine(Offset(x, 150), Offset(x + (x - 150) * .08, 194), weave);
     }
     c.restore();
-    _stickers(c, basket);
-    c.drawPath(basket, AnimalPainter.stroke(4));
-    c.drawLine(
-      const Offset(218, 72),
-      const Offset(286, 72),
-      AnimalPainter.stroke(6, _shade(wicker, .3)),
-    );
-    _lamp(c, const Offset(222, 120), 6);
-    _speedLines(c, 26, [104, 124]);
-  }
-
-  // ---------------- 킥보드 ----------------
-
-  void _kickboard(Canvas c) {
-    _shadow(c, const Rect.fromLTRB(42, 182, 256, 194));
-    _speedLines(c, 40, [110, 132]);
-    // 손잡이 기둥 (아이 키에 맞춘 낮은 손잡이)
-    _tube(c, const Offset(226, 162), const Offset(198, 104), 9, _metal);
-    c.drawLine(
-      const Offset(222, 152),
-      const Offset(200, 110),
-      AnimalPainter.stroke(2.5, Colors.white),
-    );
-    _tube(c, const Offset(186, 104), const Offset(208, 104), 6, _metalDark);
-    // 친구 (발판 위에 서서 손잡이를 잡는다)
-    _riderPosed(
-      c,
-      const Offset(140, 79),
-      .52,
-      hands: (const Offset(182, 106), const Offset(189, 104)),
-    );
-    final kgrip = RRect.fromLTRBR(176, 99, 192, 110, const Radius.circular(5));
+    c.drawPath(basket, AnimalPainter.stroke());
+    // 바구니 테두리
+    final rim = RRect.fromLTRBR(94, 144, 206, 155, const Radius.circular(5));
+    c.drawRRect(rim, Paint()..color = _leather);
     c.drawRRect(
-      kgrip,
-      Paint()..color = _trim == Colors.white ? _shade(_body, .3) : _trim,
+      RRect.fromLTRBR(98, 146, 202, 149, const Radius.circular(2)),
+      Paint()..color = _tint(_leather, .3),
     );
-    c.drawRRect(kgrip, AnimalPainter.stroke(3));
-    _hand(c, const Offset(189, 104), .52);
-    // 앞판 (스티커 자리)
-    final plate = _kickPlate();
-    _paintBody(c, plate, shadeFrom: .75, stickersOn: false);
-    _lamp(c, const Offset(215, 128), 5);
-    // 발판 (스티커 자리)
-    final deck = _kickDeck();
-    _paintBody(c, deck, shadeFrom: .6, stickersOn: false);
-    // 미끄럼 방지 판
-    c.drawRRect(
-      RRect.fromLTRBR(64, 153, 200, 158, const Radius.circular(3)),
-      Paint()..color = _shade(_body, .35).withValues(alpha: .6),
-    );
-    _stickers(c, _union(deck, plate));
-    c.drawPath(deck, AnimalPainter.stroke());
-    c.drawPath(plate, AnimalPainter.stroke());
-    // 뒤 브레이크 덮개
-    final brake = Path()
-      ..addArc(const Rect.fromLTRB(46, 154, 90, 192), pi * 1.0, pi * .62);
-    c.drawPath(brake, AnimalPainter.stroke(10));
-    c.drawPath(
-      brake,
-      Paint()
-        ..color = _shade(_body, .2)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 5,
-    );
-    // 바퀴 (작은 바퀴, 빛나는 바퀴)
-    for (final x in [68.0, 228.0]) {
-      _wheel(c, Offset(x, 174), 14, bolts: 3, rim: .6);
-    }
+    c.drawRRect(rim, AnimalPainter.stroke(3.5));
+    // 테두리를 잡은 손
+    _grip(c, basketHand, .4);
   }
 
   // ---------------- 비행기 ----------------
@@ -1046,10 +1116,13 @@ class VehiclePainter extends CustomPainter {
     final tailWing = Path()..addOval(const Rect.fromLTRB(20, 108, 92, 126));
     AnimalPainter.fillStroke(c, tailWing, _shade(_trim, .12));
     // 친구 (조종석)
-    _rider(
+    // 친구 (조종석에서 옆을 보고, 손은 조종석 가장자리에)
+    const planeHand = Offset(177, 92);
+    _ride(
       c,
-      const Offset(152, 58),
+      const Offset(150, 115),
       .48,
+      hand: planeHand,
       clip: const Rect.fromLTRB(0, 0, 300, 100),
     );
     // 꼬리 날개 + 몸통
@@ -1095,6 +1168,7 @@ class VehiclePainter extends CustomPainter {
       ..close();
     c.drawPath(shield, Paint()..color = _glass.withValues(alpha: .8));
     c.drawPath(shield, AnimalPainter.stroke(3.5));
+    _grip(c, planeHand, .48);
     // 창문
     for (final x in [214.0, 240.0]) {
       c.drawCircle(Offset(x, 108), 7, Paint()..color = const Color(0xFF8FD3F5));
@@ -1153,5 +1227,6 @@ class VehiclePainter extends CustomPainter {
       old.zodiac != zodiac ||
       old.items != items ||
       old.phase != phase ||
-      old.moving != moving;
+      old.moving != moving ||
+      old.mood != mood;
 }

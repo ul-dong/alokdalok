@@ -388,7 +388,7 @@ void main() {
       return s;
     }
 
-    test('탈것 7종(종류별 한 대)은 코인으로 사고, 사면 바로 탄다', () async {
+    test('탈것 7종(종류별 한 대)은 코인으로 사고, "탑승"해야 탄다', () async {
       final s = await rich();
       final before = s.coins;
       expect(
@@ -402,6 +402,8 @@ void main() {
       expect(await s.buyVehicle('car'), PurchaseResult.ok);
       expect(s.coins, before - Vehicles.byId('car')!.price);
       expect(s.ownsVehicle('car'), isTrue);
+      expect(s.ride, isNull, reason: '사기만 하면 아직 타지 않는다');
+      await s.setRide('car');
       expect(s.ride, 'car');
       expect(await s.buyVehicle('car'), PurchaseResult.alreadyOwned);
       expect(await s.buyVehicle('ufo'), PurchaseResult.unknownItem);
@@ -425,16 +427,16 @@ void main() {
         x: .5,
         y: .6,
       );
-      expect(await s.addSticker('bicycle', st), isFalse, reason: '안 산 차');
-      await s.buyVehicle('bicycle');
+      expect(await s.addSticker('train', st), isFalse, reason: '안 산 차');
+      await s.buyVehicle('train');
       for (var i = 0; i < Vehicles.maxStickers; i++) {
-        expect(await s.addSticker('bicycle', st), isTrue);
+        expect(await s.addSticker('train', st), isTrue);
       }
-      expect(await s.addSticker('bicycle', st), isFalse, reason: '가득 참');
-      await s.removeSticker('bicycle', 0);
-      expect(s.stickersOf('bicycle').length, Vehicles.maxStickers - 1);
-      await s.clearStickers('bicycle');
-      expect(s.stickersOf('bicycle'), isEmpty);
+      expect(await s.addSticker('train', st), isFalse, reason: '가득 참');
+      await s.removeSticker('train', 0);
+      expect(s.stickersOf('train').length, Vehicles.maxStickers - 1);
+      await s.clearStickers('train');
+      expect(s.stickersOf('train'), isEmpty);
     });
 
     test('탈것·스티커는 저장되고, 손상된 스티커 값은 버린다', () async {
@@ -444,6 +446,7 @@ void main() {
         await a.rewardCorrect(firstTry: true);
       }
       await a.buyVehicle('airplane');
+      await a.setRide('airplane');
       await a.addSticker(
         'airplane',
         const PlacedSticker(
@@ -521,7 +524,7 @@ void main() {
       for (var i = 0; i < 30; i++) {
         await s.rewardCorrect(firstTry: true);
       }
-      await s.buyVehicle('kickboard');
+      await s.buyVehicle('balloon');
       final colors = [
         'paint_red',
         'paint_blue',
@@ -534,12 +537,12 @@ void main() {
       ];
       var last = PurchaseResult.ok;
       for (final c in colors) {
-        last = await s.buyPaint('kickboard', c);
+        last = await s.buyPaint('balloon', c);
         if (last != PurchaseResult.ok) break;
       }
       expect(last, PurchaseResult.notEnoughCoins);
       expect(s.coins, lessThan(Vehicles.paintPrice));
-      expect(s.ownsPaint('kickboard', 'paint_red'), isTrue);
+      expect(s.ownsPaint('balloon', 'paint_red'), isTrue);
     });
 
     test('칠한 색은 다시 켜도 유지된다', () async {

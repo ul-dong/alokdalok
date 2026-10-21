@@ -71,13 +71,13 @@
 
 | 사양 | 상태 | 메모 |
 |---|---|---|
-| 열기구 20 · 기차 25 · 자동차 40 · 오토바이 40 · 탱크 50 · 비행기 50 · 우주선 50 | **부분** | `data/vehicles.dart`: 킥보드 20 · 자전거 25 · 나머지 5종 가격 일치. 기차·열기구 없음, 그림(`vehicle/vehicle_painter.dart`) 없음 |
-| 자전거·킥보드 → 기차·열기구 저장 마이그레이션 (스티커·색 옮김) | **없음** | `SaveData.currentVersion = 5`. v6 단계 필요 (`Vehicles.legacy` 패턴 재사용) |
-| 고르고 "탑승!" 눌러야 탄다 | **없음** | `character_screen.dart` `_VehicleShelf`: 탈것을 누르면 바로 `setRide` 토글 |
-| 타면 캐릭터가 옆을 보며 앉음 (방향) | 부분/확인 필요 | `vehicle/ride_view.dart` + `VehiclePainter(zodiac:)`. 방향 처리 코드 미확인 (GitHub 커밋 '탈것 방향' 소실) |
+| 열기구 20 · 기차 25 · 자동차 40 · 오토바이 40 · 탱크 50 · 비행기 50 · 우주선 50 | 있음 | `data/vehicles.dart` 7종. 기차·열기구는 `vehicle/vehicle_painter.dart`에 새로 그림 (다리는 기관실·바구니 안, 스티커 자리 넓음) |
+| 자전거·킥보드 → 기차·열기구 저장 마이그레이션 (스티커·색 옮김) | 있음 | `SaveData.migrate` 끝에서 버전과 상관없이 `Vehicles.retired`에 있는 id를 옮김 (가진 탈것·타는 탈것·스티커·칠한 색·산 색). 여러 번 돌려도 같음. 버전 번호는 그대로 |
+| 고르고 "탑승!" 눌러야 탄다 | 있음 | 내 친구·상점·꾸미기 모두 고르기(이름 말하기) → "탑승!". 사도 바로 타지 않음 (`buyVehicle`) |
+| 타면 캐릭터가 옆을 보며 앉음 (방향) | 있음 | `character/rider_pose.dart` 공통 변환(얼굴 돌리기 `AnimalPainter.sideways` + 앉은 팔다리). 24마리 × 7종 |
 | 스티커 10종 × 6색, 고르고→누르기, 지우개, 드래그 없음 | 있음 | `StickerKind` 10, `stickerColors` 6, `vehicle/garage_screen.dart` (최대 12장) |
-| 색칠: 탈것마다 따로, 한 색 10코인, 처음 색 공짜 | 있음 | `Vehicles.paintPrice = 10`, `paintKey('paint@vehicle')`, `canPaint` |
-| 가로 스크롤 금지 | 부분 | `garage_screen.dart` 125·431행 가로 `SingleChildScrollView` |
+| 색칠: 탈것마다 따로, 한 색 10코인, 처음 색 공짜 | 있음 | `Vehicles.paintPrice = 10`, `paintKey('paint@vehicle')`, `canPaint`. 코인이 모자라면 꾸미기 화면에 "놀이하면서 코인을 모아요" + 진행 막대 |
+| 가로 스크롤 금지 | 있음 | 꾸미기: 칸 크기를 맞추고 탈것이 많으면 화살표로 넘김. 내 친구·상점 탈것 칸은 `vehicle/fit_grid.dart`로 한 화면에. (공용 화살표 위젯은 트랙 A) |
 
 ## 6. 코인 규칙
 

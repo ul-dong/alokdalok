@@ -171,10 +171,7 @@ void main() {
     await settle(t);
     expect(Nickname.randomPool, contains(s.nickname));
     expect(s.nicknameChosen, isTrue);
-    expect(
-      find.textContaining(s.nickname, findRichText: true),
-      findsOneWidget,
-    );
+    expect(find.textContaining(s.nickname, findRichText: true), findsOneWidget);
     expect(find.text('숫자 놀이'), findsOneWidget);
     expect(t.takeException(), isNull);
   });
@@ -395,6 +392,9 @@ void main() {
     await t.tap(pressable('네'));
     await settle(t, 600);
     expect(s.ownsVehicle('car'), isTrue);
+    expect(s.ride, isNull, reason: '사고 나서 "탑승!"을 눌러야 탄다');
+    await t.tap(pressable('탑승!'));
+    await settle(t, 400);
     expect(s.ride, 'car');
     expect(t.takeException(), isNull);
   });
@@ -406,7 +406,7 @@ void main() {
     Size(1340, 800), // 갤럭시 탭 S 계열 (가로, dp)
   ]) {
     final name = '${size.width.toInt()}x${size.height.toInt()}';
-    for (final vehicle in ['rocket', 'kickboard', 'airplane']) {
+    for (final vehicle in ['rocket', 'balloon', 'train', 'airplane']) {
       testWidgets('탈것 꾸미기($vehicle): $name에서 스티커 붙이고 지우기', (t) async {
         await setSize(t, size);
         final s = await makeState();
@@ -424,7 +424,8 @@ void main() {
         final scale = min(box.width / 300, box.height / 200);
         final origin = box.center - Offset(150 * scale, 100 * scale);
         final spot = switch (vehicle) {
-          'kickboard' => const Offset(140, 159),
+          'balloon' => const Offset(150, 40),
+          'train' => const Offset(190, 120),
           'airplane' => const Offset(120, 112),
           _ => const Offset(120, 118),
         };
@@ -473,6 +474,7 @@ void main() {
         await s.rewardCorrect(firstTry: true);
       }
       await s.buyVehicle('motorcycle');
+      await s.setRide('motorcycle');
       for (var id = 1; id <= 4; id++) {
         await s.completeSession(GameKind.number, id);
       }

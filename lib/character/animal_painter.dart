@@ -26,7 +26,29 @@ class AnimalPainter extends CustomPainter {
     this.phase = 0,
     this.drawLegs = true,
     this.drawArms = true,
+    this.sideways = false,
   });
+
+  /// 탈것에 탔을 때: 가는 쪽(오른쪽)을 보도록 얼굴을 돌린다.
+  /// 24마리 모두 같은 머리 틀이라 [turnFace] 변환 하나로 처리한다 (꼬리는 뒤쪽으로).
+  final bool sideways;
+
+  /// 옆을 볼 때 얼굴(눈·코·입·무늬)을 오른쪽으로 옮기고 가로로 줄이는 값
+  static const double turnShift = 22, turnSquash = .76;
+
+  /// 옆을 볼 때 귀·뿔은 조금만 돌린다 (머리 위쪽이라 덜 움직인다)
+  static const double earShift = 8, earSquash = .9;
+
+  /// 얼굴을 돌리는 공통 변환: x' = 100 + shift + (x - 100) * squash
+  static void turnFace(
+    Canvas c, {
+    double shift = turnShift,
+    double squash = turnSquash,
+  }) {
+    c.translate(100 + shift, 0);
+    c.scale(squash, 1);
+    c.translate(-100, 0);
+  }
 
   /// 탈것에 탈 때는 팔다리를 탈것 그림에서 따로 그린다 (손잡이 잡기·페달 밟기)
   final bool drawLegs;
@@ -144,7 +166,16 @@ class AnimalPainter extends CustomPainter {
     if (back != null) art.backBehind(back);
 
     _backDecor(canvas);
-    _tail(canvas);
+    if (sideways) {
+      // 옆을 볼 때 꼬리는 등 뒤(왼쪽)로
+      canvas.save();
+      canvas.translate(200, 0);
+      canvas.scale(-1, 1);
+      _tail(canvas);
+      canvas.restore();
+    } else {
+      _tail(canvas);
+    }
     final legsOn = drawLegs && items[ItemSlot.shoes] == null && !_noLegs;
     if (zodiac == Zodiac.sheep) {
       // 양: 구름 털 몸에 색이 다른 발·팔을 따로 붙인다
@@ -172,13 +203,39 @@ class AnimalPainter extends CustomPainter {
     final acc = items[ItemSlot.accessory];
     if (acc != null && acc.isNecklace) art.accessory(acc);
 
-    _earsBehind(canvas);
-    _head(canvas);
-    _headDetails(canvas);
-    _face(canvas, happy);
-    _earsFront(canvas);
-
-    if (acc != null && !acc.isNecklace) art.accessory(acc);
+    if (sideways) {
+      canvas.save();
+      turnFace(canvas, shift: earShift, squash: earSquash);
+      _earsBehind(canvas);
+      canvas.restore();
+      _head(canvas);
+      // 얼굴은 머리 안에서만 돌린다 (머리 밖으로 삐져나가지 않게)
+      final head = _headShape;
+      canvas.save();
+      canvas.clipPath(head);
+      turnFace(canvas);
+      _headDetails(canvas);
+      _face(canvas, happy);
+      canvas.restore();
+      canvas.drawPath(head, stroke());
+      canvas.save();
+      turnFace(canvas, shift: earShift, squash: earSquash);
+      _earsFront(canvas);
+      canvas.restore();
+      if (acc != null && !acc.isNecklace) {
+        canvas.save();
+        turnFace(canvas);
+        art.accessory(acc);
+        canvas.restore();
+      }
+    } else {
+      _earsBehind(canvas);
+      _head(canvas);
+      _headDetails(canvas);
+      _face(canvas, happy);
+      _earsFront(canvas);
+      if (acc != null && !acc.isNecklace) art.accessory(acc);
+    }
     final head = items[ItemSlot.head];
     if (head != null) art.head(head);
 
@@ -1116,7 +1173,7 @@ class AnimalPainter extends CustomPainter {
           ..close();
         c.drawPath(spot, Paint()..color = const Color(0xFF3F3330));
         c.restore();
-        c.drawPath(clip, stroke());
+        if (!sideways) c.drawPath(clip, stroke()); // 옆을 볼 때는 밖에서 다시 그린다
         _muzzle(
           c,
           const Offset(100, 122),
@@ -1195,7 +1252,7 @@ class AnimalPainter extends CustomPainter {
         c.clipPath(clip);
         c.drawPath(mask, Paint()..color = look.light);
         c.restore();
-        c.drawPath(clip, stroke());
+        if (!sideways) c.drawPath(clip, stroke()); // 옆을 볼 때는 밖에서 다시 그린다
         for (final m in [-1.0, 1.0]) {
           c.drawOval(
             Rect.fromCenter(center: _m(m, 22, 80), width: 11, height: 6),
@@ -1496,5 +1553,6 @@ class AnimalPainter extends CustomPainter {
       old.mood != mood ||
       old.phase != phase ||
       old.drawLegs != drawLegs ||
-      old.drawArms != drawArms;
+      old.drawArms != drawArms ||
+      old.sideways != sideways;
 }

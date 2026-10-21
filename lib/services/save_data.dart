@@ -205,7 +205,88 @@ class SaveData {
       json = {...json, 'version': 5, 'voiceStyle': 'pack'};
       version = 5;
     }
+    // 버전과 상관없이: 없어진 탈것(자전거·킥보드)이 남아 있으면 기차·열기구로 옮긴다.
+    // 몇 번을 돌려도 결과가 같다 (옮긴 뒤에는 없어진 id가 남지 않는다).
+    json = _moveRetiredVehicles(json);
     return json;
+  }
+
+  /// 없어진 탈것을 [Vehicles.retired]의 새 탈것으로 옮긴다: 가진 탈것, 타는 탈것,
+  /// 붙인 스티커(새 탈것에 이미 있으면 합침), 칠한 색, 그 탈것용으로 산 색('paint_x@bicycle').
+  /// 없어진 탈것의 처음 색(공짜)을 칠해 두었는데 새 탈것의 처음 색과 다르면 그 색을 선물한다.
+  static Map<String, Object?> _moveRetiredVehicles(Map<String, Object?> json) {
+    String? moved(Object? id) => id is String ? Vehicles.retired[id]?.$1 : null;
+    // 'paint_red@bicycle' → 'paint_red@train'
+    String? movedPaintKey(String key) {
+      final i = key.indexOf('@');
+      if (i <= 0) return null;
+      final to = moved(key.substring(i + 1));
+      return to == null ? null : Vehicles.paintKey(to, key.substring(0, i));
+    }
+
+    final out = {...json};
+    var changed = false;
+
+    final owned = json['owned'];
+    final newOwned = <Object?>[];
+    if (owned is List) {
+      for (final id in owned) {
+        final to = moved(id) ?? (id is String ? movedPaintKey(id) : null);
+        if (to != null) changed = true;
+        final v = to ?? id;
+        if (!newOwned.contains(v)) newOwned.add(v);
+      }
+    }
+
+    final paints = json['paints'];
+    if (paints is Map) {
+      final newPaints = <Object?, Object?>{};
+      // 새 탈것에 이미 칠한 색이 있으면 그 색을 둔다
+      for (final e in paints.entries) {
+        if (moved(e.key) == null) newPaints[e.key] = e.value;
+      }
+      for (final e in paints.entries) {
+        final to = moved(e.key);
+        if (to == null) continue;
+        changed = true;
+        final paint = e.value;
+        newPaints.putIfAbsent(to, () => paint);
+        final free = Vehicles.retired[e.key]!.$2;
+        final target = Vehicles.byId(to);
+        if (paint == free &&
+            target != null &&
+            target.defaultPaint != free &&
+            owned is List) {
+          final key = Vehicles.paintKey(to, free);
+          if (!newOwned.contains(key)) newOwned.add(key);
+        }
+      }
+      out['paints'] = newPaints;
+    }
+    if (owned is List) out['owned'] = newOwned;
+
+    final ride = moved(json['ride']);
+    if (ride != null) {
+      out['ride'] = ride;
+      changed = true;
+    }
+
+    final stickers = json['stickers'];
+    if (stickers is Map && stickers.keys.any((k) => moved(k) != null)) {
+      final merged = <Object?, Object?>{};
+      for (final e in stickers.entries) {
+        if (moved(e.key) == null) merged[e.key] = e.value;
+      }
+      for (final e in stickers.entries) {
+        final to = moved(e.key);
+        if (to == null || e.value is! List) continue;
+        final have = merged[to];
+        merged[to] = [if (have is List) ...have, ...(e.value as List)];
+      }
+      out['stickers'] = merged;
+      changed = true;
+    }
+    return changed ? out : json;
   }
 
   static Map<String, Object?> _migrateVehicles(Map<String, Object?> json) {

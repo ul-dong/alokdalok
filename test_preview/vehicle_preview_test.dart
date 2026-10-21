@@ -30,6 +30,6 @@ void main() {
         ),
       ),
     ));
-    await expectLater(find.byType(RepaintBoundary).first, matchesGoldenFile('vehicle.png'));
+    await expectLater(find.byType(RepaintBoundary).first, matchesGoldenFile('shots/vehicle.png'));
   });
 }

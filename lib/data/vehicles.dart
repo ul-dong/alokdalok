@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 /// 탈것 종류. 그림은 lib/vehicle/vehicle_painter.dart
-enum VehicleKind { car, rocket, tank, motorcycle, bicycle, kickboard, airplane }
+enum VehicleKind { car, rocket, tank, motorcycle, train, balloon, airplane }
 
 /// 탈것 한 종류. 종류마다 한 대씩 있고, 색은 [VehiclePaint]로 칠한다.
 class Vehicle {
@@ -99,16 +99,16 @@ class Vehicles {
 
   static const List<Vehicle> all = [
     Vehicle(
-      id: 'kickboard',
-      kind: VehicleKind.kickboard,
-      name: '킥보드',
+      id: 'balloon',
+      kind: VehicleKind.balloon,
+      name: '열기구',
       price: 20,
       defaultPaint: 'paint_pink',
     ),
     Vehicle(
-      id: 'bicycle',
-      kind: VehicleKind.bicycle,
-      name: '자전거',
+      id: 'train',
+      kind: VehicleKind.train,
+      name: '기차',
       price: 25,
       defaultPaint: 'paint_yellow',
     ),
@@ -225,6 +225,14 @@ class Vehicles {
     'car_blue': ('car', 'paint_blue', 40),
     'rocket_white': ('rocket', 'paint_white', 50),
     'rocket_purple': ('rocket', 'paint_purple', 50),
+  };
+
+  /// 없어진 탈것 → 대신 주는 탈것과, 없어진 탈것의 처음 색(공짜였던 색).
+  /// 다리가 어색하고 스티커 자리가 좁던 자전거·킥보드를 기차·열기구로 바꿨다.
+  /// 저장값은 `SaveData.migrate`가 버전과 상관없이 옮긴다 (스티커·색 포함).
+  static const Map<String, (String to, String freePaint)> retired = {
+    'bicycle': ('train', 'paint_yellow'),
+    'kickboard': ('balloon', 'paint_pink'),
   };
 
   /// 스티커 색 (아이가 고르기 쉬운 선명한 색 6가지)

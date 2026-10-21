@@ -10,6 +10,7 @@ import '../data/vehicles.dart';
 import '../games/common/scene_game.dart';
 import '../services/audio_service.dart';
 import '../services/game_state.dart';
+import '../vehicle/fit_grid.dart';
 import '../vehicle/garage_screen.dart';
 import '../vehicle/ride_view.dart';
 import '../vehicle/vehicle_painter.dart';
@@ -88,7 +89,8 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
     if (!await _confirm(v.name, v.price, preview)) return;
     if (await state.buyVehicle(v.id) == PurchaseResult.ok && mounted) {
       state.audio.play(Sfx.buy);
-      state.audio.say('${v.name}, 출발!');
+      // 산 다음 "탑승!"을 눌러야 탄다
+      state.audio.say('${v.name}, 정말 멋져요!');
       setState(() => cheer++);
     }
   }
@@ -211,15 +213,11 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
     );
   }
 
-  Widget _vehicleGrid(GameState state) => GridView.builder(
-    padding: const EdgeInsets.only(bottom: 8, top: 2),
-    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-      maxCrossAxisExtent: 200,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.3,
-    ),
-    itemCount: Vehicles.all.length,
+  // 탈것 7종이 한 화면에 모두 보이게 (밀어서 보기 없음)
+  Widget _vehicleGrid(GameState state) => FitGrid(
+    count: Vehicles.all.length,
+    aspect: 1.3,
+    maxWidth: 200,
     itemBuilder: (_, i) {
       final v = Vehicles.all[i];
       final owned = state.ownsVehicle(v.id);
@@ -238,10 +236,11 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
               BoxShadow(color: Palette.creamDeep, offset: Offset(0, 5)),
             ],
           ),
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(4),
           child: Column(
             children: [
               Expanded(
+                flex: 3,
                 child: CustomPaint(
                   size: Size.infinite,
                   painter: VehiclePainter(
@@ -251,32 +250,34 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                   ),
                 ),
               ),
-              SizedBox(
-                height: 26,
-                child: owned
-                    ? Icon(
-                        state.ride == v.id
-                            ? Icons.check_circle_rounded
-                            : Icons.favorite_rounded,
-                        color: state.ride == v.id
-                            ? const Color(0xFF5CBF8A)
-                            : Palette.pink,
-                        size: 24,
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const CoinIcon(size: 22),
-                          const SizedBox(width: 3),
-                          Text(
-                            '${v.price}',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              color: Palette.coinDeep,
+              // 작은 화면에서는 칸에 맞춰 줄어든다
+              Expanded(
+                child: FitBox(
+                  child: owned
+                      ? Icon(
+                          state.ride == v.id
+                              ? Icons.check_circle_rounded
+                              : Icons.favorite_rounded,
+                          color: state.ride == v.id
+                              ? const Color(0xFF5CBF8A)
+                              : Palette.pink,
+                          size: 24,
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CoinIcon(size: 22),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${v.price}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                color: Palette.coinDeep,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                ),
               ),
             ],
           ),
@@ -316,7 +317,9 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
               onLabel: '내리기',
               offLabel: '탑승!',
               onTap: () {
-                state.setRide(state.ride == v.id ? null : v.id);
+                final boarding = state.ride != v.id;
+                state.setRide(boarding ? v.id : null);
+                if (boarding) state.audio.say('출발!');
                 setState(() => cheer++);
               },
             ),
