@@ -63,6 +63,20 @@ class RiderPose {
   /// 뒤쪽 팔다리는 조금만 진하게 (외곽선 없이 앞뒤를 나눈다)
   static Color _dim(Color c) => AnimalPainter.tone(c, .12);
 
+  /// 탄 친구의 몸과 머리 그림: 팔다리는 탈것 쪽에서 따로, 얼굴은 가는 쪽(오른쪽)으로
+  AnimalPainter get body => AnimalPainter(
+    zodiac: zodiac,
+    items: items,
+    mood: mood,
+    phase: phase,
+    drawLegs: false,
+    drawArms: false,
+    sideways: true,
+  );
+
+  /// 탄 친구의 얼굴 방향 (항상 가는 쪽)
+  FaceDirection get faceDirection => body.faceDirection;
+
   /// 탈것 좌표로 옮긴 몸통 모양 (앞 팔다리 그늘을 몸 위에만 깔 때 쓴다)
   static Path _torsoAt(Offset seatAt, double scale) {
     final o = seatAt - seat * scale;
@@ -129,15 +143,7 @@ class RiderPose {
     c.save();
     c.translate(seatAt.dx - seat.dx * scale, seatAt.dy - seat.dy * scale);
     c.scale(scale);
-    AnimalPainter(
-      zodiac: zodiac,
-      items: items,
-      mood: mood,
-      phase: phase,
-      drawLegs: false,
-      drawArms: false,
-      sideways: true,
-    ).paint(c, AnimalPainter.design);
+    body.paint(c, AnimalPainter.design);
     c.restore();
   }
 
