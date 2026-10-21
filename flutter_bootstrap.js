@@ -40,8 +40,13 @@ if (!window._flutter) {
 }
 _flutter.buildConfig = {"engineRevision":"deb287481e3ce9468f3434937ced4240a70539ca","wasmHashes":{"skwasm_heavy.wasm":"565f5cc1cca6ab120f11934b105f01fec4b58b480c82e0889dca93af8e6f8635","chromium/canvaskit.wasm":"ae8ff1d858140f7b1300ced3fa89fb8c9dce0a400a0f4f1e11f6dcfb3315fdcf","webparagraph/canvaskit.wasm":"0ce1b05082efdc8529550e8a01f6ff0593972d55525035010e26f5600aa9f254","skwasm.wasm":"e540fd5e8303b7b68ec2718cb49e9c421f8ade3075b15e02a7059a62654df9a1","canvaskit.wasm":"fbed517a43e82452404446683f00f2e876d835aed84410695759e67b6bb01cd3","wimp.wasm":"e924eaafd801d41e017d178f3fd5cf8a417f641fe35c9ed34a4e1d7582283e0c","mediapipe/wasm/vision_wasm_internal.wasm":"f82a8e6c05e08a44cc9f9e7ec5f845935bcbb1b1500ebe8c2f4812fb4e2917dc","mediapipe/wasm/vision_wasm_nosimd_internal.wasm":"38b61feab2fd7934e05cbe9f68baa308978a5e3b7f85c1913bb8ae89b8ef8b97"},"builds":[{"compileTarget":"dart2js","renderer":"canvaskit","mainJsPath":"main.dart.js"},{}],"useLocalCanvasKit":true};
 
+
+// 아이폰·아이패드 사파리는 주소창/아래 막대가 보일 때도 화면 높이를 크게 알려 줘서
+// 앱 아래쪽이 잘렸다. 실제로 보이는 높이(100dvh)에 맞춘 상자 안에 앱을 띄운다.
 _flutter.loader.load({
-  serviceWorkerSettings: {
-    serviceWorkerVersion: "147543306" /* Flutter's service worker is deprecated and will be removed in a future Flutter release. */
-  }
+  onEntrypointLoaded: async function (engineInitializer) {
+    const host = document.getElementById('app-host');
+    const appRunner = await engineInitializer.initializeEngine({ hostElement: host });
+    await appRunner.runApp();
+  },
 });
