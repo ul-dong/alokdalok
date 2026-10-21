@@ -24,11 +24,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <style>
-    html, body { background: #e6f4fc; margin: 0; padding: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
-    /* 실제로 보이는 화면 크기(주소창 제외)에 딱 맞춘다 */
-    #app-host { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; height: 100dvh; }
-  </style>
+  <style>html, body { background: #e6f4fc; }</style>
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="알록달록">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
@@ -40,7 +36,6 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <div id="app-host"></div>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -49,12 +44,6 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
-  <script>
-    // 인터넷 없이도 열리게 (한 번 연 뒤부터)
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
-    }
-  </script>
   <script src="eye_guard.js"></script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
