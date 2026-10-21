@@ -58,3 +58,7 @@ app.*.map.json
 # Spec originals kept locally (text version lives in docs/MASTER_PROMPT.md)
 *.pdf
 *.pdf.zip
+
+# test_preview 결과물 (--update-goldens로 매번 다시 그림)
+/test_preview/shots/
+/test_preview/failures/
