@@ -7,7 +7,6 @@ import '../character/item_thumb.dart';
 import '../core/palette.dart';
 import '../data/item_catalog.dart';
 import '../data/vehicles.dart';
-import '../games/common/scene_game.dart';
 import '../services/audio_service.dart';
 import '../services/game_state.dart';
 import '../vehicle/garage_screen.dart';
@@ -15,6 +14,7 @@ import '../vehicle/ride_view.dart';
 import '../vehicle/vehicle_painter.dart';
 import '../widgets/common.dart';
 import '../widgets/paged_grid.dart';
+import '../widgets/poke_character.dart';
 import 'item_widgets.dart';
 
 /// 꾸미기 상점. 테마(로봇·공주·소방관·경찰·군인·원시인)와 탈것을 고른다.
@@ -54,7 +54,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
   }
 
   Future<bool> _confirm(String name, int price, Widget preview) async {
-    final ok = await confirmBuy(context, name, price, preview);
+    final ok = await confirmBuy(context, name, price, preview, flat: true);
     return ok && mounted;
   }
 
@@ -100,7 +100,8 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
     final state = AppScope.of(context);
     final vehicleTab = theme == null;
     return LandscapePage(
-      background: const SceneBackground(groundLevel: .82),
+      // 납작한 파스텔 배경 (외곽선·입체감 없이 단색 면)
+      background: const CustomPaint(painter: ShopBackdropPainter()),
       child: Row(
         children: [
           // 왼쪽: 미리 입어 보는 내 친구 + 사기/입기 버튼
@@ -110,7 +111,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
               children: [
                 Row(
                   children: [
-                    RoundIconButton(
+                    _FlatRoundButton(
                       icon: Icons.home_rounded,
                       label: '집으로',
                       size: 60,
@@ -120,7 +121,17 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                     const Expanded(
                       child: FitBox(
                         alignment: Alignment.centerLeft,
-                        child: TitleChip('꾸미기 상점'),
+                        child: _FlatChip(
+                          child: Text(
+                            '꾸미기 상점',
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontSize: TextSizes.heading,
+                              color: Palette.text,
+                              height: 1.1,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -135,10 +146,12 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                               vehicleId:
                                   selectedVehicle?.id ?? state.ride ?? 'car',
                             )
-                          : CharacterView(
-                              equipped: _preview(state),
-                              cheer: cheer,
-                              size: (c.maxHeight / 1.2).clamp(60.0, 300.0),
+                          : PokeCharacter(
+                              child: CharacterView(
+                                equipped: _preview(state),
+                                cheer: cheer,
+                                size: (c.maxHeight / 1.2).clamp(60.0, 300.0),
+                              ),
                             ),
                     ),
                   ),
@@ -161,15 +174,32 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    CountBadge(
-                      icon: const CoinIcon(),
-                      value: state.coins,
-                      label: '코인',
+                    Semantics(
+                      label: '코인 ${state.coins}',
+                      child: _FlatChip(
+                        padding: const EdgeInsets.fromLTRB(10, 0, 20, 0),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const FlatCoin(size: 36),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${state.coins}',
+                              style: const TextStyle(
+                                fontSize: TextSizes.number,
+                                color: Palette.text,
+                                height: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 ThemeTabs(
+                  flat: true,
                   selected: theme,
                   onSelect: (t) => setState(() {
                     theme = t;
@@ -199,6 +229,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
       maxCellWidth: ItemTile.maxWidth,
       maxCellHeight: ItemTile.maxHeight,
       arrowSize: ItemTile.arrowSize,
+      arrowBuilder: FlatPageArrow.new,
       gap: 12,
       itemCount: items.length,
       itemBuilder: (_, i) => ItemTile(
@@ -207,6 +238,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
         owned: state.owns(items[i].id),
         equipped: state.equipped[items[i].slot] == items[i].id,
         onTap: () => _select(items[i]),
+        flat: true,
       ),
     );
   }
@@ -218,24 +250,16 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
     minCellHeight: 48,
     maxCellWidth: 200,
     maxCellHeight: 154,
+    arrowBuilder: FlatPageArrow.new,
     itemBuilder: (_, i) {
       final v = Vehicles.all[i];
       final owned = state.ownsVehicle(v.id);
       return Pressable(
         onTap: () => _selectVehicle(v),
         semanticLabel: '${v.name}${owned ? ', 가지고 있음' : ', 코인 ${v.price}개'}',
-        child: Container(
-          decoration: BoxDecoration(
-            color: Palette.cream,
-            borderRadius: BorderRadius.circular(Radii.lg),
-            border: Border.all(
-              color: selectedVehicle?.id == v.id ? Palette.pink : Colors.white,
-              width: selectedVehicle?.id == v.id ? 5 : 3,
-            ),
-            boxShadow: const [
-              BoxShadow(color: Palette.creamDeep, offset: Offset(0, 5)),
-            ],
-          ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: ShopStyle.tile(selected: selectedVehicle?.id == v.id),
           padding: const EdgeInsets.all(4),
           child: Column(
             children: [
@@ -259,24 +283,11 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                               ? Icons.check_circle_rounded
                               : Icons.favorite_rounded,
                           color: state.ride == v.id
-                              ? const Color(0xFF5CBF8A)
-                              : Palette.pink,
+                              ? ShopStyle.mintDeep
+                              : ShopStyle.pinkDeep,
                           size: 24,
                         )
-                      : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const CoinIcon(size: 22),
-                            const SizedBox(width: 3),
-                            Text(
-                              '${v.price}',
-                              style: const TextStyle(
-                                fontSize: TextSizes.button,
-                                color: Palette.coinDeep,
-                              ),
-                            ),
-                          ],
-                        ),
+                      : PriceTag(price: v.price),
                 ),
               ),
             ],
@@ -326,9 +337,8 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: PillButton(
-              color: Palette.yellowSoft,
-              edge: const Color(0xFFF0D88A),
+            child: FlatPill(
+              color: ShopStyle.butter,
               onTap: () =>
                   Navigator.of(context)
                       .push(softRoute(GarageScreen(vehicleId: v.id))),
@@ -394,10 +404,8 @@ class _ToggleButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => PillButton(
-    width: double.infinity,
-    color: on ? Colors.white : Palette.mint,
-    edge: on ? Palette.creamDeep : const Color(0xFF6DB894),
+  Widget build(BuildContext context) => FlatPill(
+    color: on ? ShopStyle.surface : ShopStyle.mint,
     onTap: onTap,
     semanticLabel: on ? onLabel : offLabel,
     child: Text(
@@ -424,12 +432,15 @@ class _PriceButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (coins < price) {
-      return CreamCard(
+      return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        radius: 28,
+        decoration: BoxDecoration(
+          color: ShopStyle.surface,
+          borderRadius: BorderRadius.circular(28),
+        ),
         child: Row(
           children: [
-            const CoinIcon(size: 34),
+            const FlatCoin(size: 34),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -452,8 +463,8 @@ class _PriceButton extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: (coins / price).clamp(0.0, 1.0),
                       minHeight: 12,
-                      color: Palette.coin,
-                      backgroundColor: Palette.creamDeep,
+                      color: ShopStyle.coin,
+                      backgroundColor: ShopStyle.priceBg,
                     ),
                   ),
                 ],
@@ -463,17 +474,15 @@ class _PriceButton extends StatelessWidget {
         ),
       );
     }
-    return PillButton(
-      width: double.infinity,
-      color: Palette.yellow,
-      edge: Palette.coinDeep,
+    return FlatPill(
+      color: ShopStyle.yellow,
       onTap: onBuy,
       semanticLabel: '코인 $price개로 사기',
       child: FitBox(
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CoinIcon(size: 40),
+            const FlatCoin(size: 40),
             const SizedBox(width: 8),
             Text(
               '$price',
@@ -490,4 +499,104 @@ class _PriceButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 상점 위쪽의 납작한 둥근 아이콘 버튼 (집으로)
+class _FlatRoundButton extends StatelessWidget {
+  const _FlatRoundButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.size = 60,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Pressable(
+    onTap: onTap,
+    semanticLabel: label,
+    child: Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: ShopStyle.surface,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, size: size * .48, color: Palette.text),
+    ),
+  );
+}
+
+/// 납작한 알약 이름표 (제목·코인 수)
+class _FlatChip extends StatelessWidget {
+  const _FlatChip({
+    required this.child,
+    this.padding = const EdgeInsets.symmetric(horizontal: 22),
+  });
+  final Widget child;
+  final EdgeInsets padding;
+
+  static const height = 58.0;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: height,
+    padding: padding,
+    alignment: Alignment.center,
+    decoration: ShopStyle.pill(ShopStyle.surface, height),
+    child: child,
+  );
+}
+
+/// 상점 배경: 파스텔 하늘, 동그란 구름, 둥근 언덕, 땅 (모두 외곽선 없는 단색 면, 움직이지 않음)
+class ShopBackdropPainter extends CustomPainter {
+  const ShopBackdropPainter();
+
+  @override
+  void paint(Canvas c, Size s) {
+    final w = s.width, h = s.height;
+    c.drawRect(Offset.zero & s, Paint()..color = ShopStyle.sky);
+    c.drawRect(
+      Rect.fromLTWH(0, h * .45, w, h * .55),
+      Paint()..color = ShopStyle.skyLow,
+    );
+    // 구름: 동그라미 세 개 + 납작한 밑면
+    void cloud(double x, double y, double r) {
+      final p = Paint()..color = ShopStyle.cloud;
+      c.drawCircle(Offset(x - r * .9, y + r * .2), r * .7, p);
+      c.drawCircle(Offset(x, y - r * .1), r, p);
+      c.drawCircle(Offset(x + r * .95, y + r * .25), r * .65, p);
+      c.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTRB(x - r * 1.6, y + r * .2, x + r * 1.6, y + r * .9),
+          Radius.circular(r * .35),
+        ),
+        p,
+      );
+    }
+
+    cloud(w * .2, h * .12, h * .05);
+    cloud(w * .62, h * .2, h * .04);
+    // 둥근 언덕 두 겹
+    final back = Paint()..color = ShopStyle.hillBack;
+    c.drawOval(Rect.fromLTWH(-w * .1, h * .62, w * .6, h * .5), back);
+    c.drawOval(Rect.fromLTWH(w * .55, h * .6, w * .6, h * .55), back);
+    final front = Paint()..color = ShopStyle.hillFront;
+    c.drawOval(Rect.fromLTWH(w * .2, h * .7, w * .7, h * .5), front);
+    // 땅
+    c.drawRRect(
+      RRect.fromRectAndCorners(
+        Rect.fromLTWH(0, h * .86, w, h * .14 + 1),
+        topLeft: Radius.circular(h * .05),
+        topRight: Radius.circular(h * .05),
+      ),
+      Paint()..color = ShopStyle.ground,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

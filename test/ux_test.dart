@@ -12,7 +12,10 @@ import 'package:alokdalok/services/game_state.dart';
 import 'package:alokdalok/services/storage_service.dart';
 import 'package:alokdalok/services/voice_lines.dart';
 import 'package:alokdalok/widgets/common.dart';
+import 'package:alokdalok/widgets/paged_grid.dart';
 import 'package:alokdalok/widgets/poke_character.dart';
+import 'package:alokdalok/shop/item_widgets.dart';
+import 'package:alokdalok/shop/shop_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -311,6 +314,99 @@ void main() {
         t.state<PokeCharacterState>(find.byType(PokeCharacter)).moving,
         isFalse,
       );
+    });
+  });
+
+  group('꾸미기 상점: 납작한 파스텔 모양', () {
+    for (final size in const [
+      Size(568, 320),
+      Size(844, 390),
+      Size(1280, 800),
+    ]) {
+      for (final vehicles in [false, true]) {
+        final name =
+            '${size.width.toInt()}x${size.height.toInt()} ${vehicles ? '탈것' : '옷'}';
+        testWidgets('$name: 넘침 없고, 외곽선·두께 그림자 없고, 버튼 60px 이상', (t) async {
+          t.view.physicalSize = size;
+          t.view.devicePixelRatio = 1;
+          addTearDown(t.view.reset);
+          final s = await makeState();
+          for (var i = 0; i < 40; i++) {
+            await s.rewardCorrect(firstTry: true);
+          }
+          await s.buyVehicle('car');
+          await t.pumpWidget(wrap(s, ShopScreen(startWithVehicles: vehicles)));
+          await settle(t);
+          // 탈것 하나를 골라 "탑승!"·"꾸미기" 버튼까지 보이게
+          if (vehicles) {
+            await t.tap(pressable('자동차, 가지고 있음'));
+            await settle(t, 300);
+            expect(pressable('탑승!'), findsOneWidget);
+            expect(pressable('탈것 꾸미기'), findsOneWidget);
+          }
+          expect(t.takeException(), isNull);
+
+          final shop = find.byType(ShopScreen);
+          for (final el
+              in find
+                  .descendant(of: shop, matching: find.byType(Pressable))
+                  .evaluate()) {
+            final label = (el.widget as Pressable).semanticLabel;
+            final box = el.renderObject! as RenderBox;
+            expect(box.size.width, greaterThanOrEqualTo(60), reason: '$label');
+            expect(box.size.height, greaterThanOrEqualTo(60), reason: '$label');
+            // 버튼 안의 면은 외곽선·아래 두께 그림자 없이 납작하게
+            for (final c
+                in find
+                    .descendant(
+                      of: find.byWidget(el.widget),
+                      matching: find.byType(Container),
+                    )
+                    .evaluate()) {
+              final d = (c.widget as Container).decoration;
+              if (d is BoxDecoration) {
+                expect(d.border, isNull, reason: '$label 외곽선');
+                expect(d.boxShadow, anyOf(isNull, isEmpty), reason: '$label');
+              }
+            }
+          }
+          expect(
+            find.descendant(of: shop, matching: find.byType(FlatPageArrow)),
+            findsWidgets,
+          );
+          expect(
+            find.descendant(of: shop, matching: find.byType(PageArrow)),
+            findsNothing,
+          );
+          await t.pumpWidget(const SizedBox());
+        });
+      }
+    }
+
+    testWidgets('상점 버튼도 누르면 살짝 작아진다', (t) async {
+      t.view.physicalSize = const Size(844, 390);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      final s = await makeState();
+      await t.pumpWidget(wrap(s, const ShopScreen()));
+      await settle(t);
+      final target = pressable('공주');
+      final g = await t.startGesture(t.getCenter(target));
+      await t.pump(const Duration(milliseconds: 120));
+      await t.pump(const Duration(milliseconds: 100));
+      final press = t.widget<PressDown>(
+        find.descendant(of: target, matching: find.byType(PressDown)),
+      );
+      expect(press.down, isTrue);
+      final scaled = find.descendant(
+        of: target,
+        matching: find.byWidgetPredicate(
+          (w) => w is Transform && w.transform.storage[0] < .99,
+        ),
+      );
+      expect(scaled, findsWidgets);
+      await g.up();
+      await settle(t, 300);
     });
   });
 }
