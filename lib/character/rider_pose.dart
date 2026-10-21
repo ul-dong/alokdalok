@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -46,14 +47,34 @@ class RiderPose {
     Zodiac.pig,
   }.contains(zodiac);
 
-  Color get _skin =>
-      zodiac == Zodiac.sheep ? zodiac.look.accent : zodiac.look.fur;
+  /// 팔다리 색: 서 있을 때처럼 몸보다 한 톤 진하게 (외곽선 없이 몸과 구분)
+  Color get _skin => AnimalPainter.tone(
+    zodiac == Zodiac.sheep ? zodiac.look.accent : zodiac.look.fur,
+    .1,
+  );
   Color get _tip => _hooves ? const Color(0xFF8A817C) : _skin;
-  Color get _sleeve => items[ItemSlot.outfit]?.colors.first ?? _skin;
+  Color get _sleeve {
+    final outfit = items[ItemSlot.outfit]?.colors.first;
+    return outfit == null ? _skin : AnimalPainter.tone(outfit, .1);
+  }
+
   Color? get _shoe => items[ItemSlot.shoes]?.colors.first;
 
   /// 뒤쪽 팔다리는 조금만 진하게 (외곽선 없이 앞뒤를 나눈다)
-  static Color _dim(Color c) => Color.lerp(c, const Color(0xFF3A2A22), .12)!;
+  static Color _dim(Color c) => AnimalPainter.tone(c, .12);
+
+  /// 탈것 좌표로 옮긴 몸통 모양 (앞 팔다리 그늘을 몸 위에만 깔 때 쓴다)
+  static Path _torsoAt(Offset seatAt, double scale) {
+    final o = seatAt - seat * scale;
+    return AnimalPainter.torsoPath.transform(
+      Float64List.fromList([
+        scale, 0, 0, 0, //
+        0, scale, 0, 0,
+        0, 0, 1, 0,
+        o.dx, o.dy, 0, 1,
+      ]),
+    );
+  }
 
   /// 캐릭터 좌표 → 탈것 좌표
   static Offset map(Offset p, Offset seatAt, double scale) =>
@@ -130,8 +151,21 @@ class RiderPose {
     bool legs = true,
   }) {
     final g = _Geo(seatAt, scale, hand, foot);
-    if (legs && !_noLimbs) _leg(c, g.hipN, g.kneeN, g.footN, scale);
-    if (!_wings && !_noLimbs) _arm(c, g.shoulderN, g.handN, scale);
+    if (_noLimbs) return;
+    // 앞 팔다리가 몸 앞을 지나는 자리: 아래쪽에 아주 연한 그늘 (몸 위에만)
+    final drop = Offset(0, 3.5 * scale);
+    c.save();
+    c.clipPath(_torsoAt(seatAt, scale));
+    final shadow = AnimalPainter.softShadow;
+    if (legs) {
+      _limb(c, [g.hipN + drop, g.kneeN + drop], legWidth * scale, shadow);
+    }
+    if (!_wings) {
+      _limb(c, [g.shoulderN + drop, g.handN + drop], armWidth * scale, shadow);
+    }
+    c.restore();
+    if (legs) _leg(c, g.hipN, g.kneeN, g.footN, scale);
+    if (!_wings) _arm(c, g.shoulderN, g.handN, scale);
   }
 
   /// 허벅지는 앞으로 거의 수평, 정강이는 발 쪽으로. 짧은 다리라 무릎이 너무 멀리 가지 않게 한다.

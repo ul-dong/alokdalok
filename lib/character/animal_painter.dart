@@ -43,7 +43,8 @@ enum Snout {
 ///
 /// 그림체 (2026-10-22 사용자 결정): 외곽선 없는 납작한(flat) 파스텔 그림.
 /// 머리·몸·팔·발은 같은 색 면이 하나의 실루엣으로 이어지고(이음새 선 없음),
-/// 얼굴은 점 눈·작은 코와 입·연한 볼로 단순하게. 그림자·그라데이션 대신 색이 다른 면으로 무늬를 나눈다.
+/// 얼굴은 점 눈·작은 코와 입·연한 볼로 단순하게. 그라데이션 없이 색이 다른 면으로 무늬를 나누고,
+/// 팔·다리는 한 톤 진하게, 팔 아래·턱 아래·몸 아래에는 아주 연한 단색 그늘 면을 깔아 부위를 구분한다.
 ///
 /// 모든 친구가 같은 몸 틀(머리 크기와 위치, 몸통, 팔·발 위치)을 공유해서 꾸미기 아이템이 누구에게나 맞는다.
 /// 종마다 다른 점은 머리 모양·귀·뿔·볏·주둥이와 무늬·색·꼬리·등판·날개로만 표현한다. 200 x 240 좌표계.
@@ -162,6 +163,15 @@ class AnimalPainter extends CustomPainter {
   static Color? rimOf(Color fur) => fur.computeLuminance() > .8
       ? Color.lerp(fur, const Color(0xFF9A7A68), .2)
       : null;
+
+  /// 부위를 나누는 한 톤 진한 색 (외곽선 대신 쓰는 납작한 음영).
+  /// 흰 친구(토끼·소·닭·양)는 누런 갈색 대신 연회색 쪽으로 어둡게 한다.
+  static Color tone(Color c, double t) => c.computeLuminance() > .8
+      ? Color.lerp(c, const Color(0xFF8E96A3), t * 1.6)!
+      : Color.lerp(c, const Color(0xFF3A2A22), t)!;
+
+  /// 팔·소매가 몸 앞에 올 때 아래·안쪽에 까는 아주 연한 그림자 (어떤 옷 색 위에도 쓴다)
+  static const Color softShadow = Color(0x1F3A2A22);
 
   /// 연한 테두리 그리는 중이면 그 색 ([_fs]가 면 대신 테두리를 그린다)
   Color? _rim;
@@ -810,7 +820,7 @@ class AnimalPainter extends CustomPainter {
       }
       // 양: 뭉툭한 발 (털 몸 아래)
       final foot = _footShape(x);
-      _fs(c, foot, look.accent);
+      _fs(c, foot, tone(look.accent, .1));
       c.save();
       c.clipPath(foot);
       c.drawRect(
@@ -824,7 +834,18 @@ class AnimalPainter extends CustomPainter {
   // ================= 몸 =================
   void _body(Canvas c) {
     // 양: 구름 털 몸
-    _fs(c, _cloud(const Offset(100, 176), 40, 9), look.light);
+    final wool = _cloud(const Offset(100, 176), 40, 9);
+    if (_rim != null) return _fs(c, wool, look.light);
+    // 구름 털 몸: 오른쪽·아래 가장자리 음영 + 턱 그림자
+    c.drawPath(wool, Paint()..color = tone(look.light, .07));
+    c.save();
+    c.clipPath(wool);
+    c.drawPath(wool.shift(const Offset(-5, -5)), Paint()..color = look.light);
+    c.drawOval(
+      Rect.fromCenter(center: const Offset(100, 147), width: 80, height: 24),
+      Paint()..color = tone(look.light, .13),
+    );
+    c.restore();
   }
 
   /// 몸통 안쪽 무늬 (몸통 모양으로 잘라서 그린다)
@@ -1023,26 +1044,53 @@ class AnimalPainter extends CustomPainter {
       }
     }
 
-    c.drawPath(
-      _silhouette(happy, feet: feet, arms: arms),
-      Paint()..color = fur,
-    );
+    // 외곽선 없이 부위를 나누는 납작한 음영:
+    // 다리·팔은 한 톤 진하게, 몸 아래·턱 아래·팔 안쪽에는 연한 그늘 면을 깐다.
+    final limb = tone(fur, .1);
+
+    // 다리·발 (몸통 아래에 깔린다) + 몸 아래 그늘 (다리 윗부분과 다리 사이)
+    if (footPaths.isNotEmpty) {
+      final legs = _cached(
+        'legs',
+        () => Path.combine(PathOperation.union, footPaths[0], footPaths[1]),
+      );
+      c.drawPath(legs, Paint()..color = limb);
+      c.save();
+      c.clipPath(legs);
+      c.drawOval(
+        Rect.fromCenter(center: const Offset(100, 210), width: 80, height: 18),
+        Paint()..color = tone(fur, .22),
+      );
+      c.restore();
+    }
+
+    // 몸통: 오른쪽·아래 가장자리에만 아주 연한 음영 (단색 면 하나)
+    c.drawPath(torsoPath, Paint()..color = tone(fur, .07));
+    c.save();
+    c.clipPath(torsoPath);
+    c.drawPath(torsoPath.shift(const Offset(-5, -5)), Paint()..color = fur);
+    c.restore();
 
     // 몸통 무늬 (배, 줄무늬 등)
     _bodyMarks(c);
 
-    // 팔이 배 무늬 위로 지나가는 자리는 몸 색으로 다시 칠한다 (선은 긋지 않는다)
-    if (armPaths.isNotEmpty) {
-      for (final a in armPaths) {
-        c.save();
-        c.clipPath(torsoPath);
-        // 어깨는 몸에 녹아들고, 손 쪽에만 옅은 선이 보이게
-        final b = a.getBounds();
-        c.clipRect(Rect.fromLTRB(0, b.top + b.height * .45, 200, 240));
-        // 팔 안쪽은 몸 색으로 다시 칠해서 배 무늬 위로 팔이 오도록
-        c.drawPath(a, Paint()..color = fur);
-        c.restore();
-      }
+    // 턱 그림자: 머리 바로 아래 몸통 위의 얇은 반달
+    c.save();
+    c.clipPath(torsoPath);
+    c.drawOval(
+      Rect.fromCenter(center: const Offset(100, 147), width: 88, height: 24),
+      Paint()..color = tone(fur, .13),
+    );
+    c.restore();
+
+    // 팔: 몸 앞에 오는 자리 아래·안쪽에 연한 그늘을 깔고, 한 톤 진한 색으로
+    for (final (i, a) in armPaths.indexed) {
+      final m = i == 0 ? -1.0 : 1.0;
+      c.save();
+      c.clipPath(torsoPath);
+      c.drawPath(a.shift(Offset(-m * 3.5, 3)), Paint()..color = tone(fur, .17));
+      c.restore();
+      c.drawPath(a, Paint()..color = tone(fur, .12));
     }
 
     // 발굽·발톱
@@ -1170,7 +1218,7 @@ class AnimalPainter extends CustomPainter {
       final (center, rot) = armPose(left, happy);
       _at(c, center, rot, () {
         final arm = _armShape(1);
-        _fs(c, arm, look.accent);
+        _fs(c, arm, tone(look.accent, .1));
         c.save();
         c.clipPath(arm);
         c.drawRect(
@@ -1243,7 +1291,7 @@ class AnimalPainter extends CustomPainter {
             ..lineTo(-10, 18)
             ..quadraticBezierTo(-16, -6, 0, -18)
             ..close();
-          _fs(c, w, Colors.white);
+          _fs(c, w, tone(Colors.white, .1));
         });
       }
       c.restore();

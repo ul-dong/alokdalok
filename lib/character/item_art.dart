@@ -420,31 +420,35 @@ class ItemArt {
     bool square = false,
   }) {
     if (!sleeves) return;
-    for (final left in [true, false]) {
-      final (center, rot) = AnimalPainter.armPose(left, happy);
-      c.save();
-      c.translate(center.dx, center.dy);
-      c.rotate(rot);
-      if (puff) {
-        _fs(
-          Path()..addOval(
+    // 소매는 몸통 옷보다 한 톤 진하게, 아래·안쪽에 연한 그늘을 깔아 몸과 떨어져 보이게
+    final sleeve = AnimalPainter.tone(color, .1);
+    final shape = puff
+        ? (Path()..addOval(
             Rect.fromCenter(
               center: const Offset(0, -12),
               width: 28,
               height: 20,
             ),
-          ),
-          color,
-          width: 3.5,
-        );
+          ))
+        : (Path()..addRRect(
+            RRect.fromLTRBR(-11, -19, 11, 4, Radius.circular(square ? 4 : 9)),
+          ));
+    for (final left in [true, false]) {
+      final (center, rot) = AnimalPainter.armPose(left, happy);
+      final m = left ? -1.0 : 1.0;
+      c.save();
+      c.clipPath(AnimalPainter.torsoPath);
+      c.translate(center.dx - m * 3.5, center.dy + 3);
+      c.rotate(rot);
+      c.drawPath(shape, Paint()..color = AnimalPainter.softShadow);
+      c.restore();
+      c.save();
+      c.translate(center.dx, center.dy);
+      c.rotate(rot);
+      if (puff) {
+        _fs(shape, sleeve);
       } else {
-        final r = square ? 4.0 : 9.0;
-        _fs(
-          Path()
-            ..addRRect(RRect.fromLTRBR(-11, -19, 11, 4, Radius.circular(r))),
-          color,
-          width: 3.2,
-        );
+        _fs(shape, sleeve);
         if (stripe != null) {
           c.drawLine(
             const Offset(-8, -3),
