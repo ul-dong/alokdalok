@@ -42,9 +42,20 @@ class SeasonLook {
     required this.grassDeep,
     required this.flower,
     required this.falling,
+    required this.island,
+    required this.mountain,
+    required this.sea,
+    required this.seaDeep,
+    required this.sand,
+    required this.path,
+    required this.blade,
+    required this.tree,
   });
 
   final Color skyTop, skyBottom, grass, grassDeep, flower;
+
+  /// 먼 섬, 먼 산, 바다, 모래, 길, 풀잎, 나뭇잎 색
+  final Color island, mountain, sea, seaDeep, sand, path, blade, tree;
 
   /// 떨어지는 것 색 (null이면 없음)
   final Color? falling;
@@ -52,35 +63,68 @@ class SeasonLook {
   static SeasonLook of(Season s) => switch (s) {
     Season.spring => const SeasonLook(
       skyTop: Palette.skyTop,
-      skyBottom: Palette.skyBottom,
+      skyBottom: Color(0xFFF1F8FD),
       grass: Palette.grass,
       grassDeep: Palette.grassDeep,
       flower: Color(0xFFF59AB5),
       falling: Color(0xFFF8B8CB),
+      island: Color(0xFFD9C9EE),
+      mountain: Color(0xFFCDE6C2),
+      sea: Palette.sea,
+      seaDeep: Palette.seaDeep,
+      sand: Palette.sand,
+      path: Color(0xFFF0DDB2),
+      blade: Color(0xFF79B957),
+      // 벚꽃
+      tree: Color(0xFFF9C3D3),
     ),
     Season.summer => const SeasonLook(
-      skyTop: Color(0xFFA9DBF8),
-      skyBottom: Color(0xFFE2F5FF),
+      skyTop: Color(0xFF94D2F7),
+      skyBottom: Color(0xFFE0F4FF),
       grass: Color(0xFF97D46E),
       grassDeep: Color(0xFF74BD55),
       flower: Color(0xFFFFD45C),
       falling: null,
+      island: Color(0xFFA9D99A),
+      mountain: Color(0xFFB4DFA3),
+      sea: Color(0xFF7CC6EC),
+      seaDeep: Color(0xFF4FAEDF),
+      sand: Color(0xFFF6E2AE),
+      path: Color(0xFFF2DDA8),
+      blade: Color(0xFF5FA845),
+      tree: Color(0xFF6DBE57),
     ),
     Season.autumn => const SeasonLook(
-      skyTop: Color(0xFFCFE6F5),
-      skyBottom: Color(0xFFFFF1DE),
-      grass: Color(0xFFBFD77E),
-      grassDeep: Color(0xFFA6C267),
+      skyTop: Color(0xFFC9E2F3),
+      skyBottom: Color(0xFFFFEEDB),
+      grass: Color(0xFFC9D98A),
+      grassDeep: Color(0xFFB1C46E),
       flower: Color(0xFFFF9A5A),
       falling: Color(0xFFF2A35E),
+      island: Color(0xFFE8C3A8),
+      mountain: Color(0xFFF2C79A),
+      sea: Color(0xFF8CC6E2),
+      seaDeep: Color(0xFF6AAFD3),
+      sand: Color(0xFFEFD9AC),
+      path: Color(0xFFE9D2A2),
+      blade: Color(0xFF9DAF55),
+      tree: Color(0xFFF29A4E),
     ),
     Season.winter => const SeasonLook(
-      skyTop: Color(0xFFD5E8F5),
+      skyTop: Color(0xFFCFE3F3),
       skyBottom: Color(0xFFF4F9FC),
-      grass: Color(0xFFF3F7FA),
-      grassDeep: Color(0xFFDDE8F0),
+      grass: Color(0xFFF7FAFC),
+      grassDeep: Color(0xFFE4EDF4),
       flower: Color(0xFFBFD8EE),
       falling: Color(0xFFFFFFFF),
+      island: Color(0xFFE8EEF7),
+      mountain: Color(0xFFDDE7F2),
+      sea: Color(0xFF9CC9E3),
+      seaDeep: Color(0xFF7DB4D6),
+      sand: Color(0xFFEDE6DA),
+      path: Color(0xFFE3EAF2),
+      blade: Color(0xFFC9D8E5),
+      tree: Color(0xFF6FA88C),
     ),
   };
 }
@@ -263,9 +307,11 @@ class _Landscape extends Component {
     final w = game.size.x, h = game.size.y;
     if (w <= 0 || h <= 0) return;
     final look = game.look;
+    final season = game.season;
+    final winter = season == Season.winter;
     final ground = h * game.groundLevel;
     final horizon = ground - h * .13;
-    final u = min(w, h * .62) / 400; // 사물 크기 단위
+    final u = unit(w, h); // 사물 크기 단위
 
     // 하늘
     canvas.drawRect(
@@ -278,23 +324,34 @@ class _Landscape extends Component {
         ).createShader(Rect.fromLTWH(0, 0, w, horizon)),
     );
 
-    // 해 (천천히 숨쉬는 빛)
+    // 해 (천천히 숨쉬는 빛). 여름은 조금 더 크고 진하게.
     final sun = Offset(w * .16, h * .1);
     final glow = 1 + sin(_t * .8) * .04;
+    final sunScale = season == Season.summer ? 1.15 : 1.0;
     canvas.drawCircle(
       sun,
-      70 * u * glow,
+      70 * u * glow * sunScale,
       Paint()..color = const Color(0x40FFF3B0),
     );
     canvas.drawCircle(
       sun,
-      48 * u * glow,
+      48 * u * glow * sunScale,
       Paint()..color = const Color(0x70FFF0A0),
     );
-    canvas.drawCircle(sun, 34 * u, Paint()..color = const Color(0xFFFFF1A6));
+    canvas.drawCircle(
+      sun,
+      34 * u * sunScale,
+      Paint()
+        ..color = season == Season.summer
+            ? const Color(0xFFFFE27A)
+            : const Color(0xFFFFF1A6),
+    );
+
+    // 먼 산 (하늘이 넓은 화면을 채운다, 겨울은 눈 모자)
+    _mountains(canvas, w, h, horizon, u, look, winter);
 
     // 먼 섬
-    final island = Paint()..color = Palette.lavender.withValues(alpha: .8);
+    final island = Paint()..color = look.island;
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(w * .2, horizon + 2),
@@ -316,10 +373,10 @@ class _Landscape extends Component {
     canvas.drawRect(
       Rect.fromLTWH(0, horizon, w, ground - horizon + 4),
       Paint()
-        ..shader = const LinearGradient(
+        ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Palette.sea, Palette.seaDeep],
+          colors: [look.sea, look.seaDeep],
         ).createShader(Rect.fromLTWH(0, horizon, w, ground - horizon)),
     );
     final wave = Paint()
@@ -338,6 +395,10 @@ class _Landscape extends Component {
         wave,
       );
     }
+    // 여름 바다의 작은 돛단배
+    if (season == Season.summer) {
+      _sailboat(canvas, Offset(w * .55, horizon + (ground - horizon) * .45), u);
+    }
 
     // 모래사장
     final sand = Path()
@@ -346,12 +407,17 @@ class _Landscape extends Component {
       ..lineTo(w, h)
       ..lineTo(0, h)
       ..close();
-    canvas.drawPath(sand, Paint()..color = Palette.sand);
+    canvas.drawPath(sand, Paint()..color = look.sand);
 
     // 등대 (오른쪽)
-    _lighthouse(canvas, Offset(w * .86, ground - 6 * u), u);
+    _lighthouse(canvas, Offset(w * .86, ground - 6 * u), u, winter);
     // 작은 집 (왼쪽 뒤)
-    _house(canvas, Offset(w * .2, ground - 10 * u), u);
+    _house(canvas, Offset(w * .2, ground - 10 * u), u, winter);
+    // 계절 나무 (집 왼쪽, 넓은 화면은 가운데에도 한 그루)
+    _tree(canvas, Offset(w * .065, ground - 2 * u), u * 1.05, look, season);
+    if (w > 700) {
+      _tree(canvas, Offset(w * .66, ground - 14 * u), u * .8, look, season);
+    }
 
     // 잔디 언덕
     final grass = Path()
@@ -363,16 +429,28 @@ class _Landscape extends Component {
       ..close();
     canvas.drawPath(grass, Paint()..color = look.grass);
 
-    // 모래길
+    // 계절 소품 (잔디 위 오른쪽)
+    switch (season) {
+      case Season.spring:
+        break;
+      case Season.summer:
+        _parasol(canvas, Offset(w * .4, ground + 14 * u), u);
+      case Season.autumn:
+        _leafPile(canvas, Offset(w * .42, ground + 18 * u), u * 1.4);
+      case Season.winter:
+        _snowman(canvas, Offset(w * .42, ground + 18 * u), u * 1.3);
+    }
+
+    // 모래길 (겨울은 눈 덮인 길)
     final path = Path()
       ..moveTo(0, ground + 46 * u)
       ..quadraticBezierTo(w * .5, ground + 30 * u, w, ground + 50 * u)
       ..lineTo(w, ground + 92 * u)
       ..quadraticBezierTo(w * .5, ground + 72 * u, 0, ground + 88 * u)
       ..close();
-    canvas.drawPath(path, Paint()..color = const Color(0xFFF0DDB2));
+    canvas.drawPath(path, Paint()..color = look.path);
     final dash = Paint()
-      ..color = const Color(0xFFDCC392)
+      ..color = Color.lerp(look.path, Palette.outline, .18)!
       ..strokeWidth = 3 * u
       ..strokeCap = StrokeCap.round;
     for (var x = 20 * u; x < w; x += 46 * u) {
@@ -386,11 +464,25 @@ class _Landscape extends Component {
       Paint()..color = look.grassDeep,
     );
     final blade = Paint()
-      ..color = Color.lerp(look.grassDeep, Colors.black, .1)!
+      ..color = look.blade
       ..strokeWidth = 3 * u
       ..strokeCap = StrokeCap.round;
     for (var x = 8 * u; x < w; x += 22 * u) {
       final base = ground + 100 * u + (x * 7 % 13) * u;
+      if (winter) {
+        // 겨울: 풀잎 대신 작은 눈 더미
+        if ((x / (22 * u)).round() % 3 == 0) {
+          canvas.drawOval(
+            Rect.fromCenter(
+              center: Offset(x, base - 4 * u),
+              width: 18 * u,
+              height: 7 * u,
+            ),
+            Paint()..color = Colors.white,
+          );
+        }
+        continue;
+      }
       canvas.drawLine(Offset(x, base), Offset(x - 4 * u, base - 14 * u), blade);
       canvas.drawLine(
         Offset(x + 5 * u, base),
@@ -399,29 +491,338 @@ class _Landscape extends Component {
       );
     }
 
-    // 꽃
+    // 꽃 (봄은 튤립, 여름은 해바라기빛, 가을은 낙엽, 겨울은 없음)
+    if (winter) return;
     for (final fx in [.08, .37, .63, .93]) {
       final o = Offset(w * fx, ground + 24 * u + (fx * 40 % 10) * u);
+      // 꽃은 땅 사물보다 조금 크게 (작으면 점처럼 보인다)
+      final fu = u * 1.5;
+      if (season == Season.autumn) {
+        _leaf(canvas, o, 6 * fu, look.flower, fx * 6);
+        _leaf(canvas, o + Offset(10 * fu, 4 * fu), 5 * fu, look.tree, fx * 3);
+        continue;
+      }
       canvas.drawLine(
         o,
-        o + Offset(0, 12 * u),
+        o + Offset(0, 12 * fu),
         Paint()
           ..color = const Color(0xFF5DA05A)
-          ..strokeWidth = 2.5 * u,
+          ..strokeWidth = 2.5 * fu,
       );
+      if (season == Season.spring) {
+        // 튤립: 세 갈래 꽃잎
+        final t = Path()
+          ..moveTo(o.dx - 6 * fu, o.dy - 6 * fu)
+          ..lineTo(o.dx - 3 * fu, o.dy - 1 * fu)
+          ..lineTo(o.dx, o.dy - 7 * fu)
+          ..lineTo(o.dx + 3 * fu, o.dy - 1 * fu)
+          ..lineTo(o.dx + 6 * fu, o.dy - 6 * fu)
+          ..quadraticBezierTo(o.dx + 7 * fu, o.dy + 4 * fu, o.dx, o.dy + 4 * fu)
+          ..quadraticBezierTo(
+            o.dx - 7 * fu,
+            o.dy + 4 * fu,
+            o.dx - 6 * fu,
+            o.dy - 6 * fu,
+          )
+          ..close();
+        canvas.drawPath(
+          t,
+          Paint()..color = fx < .5 ? look.flower : const Color(0xFFF26B5E),
+        );
+        continue;
+      }
       for (var i = 0; i < 5; i++) {
         final a = i * 2 * pi / 5;
         canvas.drawCircle(
-          o + Offset(cos(a), sin(a)) * 5 * u,
-          4 * u,
+          o + Offset(cos(a), sin(a)) * 5 * fu,
+          4 * fu,
           Paint()..color = look.flower,
         );
       }
-      canvas.drawCircle(o, 3 * u, Paint()..color = const Color(0xFFFFE08A));
+      canvas.drawCircle(o, 3 * fu, Paint()..color = const Color(0xFFB9824E));
     }
   }
 
-  void _lighthouse(Canvas c, Offset base, double u) {
+  double unit(double w, double h) => min(w, h * .62) / 400;
+
+  void _mountains(
+    Canvas c,
+    double w,
+    double h,
+    double horizon,
+    double u,
+    SeasonLook look,
+    bool winter,
+  ) {
+    // 하늘이 넓을수록(키 큰 화면) 산이 조금 더 높다
+    final peakH = max(40 * u, horizon * .32);
+    final peaks = [(.06, .7), (.3, 1.0), (.52, .62), (.72, .9), (.95, .66)];
+    final far = Path()..moveTo(0, horizon + 2);
+    final shoulder = horizon - peakH * .25;
+    for (final (x, hh) in peaks) {
+      far.lineTo(w * (x - .1), shoulder);
+      far.quadraticBezierTo(
+        w * x,
+        horizon - peakH * hh * 1.25,
+        w * (x + .1),
+        shoulder,
+      );
+    }
+    far
+      ..lineTo(w, horizon + 2)
+      ..close();
+    c.drawPath(far, Paint()..color = look.mountain.withValues(alpha: .75));
+    if (winter) {
+      // 산꼭대기 눈 모자
+      c.save();
+      c.clipPath(far);
+      for (final (x, hh) in peaks) {
+        c.drawOval(
+          Rect.fromCenter(
+            center: Offset(w * x, horizon - peakH * hh * .9),
+            width: w * .13,
+            height: peakH * hh * .42,
+          ),
+          Paint()..color = Colors.white,
+        );
+      }
+      c.restore();
+    }
+  }
+
+  void _tree(Canvas c, Offset base, double u, SeasonLook look, Season s) {
+    final th = 120 * u;
+    final trunk = RRect.fromRectAndRadius(
+      Rect.fromLTWH(base.dx - th * .07, base.dy - th * .52, th * .14, th * .54),
+      Radius.circular(th * .04),
+    );
+    c.drawRRect(trunk, Paint()..color = const Color(0xFFB98A5E));
+    c.drawRRect(trunk, _outline(2.5 * u + .5));
+    if (s == Season.winter) {
+      // 겨울: 눈 덮인 뾰족한 소나무
+      for (var i = 0; i < 3; i++) {
+        final y = base.dy - th * (.38 + i * .2);
+        final half = th * (.36 - i * .08);
+        final tier = Path()
+          ..moveTo(base.dx - half, y)
+          ..lineTo(base.dx, y - th * .3)
+          ..lineTo(base.dx + half, y)
+          ..close();
+        c.drawPath(tier, Paint()..color = look.tree);
+        c.drawPath(tier, _outline(2.5 * u + .5));
+        final snow = Path()
+          ..moveTo(base.dx - half * .45, y - th * .17)
+          ..lineTo(base.dx, y - th * .3)
+          ..lineTo(base.dx + half * .45, y - th * .17)
+          ..quadraticBezierTo(
+            base.dx,
+            y - th * .13,
+            base.dx - half * .45,
+            y - th * .17,
+          )
+          ..close();
+        c.drawPath(snow, Paint()..color = Colors.white);
+      }
+      return;
+    }
+    final crown = Path()
+      ..addOval(
+        Rect.fromCircle(
+          center: Offset(base.dx, base.dy - th * .74),
+          radius: th * .3,
+        ),
+      )
+      ..addOval(
+        Rect.fromCircle(
+          center: Offset(base.dx - th * .24, base.dy - th * .56),
+          radius: th * .22,
+        ),
+      )
+      ..addOval(
+        Rect.fromCircle(
+          center: Offset(base.dx + th * .24, base.dy - th * .55),
+          radius: th * .23,
+        ),
+      );
+    // 동그라미 세 개를 합친 한 덩어리 (안쪽 겹친 선이 보이지 않게)
+    final leaves = _union(crown);
+    c.drawPath(leaves, Paint()..color = look.tree);
+    c.drawPath(leaves, _outline(2.5 * u + .5));
+    // 잎 무늬: 봄은 하얀 꽃송이, 여름은 빨간 열매, 가을은 진한 단풍 점
+    final dot = switch (s) {
+      Season.spring => Colors.white,
+      Season.summer => const Color(0xFFF26B5E),
+      _ => const Color(0xFFE0603A),
+    };
+    for (final o in const [
+      Offset(-.1, -.82),
+      Offset(.14, -.7),
+      Offset(-.28, -.58),
+      Offset(.3, -.52),
+      Offset(.02, -.6),
+    ]) {
+      c.drawCircle(
+        Offset(base.dx + o.dx * th, base.dy + o.dy * th),
+        th * .035,
+        Paint()..color = dot,
+      );
+    }
+  }
+
+  void _sailboat(Canvas c, Offset o, double u) {
+    final hull = Path()
+      ..moveTo(o.dx - 22 * u, o.dy)
+      ..lineTo(o.dx + 22 * u, o.dy)
+      ..lineTo(o.dx + 15 * u, o.dy + 9 * u)
+      ..lineTo(o.dx - 15 * u, o.dy + 9 * u)
+      ..close();
+    c.drawPath(hull, Paint()..color = const Color(0xFFF26B5E));
+    c.drawPath(hull, _outline(2.2 * u + .4));
+    c.drawLine(o, o - Offset(0, 36 * u), _outline(2.2 * u + .4));
+    final sail = Path()
+      ..moveTo(o.dx + 2 * u, o.dy - 34 * u)
+      ..lineTo(o.dx + 20 * u, o.dy - 4 * u)
+      ..lineTo(o.dx + 2 * u, o.dy - 4 * u)
+      ..close();
+    c.drawPath(sail, Paint()..color = Colors.white);
+    c.drawPath(sail, _outline(2.2 * u + .4));
+  }
+
+  void _parasol(Canvas c, Offset o, double u) {
+    // 줄무늬 파라솔 + 비치볼
+    c.drawLine(o, o - Offset(4 * u, 50 * u), _outline(3 * u + .5));
+    final top = o - Offset(4 * u, 50 * u);
+    final canopy = Path()
+      ..moveTo(top.dx - 34 * u, top.dy + 12 * u)
+      ..quadraticBezierTo(
+        top.dx,
+        top.dy - 22 * u,
+        top.dx + 34 * u,
+        top.dy + 12 * u,
+      )
+      ..close();
+    c.drawPath(canopy, Paint()..color = const Color(0xFFFFCF4D));
+    c.save();
+    c.clipPath(canopy);
+    for (var i = -1; i <= 1; i += 2) {
+      final st = Path()
+        ..moveTo(top.dx, top.dy - 14 * u)
+        ..lineTo(top.dx + i * 10 * u, top.dy + 14 * u)
+        ..lineTo(top.dx + i * 22 * u, top.dy + 14 * u)
+        ..close();
+      c.drawPath(st, Paint()..color = const Color(0xFFF26B5E));
+    }
+    c.restore();
+    c.drawPath(canopy, _outline(2.5 * u + .5));
+    final ball = o + Offset(24 * u, -6 * u);
+    c.drawCircle(ball, 8 * u, Paint()..color = Colors.white);
+    c.drawArc(
+      Rect.fromCircle(center: ball, radius: 8 * u),
+      -pi / 2,
+      pi * .66,
+      true,
+      Paint()..color = const Color(0xFF6FB7E8),
+    );
+    c.drawArc(
+      Rect.fromCircle(center: ball, radius: 8 * u),
+      pi * .5,
+      pi * .66,
+      true,
+      Paint()..color = const Color(0xFFF26B5E),
+    );
+    c.drawCircle(ball, 8 * u, _outline(2 * u + .4));
+  }
+
+  void _leaf(Canvas c, Offset o, double r, Color color, double turn) {
+    c.save();
+    c.translate(o.dx, o.dy);
+    c.rotate(turn);
+    final p = Path()
+      ..moveTo(0, -r)
+      ..quadraticBezierTo(r, 0, 0, r)
+      ..quadraticBezierTo(-r, 0, 0, -r)
+      ..close();
+    c.drawPath(p, Paint()..color = color);
+    c.restore();
+  }
+
+  void _leafPile(Canvas c, Offset o, double u) {
+    const cols = [Color(0xFFF29A4E), Color(0xFFE0603A), Color(0xFFFFC75A)];
+    c.drawOval(
+      Rect.fromCenter(center: o, width: 60 * u, height: 18 * u),
+      Paint()..color = const Color(0xFFE9A15A),
+    );
+    for (var i = 0; i < 9; i++) {
+      _leaf(
+        c,
+        o + Offset((i - 4) * 6 * u, -4 * u - (i % 3) * 3 * u),
+        6 * u,
+        cols[i % 3],
+        i * .9,
+      );
+    }
+    // 작은 호박
+    final p = o + Offset(36 * u, -4 * u);
+    c.drawOval(
+      Rect.fromCenter(center: p, width: 22 * u, height: 16 * u),
+      Paint()..color = const Color(0xFFF2994A),
+    );
+    c.drawOval(
+      Rect.fromCenter(center: p, width: 22 * u, height: 16 * u),
+      _outline(2 * u + .4),
+    );
+    c.drawLine(
+      p - Offset(0, 8 * u),
+      p - Offset(-2 * u, 13 * u),
+      _outline(2.5 * u + .4)..color = const Color(0xFF6B8E3E),
+    );
+  }
+
+  void _snowman(Canvas c, Offset o, double u) {
+    final body = o - Offset(0, 14 * u);
+    final head = o - Offset(0, 38 * u);
+    final white = Paint()..color = Colors.white;
+    c.drawCircle(body, 17 * u, white);
+    c.drawCircle(body, 17 * u, _outline(2.5 * u + .5));
+    c.drawCircle(head, 12 * u, white);
+    c.drawCircle(head, 12 * u, _outline(2.5 * u + .5));
+    // 눈, 당근 코, 볼터치
+    final eye = Paint()..color = Palette.outline;
+    c.drawCircle(head + Offset(-4 * u, -2 * u), 1.6 * u, eye);
+    c.drawCircle(head + Offset(4 * u, -2 * u), 1.6 * u, eye);
+    final nose = Path()
+      ..moveTo(head.dx - 1.5 * u, head.dy + 1 * u)
+      ..lineTo(head.dx + 9 * u, head.dy + 3 * u)
+      ..lineTo(head.dx - 1 * u, head.dy + 4 * u)
+      ..close();
+    c.drawPath(nose, Paint()..color = const Color(0xFFFF9A5A));
+    c.drawCircle(
+      head + Offset(-7 * u, 4 * u),
+      2.4 * u,
+      Paint()..color = Palette.catCheek.withValues(alpha: .7),
+    );
+    // 목도리
+    final scarf = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: head + Offset(0, 11 * u),
+        width: 26 * u,
+        height: 6 * u,
+      ),
+      Radius.circular(3 * u),
+    );
+    c.drawRRect(scarf, Paint()..color = const Color(0xFFF26B5E));
+    c.drawRRect(scarf, _outline(2 * u + .4));
+    // 모자
+    final hat = Rect.fromCenter(
+      center: head - Offset(0, 13 * u),
+      width: 14 * u,
+      height: 9 * u,
+    );
+    c.drawRect(hat, Paint()..color = const Color(0xFF6FB7E8));
+    c.drawRect(hat, _outline(2 * u + .4));
+  }
+
+  void _lighthouse(Canvas c, Offset base, double u, bool snow) {
     final bw = 42 * u, tw = 30 * u, ht = 120 * u;
     final tower = Path()
       ..moveTo(base.dx - bw / 2, base.dy)
@@ -470,9 +871,23 @@ class _Landscape extends Component {
       ..close();
     c.drawPath(roof, Paint()..color = const Color(0xFFEF7F7A));
     c.drawPath(roof, _outline(3 * u + .5));
+    if (snow) {
+      final cap = Path()
+        ..moveTo(base.dx - tw * .4, base.dy - ht - 30 * u)
+        ..lineTo(base.dx, base.dy - ht - 44 * u)
+        ..lineTo(base.dx + tw * .4, base.dy - ht - 30 * u)
+        ..quadraticBezierTo(
+          base.dx,
+          base.dy - ht - 26 * u,
+          base.dx - tw * .4,
+          base.dy - ht - 30 * u,
+        )
+        ..close();
+      c.drawPath(cap, Paint()..color = Colors.white);
+    }
   }
 
-  void _house(Canvas c, Offset base, double u) {
+  void _house(Canvas c, Offset base, double u, bool snow) {
     final body = Rect.fromLTWH(
       base.dx - 30 * u,
       base.dy - 46 * u,
@@ -488,6 +903,34 @@ class _Landscape extends Component {
       ..close();
     c.drawPath(roof, Paint()..color = const Color(0xFF79A9E6));
     c.drawPath(roof, _outline(3 * u + .5));
+    if (snow) {
+      // 지붕 위 눈 (둥글게 흘러내린 모양)
+      final cap = Path()
+        ..moveTo(base.dx - 42 * u, base.dy - 44 * u)
+        ..lineTo(base.dx, base.dy - 80 * u)
+        ..lineTo(base.dx + 42 * u, base.dy - 44 * u)
+        ..quadraticBezierTo(
+          base.dx + 30 * u,
+          base.dy - 50 * u,
+          base.dx + 22 * u,
+          base.dy - 52 * u,
+        )
+        ..quadraticBezierTo(
+          base.dx,
+          base.dy - 66 * u,
+          base.dx - 22 * u,
+          base.dy - 52 * u,
+        )
+        ..quadraticBezierTo(
+          base.dx - 30 * u,
+          base.dy - 48 * u,
+          base.dx - 42 * u,
+          base.dy - 44 * u,
+        )
+        ..close();
+      c.drawPath(cap, Paint()..color = Colors.white);
+      c.drawPath(cap, _outline(2 * u + .4));
+    }
     final door = Rect.fromLTWH(
       base.dx + 6 * u,
       base.dy - 26 * u,
@@ -656,4 +1099,18 @@ class _SceneBackgroundState extends State<SceneBackground> {
   Widget build(BuildContext context) => RepaintBoundary(
     child: IgnorePointer(child: GameWidget(game: game)),
   );
+}
+
+/// 여러 동그라미로 만든 경로를 하나로 합친다 (겹친 안쪽 선 없이 외곽선만)
+Path _union(Path p) {
+  final parts = p
+      .computeMetrics()
+      .map((m) => m.extractPath(0, m.length))
+      .toList();
+  if (parts.isEmpty) return p;
+  var out = parts.first..close();
+  for (final q in parts.skip(1)) {
+    out = Path.combine(PathOperation.union, out, q..close());
+  }
+  return out;
 }
