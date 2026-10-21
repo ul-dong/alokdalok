@@ -11,6 +11,7 @@ import '../../data/stages.dart';
 import '../../services/audio_service.dart';
 import '../../services/game_state.dart';
 import '../../widgets/common.dart';
+import '../../widgets/listen_again_button.dart';
 import '../common/game_frame.dart';
 import '../common/object_art.dart';
 import '../common/scene_game.dart';
@@ -230,13 +231,8 @@ class _ColorGameScreenState extends State<ColorGameScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  RoundIconButton(
-                    icon: Icons.volume_up_rounded,
-                    label: '다시 듣기',
-                    size: 52,
-                    color: Palette.yellowSoft,
-                    onTap: _ask,
-                  ),
+                  // 큰 노란 "다시 듣기" (62px, 6초마다 통통)
+                  ListenAgainButton(onTap: _ask),
                 ],
               ),
             ),

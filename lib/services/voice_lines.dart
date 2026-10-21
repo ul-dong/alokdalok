@@ -3,7 +3,9 @@ import '../character/zodiac.dart';
 import '../data/game_objects.dart';
 import '../data/item_catalog.dart';
 import '../data/vehicles.dart';
+import '../data/game_kinds.dart';
 import '../games/common/korean_numbers.dart';
+import 'game_state.dart';
 
 /// 녹음 음성 팩에 들어가는 모든 문장 조각.
 ///
@@ -59,6 +61,16 @@ class VoiceLines {
     '똑같은',
     '똑같아요!',
     '가장',
+    // 화면과 버튼 이름 (누르면 말해 준다)
+    '놀이터 가기',
+    '내 캐릭터',
+    '꾸미기 상점',
+    '집으로',
+    '뒤로',
+    '다시 듣기',
+    '놀이터에 왔어요!',
+    '어디에서 놀까요?',
+    '꾹 누르고 있어요.',
   ];
 
   static String _subject(String w) => '$w${hasBatchim(w) ? '이' : '가'}';
@@ -140,6 +152,13 @@ class VoiceLines {
     // 친구 고르기
     for (final z in Zodiac.values) {
       out.add(z.hello);
+    }
+
+    // 놀이터 기구: "미끄럼틀! 숫자 놀이를 해 볼까요?"
+    for (final g in GameKind.values) {
+      out
+        ..add('${g.equipment}!')
+        ..add(g.invite.substring(g.equipment.length + 2));
     }
 
     // 이름을 비워 두면 지어 주는 이름 ("별이, 반가워!")

@@ -11,16 +11,41 @@ import '../games/common/scene_game.dart';
 import '../games/game_entry.dart';
 import '../services/game_state.dart';
 import '../widgets/common.dart';
+import '../widgets/paged_grid.dart';
 
-/// 단계 고르기 (가로로 카드, 많으면 옆으로 밀기 + 아래에 골인 지점까지 가는 길). 글자 없이도 고를 수 있게 단계마다 사과·풍선 개수를 그림으로 보여 준다.
-class StagePicker extends StatelessWidget {
+/// 단계 고르기. 카드는 화면에 맞춰 크기를 고르고, 다 안 들어가면 큰 화살표로 한 쪽씩 넘긴다
+/// (옆으로 밀기 없음). 글자 없이도 고를 수 있게 카드마다 그 단계의 문제 그림과 계절 아이콘을 그리고,
+/// 아래에는 깬 단계만큼 내 친구가 골인 지점으로 나아가는 길이 있다.
+/// 잠긴 단계를 누르면 카드가 흔들리며 "앞 단계를 먼저 놀아 볼까요?"라고 말한다.
+class StagePicker extends StatefulWidget {
   const StagePicker({super.key, required this.game});
 
   final GameKind game;
 
-  void _start(BuildContext context, int stageId) {
-    openGame(context, game, stageId);
+  static const lockedLine = '앞 단계를 먼저 놀아 볼까요?';
+
+  @override
+  State<StagePicker> createState() => _StagePickerState();
+}
+
+class _StagePickerState extends State<StagePicker> {
+  /// 단계별 흔들기 횟수 (바뀔 때마다 한 번 흔든다)
+  final Map<int, int> _shakes = {};
+
+  GameKind get game => widget.game;
+
+  void _start(int stageId) => openGame(context, game, stageId);
+
+  void _locked(int id) {
+    setState(() => _shakes[id] = (_shakes[id] ?? 0) + 1);
+    AppScope.read(context).audio.say(StagePicker.lockedLine);
   }
+
+  Widget _art(int id) =>
+      stageArt(game, id) ??
+      (game == GameKind.number
+          ? _NumberStageArt(Stages.number[id - 1])
+          : _ColorStageArt(Stages.color[id - 1]));
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +53,6 @@ class StagePicker extends StatelessWidget {
     final unlocked = state.unlockedStage(game);
     final cleared = state.clearedStages(game);
     final count = state.stageCount(game);
-    final isNumber = game == GameKind.number;
 
     return LandscapePage(
       background: const SceneBackground(groundLevel: .86),
@@ -37,99 +61,104 @@ class StagePicker extends StatelessWidget {
           Row(
             children: [
               RoundIconButton(
-                icon: Icons.home_rounded,
-                label: '집으로',
+                icon: Icons.arrow_back_rounded,
+                label: '놀이터로',
                 size: 60,
                 onTap: () => Navigator.of(context).pop(),
               ),
               const SizedBox(width: 12),
-              CreamCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 22,
-                  vertical: 8,
-                ),
-                radius: 26,
-                child: Text(
-                  game.title,
-                  style: const TextStyle(fontSize: 28, color: Palette.text),
+              Flexible(
+                child: FitBox(
+                  alignment: Alignment.centerLeft,
+                  child: CreamCard(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 8,
+                    ),
+                    radius: 26,
+                    child: Text(
+                      game.title,
+                      style: const TextStyle(fontSize: 28, color: Palette.text),
+                    ),
+                  ),
                 ),
               ),
               const Spacer(),
-              CountBadge(
-                icon: const CoinIcon(),
-                value: state.coins,
-                label: '코인',
+              FitBox(
+                child: CountBadge(
+                  icon: const CoinIcon(),
+                  value: state.coins,
+                  label: '코인',
+                ),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, c) {
-                // 3장까지는 화면을 꽉 채우고, 더 많으면 옆으로 밀어서 본다
-                const gap = 16.0;
-                final double cardW = count <= 3
-                    ? (c.maxWidth - gap * (count - 1)) / count
-                    : min(
-                        (c.maxWidth - gap * 2.5) / 3.4,
-                        c.maxHeight * .95,
-                      ).clamp(120.0, 420.0);
-                final double start = ((unlocked - 2) * (cardW + gap)).clamp(
-                  0.0,
-                  max(0.0, count * (cardW + gap) - gap - c.maxWidth),
-                );
-                return ListView.separated(
-                  controller: ScrollController(initialScrollOffset: start),
-                  scrollDirection: Axis.horizontal,
-                  physics: count <= 3
-                      ? const NeverScrollableScrollPhysics()
-                      : const BouncingScrollPhysics(),
-                  itemCount: count,
-                  separatorBuilder: (_, _) => const SizedBox(width: gap),
-                  itemBuilder: (context, i) {
-                    final id = i + 1;
-                    return SizedBox(
-                      width: cardW,
-                      child: _StageCard(
-                        id: id,
-                        open: id <= unlocked,
-                        cleared: cleared.contains(id),
-                        highlight: id == unlocked,
-                        art:
-                            stageArt(game, id) ??
-                            (isNumber
-                                ? _NumberStageArt(Stages.number[id - 1])
-                                : _ColorStageArt(Stages.color[id - 1])),
-                        onTap: () {
-                          if (id <= unlocked) {
-                            _start(context, id);
-                          } else {
-                            state.audio.say('앞 단계를 먼저 놀아 볼까요?');
-                          }
-                        },
-                      ),
-                    );
-                  },
+            child: PagedGrid(
+              itemCount: count,
+              initialIndex: unlocked - 1,
+              minCellWidth: 110,
+              minCellHeight: 120,
+              maxCellWidth: 320,
+              maxRows: 2,
+              gap: 14,
+              itemBuilder: (context, i) {
+                final id = i + 1;
+                return ShakeOnChange(
+                  trigger: _shakes[id] ?? 0,
+                  child: _StageCard(
+                    id: id,
+                    open: id <= unlocked,
+                    cleared: cleared.contains(id),
+                    highlight: id == unlocked,
+                    art: _art(id),
+                    onTap: () => id <= unlocked ? _start(id) : _locked(id),
+                  ),
                 );
               },
             ),
           ),
           const SizedBox(height: 6),
           // 단계를 깰 때마다 내 친구가 앞으로! 다 깨면 골인 지점에 도착
-          LayoutBuilder(
-            builder: (context, c) => SizedBox(
-              height: (MediaQuery.sizeOf(context).height * .24).clamp(
-                60.0,
-                130.0,
-              ),
-              child: JourneyTrail(
-                total: count,
-                done: cleared.length.clamp(0, count),
-              ),
+          SizedBox(
+            height: (MediaQuery.sizeOf(context).height * .24).clamp(
+              60.0,
+              130.0,
+            ),
+            child: JourneyTrail(
+              total: count,
+              done: cleared.length.clamp(0, count),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// [trigger]가 바뀔 때마다 한 번 좌우로 흔든다 (잠긴 카드). 계속 도는 애니메이션은 아니다.
+class ShakeOnChange extends StatelessWidget {
+  const ShakeOnChange({super.key, required this.trigger, required this.child});
+
+  final int trigger;
+  final Widget child;
+
+  static const duration = Duration(milliseconds: 480);
+
+  /// 흔들림 거리 (t: 0~1)
+  static double offsetAt(double t) => sin(t * pi * 6) * (1 - t) * 12;
+
+  @override
+  Widget build(BuildContext context) {
+    if (trigger == 0) return child;
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(trigger),
+      tween: Tween(begin: 0, end: 1),
+      duration: duration,
+      builder: (_, t, c) =>
+          Transform.translate(offset: Offset(offsetAt(t), 0), child: c),
+      child: child,
     );
   }
 }
@@ -175,33 +204,39 @@ class _StageCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: open ? Palette.pinkSoft : Palette.creamDeep,
-                  shape: BoxShape.circle,
-                ),
-                child: open
-                    ? Text(
-                        '$id',
-                        style: const TextStyle(
-                          fontSize: 32,
-                          color: Color(0xFFE0607E),
-                        ),
-                      )
-                    : const Icon(
-                        Icons.lock_rounded,
-                        size: 28,
-                        color: Palette.textSoft,
-                      ),
+          FitBox(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(
+              width: 120,
+              child: Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: open ? Palette.pinkSoft : Palette.creamDeep,
+                      shape: BoxShape.circle,
+                    ),
+                    child: open
+                        ? Text(
+                            '$id',
+                            style: const TextStyle(
+                              fontSize: 32,
+                              color: Color(0xFFE0607E),
+                            ),
+                          )
+                        : const Icon(
+                            Icons.lock_rounded,
+                            size: 28,
+                            color: Palette.textSoft,
+                          ),
+                  ),
+                  const Spacer(),
+                  if (cleared) const StarIcon(size: 40),
+                ],
               ),
-              const Spacer(),
-              if (cleared) const StarIcon(size: 40),
-            ],
+            ),
           ),
           const SizedBox(height: 6),
           Expanded(

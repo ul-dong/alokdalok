@@ -19,10 +19,10 @@
 | 사양 | 상태 | 현재 코드 / 메모 |
 |---|---|---|
 | 첫 실행: 친구 고르기 → 이름 짓기 → 이후 홈 | 있음 | `lib/app.dart` RootGate, `screens/zodiac_picker_screen.dart`, `screens/nickname_screen.dart` |
-| 홈: 큰 버튼 3개(놀이터 가기·내 캐릭터·꾸미기 상점)만 | **부분** | `screens/home_screen.dart`: 숫자 놀이·색깔 놀이·내 캐릭터·꾸미기 상점·내 가방·탈것 꾸미기 6개 타일. '놀이터 가기' 없음, 가방·탈것 꾸미기 별도 진입 |
-| 홈 구석 작은 톱니바퀴 → 부모 확인 → 설정 | 부분 | 톱니바퀴(60px) 있음. 부모 확인 `confirmParent(context)`(`widgets/parental_gate.dart`)는 준비됨 — 홈에서 부르는 것은 트랙 A |
-| 놀이터 화면 (기구 그림 5개, 이름표, 깬 단계만큼 별, 내 캐릭터 서 있음) | **없음** | 새 화면 필요 (`screens/playground_screen.dart` 예정) |
-| 단계 고르기: 카드에 문제 그림 + 계절 아이콘, 아래 골인 길 | 있음(가로 스크롤 문제) | `screens/stage_picker.dart` (계절 아이콘, JourneyTrail, 잠김 시 "앞 단계를 먼저…"). 카드 목록이 `ListView` 가로 스크롤 → 원칙 4 위반. 잠긴 카드 흔들림 확인 필요 |
+| 홈: 큰 버튼 3개(놀이터 가기·내 캐릭터·꾸미기 상점)만 | 있음 (트랙 A) | `screens/home_screen.dart`. 누르면 이름을 말함. 내 가방(`bag_screen.dart`)은 홈에서 빠짐(내 캐릭터 화면이 같은 일을 함), 탈것 꾸미기는 내 캐릭터 → 탈것 탭에서 |
+| 홈 구석 작은 톱니바퀴 → 부모 확인 → 설정 | 있음 | 톱니바퀴(60px) → `confirmParent(context)`(트랙 C `widgets/parental_gate.dart`) 통과하면 설정 (`HomeScreen._openSettings`) |
+| 놀이터 화면 (기구 그림 5개, 이름표, 깬 단계만큼 별, 내 캐릭터 서 있음) | 있음 (트랙 A) | `screens/playground_screen.dart` + `playground_art.dart`(CustomPainter). 기구를 누르면 "미끄럼틀! 숫자 놀이를 해 볼까요?" → 단계 고르기 → 놀이 |
+| 단계 고르기: 카드에 문제 그림 + 계절 아이콘, 아래 골인 길 | 있음 (트랙 A) | `screens/stage_picker.dart`: `PagedGrid`(화살표 쪽 넘기기), 잠긴 카드 흔들림(`ShakeOnChange`) + 음성. 카드 그림·놀이 연결은 트랙 B `games/game_entry.dart`(`stageArt`, `openGame`) |
 | 놀이 화면: 위 멈춤·발자국·코인 / 가운데 문제 카드 / 아래 길·말풍선 | 있음 | `games/common/game_frame.dart` |
 | 내 캐릭터: 옷 입기, 탈것 타기, 친구 바꾸기 | 있음 | `screens/character_screen.dart` (+ `screens/bag_screen.dart` 중복 기능) |
 | 설정: 눈 보호·놀이 시간·눈 쉬기 간격·소리·백업 | 있음 | `screens/settings_screen.dart`: 눈 보호(켜기·경고 거리 25/30/35/40cm·30cm 보정), 하루 놀이 시간, 눈 쉬기 간격, 소리, 부모 확인 켜기/끄기, 백업, 닉네임, 기록 지우기, 라이선스 |
@@ -53,7 +53,7 @@
 | 12지신 + 공룡 12종 | 있음 | `character/zodiac.dart` (`FriendGroup.zodiac/dino`), `animal_painter.dart` |
 | 같은 2등신 몸매, 옷 공유 | 있음 | |
 | 이름 짓기: 예시 없음, 비우면 랜덤, 동물 실명 | 있음(확인 권장) | `character/nickname.dart`, `nickname_screen.dart` |
-| 친구 12마리 화살표 쪽 넘기기 | 부분 | 12지신/공룡 그룹 탭 + `Wrap`. 화살표 페이지 넘김은 아님 |
+| 친구 12마리 화살표 쪽 넘기기 | 있음 (트랙 A) | 12지신/공룡 탭 + `PagedGrid` (칸이 64px보다 작아지면 화살표로 넘김) |
 
 ## 4. 옷 꾸미기 / 상점
 
@@ -65,7 +65,7 @@
 | 눌러서 바로 입어 보기, 이름 말하기 | 있음 | `shop/shop_screen.dart` `say(item.name)` |
 | ✔/✖ 구매 확인 | 있음 | `shop/item_widgets.dart` |
 | 코인 부족: "놀이하면서 코인을 모아요" + 진행 막대, 결제 화면 없음 | 있음 | `shop_screen.dart` ~433행 |
-| 테마 17개 큰 화살표 쪽 넘기기 (가로 밀기 금지) | **없음** | `ThemeTabs`가 `ListView` 가로 스크롤 |
+| 테마 17개 큰 화살표 쪽 넘기기 (가로 밀기 금지) | 있음 (트랙 A) | `ThemeTabs` → `widgets/paged_grid.dart` |
 
 ## 5. 탈것 7종
 
@@ -120,17 +120,17 @@
 | # | 사양 | 상태 | 메모 |
 |---|---|---|---|
 | 1 | 목소리 먼저: 모든 문제·칭찬·안내 음성 | 있음 | `services/audio_service.dart`, `voice_lines.dart`, 409 조각 |
-| 1 | 물건·탈것·옷 누르면 이름 말하기 | 부분 | 상점은 있음. 홈 메뉴 버튼·놀이 물건·캐릭터 화면 등 '버튼 이름 읽기' 전반은 소실 |
-| 1 | 큰 노란 "다시 듣기" 62px, 6초마다 통통 | **부분** | 모양·크기·짝 놀이는 `games/common/quiz_widgets.dart` `ReplayButton`(62px, 6초마다 통통). 숫자·색깔 화면은 아직 `RoundIconButton(size: 52, yellowSoft)` |
-| 2 | 놀이를 기구 그림으로 고르기, 단계 카드에 문제 그림 | 부분 | 놀이터 없음. 단계 카드 그림은 있음 |
-| 3 | 터치 60~72px, 눌리면 작아짐 + 효과음 | 있음(대부분) | `widgets/common.dart` `Pressable` (scale .94), `RoundIconButton` 기본 72. 다시 듣기 52px 예외. `test_preview/touch_audit_test.dart` |
-| 4 | 가로 밀기 금지, 자동 칸 크기, 많으면 큰 화살표 쪽 넘김 | **부분** | 가로 스크롤 남은 곳: `shop/item_widgets.dart` ThemeTabs, `screens/stage_picker.dart`, `vehicle/garage_screen.dart`. 화살표 페이저 위젯 없음 |
-| 5 | 놀이 중 나가기 = 멈춤 → 집으로 꾹 누르기(~1초 고리) | **부분** | 멈춤 화면 있음, '집으로'는 한 번 탭으로 바로 나감 (`game_frame.dart` `_PauseOverlay`). 설정 '기록 지우기'에만 꾹 누르기 있음 |
+| 1 | 물건·탈것·옷 누르면 이름 말하기 | 부분 | `Pressable(speak:)` / `RoundIconButton(speakLabel:)` (트랙 A). 홈 버튼·놀이터 기구·내 캐릭터 옷은 말함. 놀이 화면 물건(games/)은 미적용 |
+| 1 | 큰 노란 "다시 듣기" 62px, 6초마다 통통 | 있음 | 공용 위젯 `widgets/listen_again_button.dart`(공용 20fps 시계, 튈 때만 구독). 모양·크기·짝의 `ReplayButton`(`games/common/quiz_widgets.dart`)과 숫자·색깔 화면 모두 이 위젯 하나를 쓴다 |
+| 2 | 놀이를 기구 그림으로 고르기, 단계 카드에 문제 그림 | 있음 | 놀이터 기구(트랙 A), 단계 카드 그림 |
+| 3 | 터치 60~72px, 눌리면 작아짐 + 효과음 | 있음(대부분) | `widgets/common.dart` `Pressable` (scale .94), `RoundIconButton` 기본 72. `test_preview/touch_audit_test.dart` |
+| 4 | 가로 밀기 금지, 자동 칸 크기, 많으면 큰 화살표 쪽 넘김 | 부분 | `widgets/paged_grid.dart` (트랙 A). 상점 테마·단계 고르기·친구 고르기 적용. 남은 곳: `vehicle/garage_screen.dart` 가로 `SingleChildScrollView` (트랙 D) |
+| 5 | 놀이 중 나가기 = 멈춤 → 집으로 꾹 누르기(~1초 고리) | 있음 (트랙 A) | `widgets/hold_button.dart` `HoldToConfirm`, `game_frame.dart` `_PauseOverlay` |
 | 5 | ✔/✖ 구매 확인, 뒤로가기 = 멈춤 화면 | 있음 | `PopScope` → `_paused = true` |
 | 6 | 단계적 도움 | 있음 | 2장 참고 |
-| 7 | 노치 대응, 높이 340 미만 전체 축소, 568×320·844×390·1280×800 넘침 없음 | 부분 | `SafeArea`·`FitBox` 개별 축소, 위젯 테스트 6개 크기 통과. '높이 340 미만이면 전체 축소' 전역 처리는 없음 |
+| 7 | 노치 대응, 높이 340 미만 전체 축소, 568×320·844×390·1280×800 넘침 없음 | 있음 (트랙 A) | `widgets/screen_fit.dart` `MinHeightScaler`를 `app.dart` builder에 적용 (안전 영역 여백도 같은 비율) |
 | 8 | 공용 20fps 시계, 멈춘 장면 안 그림, 계속 도는 애니메이션 금지 | 있음 | `core/slow_clock.dart` (50ms). 예외: `RotateHint`의 `repeat()` (세로 안내 화면) |
-| 9 | 짧은 페이드 전환 | 있음 | `softRoute` 260ms `FadeTransition` |
+| 9 | 짧은 페이드 전환 | 있음 | `softRoute` 260ms `FadeTransition` + 테마 `fadePageTransitions` (MaterialPageRoute도 페이드) |
 
 ## 10. 아트·사운드
 
@@ -151,7 +151,7 @@
 | 안드로이드 `install_and_build.command`, arm 전용(armeabi-v7a, arm64-v8a) | **없음** | 스크립트 없음. `android/app/build.gradle.kts`에 ABI 필터 없음, release가 debug 키 서명 |
 | ML Kit Play 서비스 버전(용량 줄이기) | **없음** | `google_mlkit_face_detection` 번들 모델 사용 중 (Android 매니페스트/gradle에 unbundled 설정 없음) |
 | 음성 `gen_voice.command` | 있음 | `tool/voice/gen_voice.command`, `export_lines_test.dart` |
-| 테스트 142개 | 있음 | 173개 (트랙 B에서 53개 추가: `test/games_logic_test.dart`, `test/games_widget_test.dart`) |
+| 테스트 142개 | 있음 | 274개 (트랙 B·C 포함, 트랙 A `test/screens_test.dart`) |
 
 ## 12. iOS 준비 상태
 

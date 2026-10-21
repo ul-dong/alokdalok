@@ -192,6 +192,7 @@ class _CharacterScreenState extends State<CharacterScreen> with ScreenMusic {
                               owned: true,
                               equipped: on,
                               onTap: () {
+                                state.audio.say(item.name);
                                 state.toggleEquip(item.id);
                                 if (!on) setState(() => cheer++);
                               },

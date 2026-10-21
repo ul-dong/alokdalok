@@ -7,6 +7,7 @@ import '../../core/palette.dart';
 import '../../services/audio_service.dart';
 import '../../services/game_state.dart';
 import '../../widgets/common.dart';
+import '../../widgets/hold_button.dart';
 import 'journey_trail.dart';
 import 'scene_game.dart';
 
@@ -183,25 +184,30 @@ class _PauseOverlay extends StatelessWidget {
     child: Container(
       color: const Color(0x663E2A20),
       alignment: Alignment.center,
-      child: CreamCard(
-        padding: const EdgeInsets.all(28),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _BigChoice(
-              icon: Icons.play_arrow_rounded,
-              label: '계속',
-              color: Palette.mint,
-              onTap: onResume,
-            ),
-            const SizedBox(width: 24),
-            _BigChoice(
-              icon: Icons.home_rounded,
-              label: '집으로',
-              color: Palette.sky,
-              onTap: () => Navigator.of(context).pop(),
-            ),
-          ],
+      padding: const EdgeInsets.all(16),
+      child: FitBox(
+        child: CreamCard(
+          padding: const EdgeInsets.all(28),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _BigChoice(
+                icon: Icons.play_arrow_rounded,
+                label: '계속',
+                color: Palette.mint,
+                onTap: onResume,
+              ),
+              const SizedBox(width: 24),
+              // 실수로 나가지 않게 약 1초 꾹 눌러야 집으로 간다 (고리가 차오름)
+              HoldToConfirm(
+                icon: Icons.home_rounded,
+                label: '집으로',
+                color: Palette.sky,
+                onConfirmed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
         ),
       ),
     ),

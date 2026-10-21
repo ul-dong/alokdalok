@@ -7,6 +7,7 @@ import '../core/palette.dart';
 import '../games/common/scene_game.dart';
 import '../services/audio_service.dart';
 import '../widgets/common.dart';
+import '../widgets/paged_grid.dart';
 import 'nickname_screen.dart';
 
 /// 친구 고르기 (12지신 / 공룡 탭). 첫 실행이면 고른 뒤 이름 짓기로, 아니면 바로 돌아간다.
@@ -96,6 +97,36 @@ class _ZodiacPickerScreenState extends State<ZodiacPickerScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 10),
+                PillButton(
+                  width: double.infinity,
+                  height: 64,
+                  color: Palette.pink,
+                  edge: const Color(0xFFD9799A),
+                  sound: null,
+                  onTap: _done,
+                  semanticLabel: widget.onboarding ? '이 친구로 할래요' : '바꾸기',
+                  child: FitBox(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 34,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          widget.onboarding ? '이 친구로 할래요' : '이 친구로 바꾸기',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -145,58 +176,22 @@ class _ZodiacPickerScreenState extends State<ZodiacPickerScreen> {
                   ),
                   const SizedBox(height: 10),
                   Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, c) {
-                        const cols = 4, rows = 3, gap = 8.0;
-                        final w = (c.maxWidth - gap * (cols - 1)) / cols;
-                        final h = (c.maxHeight - gap * (rows - 1)) / rows;
-                        return Wrap(
-                          spacing: gap,
-                          runSpacing: gap,
-                          children: [
-                            for (final z in ZodiacInfo.of(group))
-                              SizedBox(
-                                width: w,
-                                height: h,
-                                child: ZodiacTile(
-                                  zodiac: z,
-                                  selected: z == selected,
-                                  onTap: () => _pick(z),
-                                ),
-                              ),
-                          ],
+                    // 화면에 맞춰 칸 크기를 고르고, 너무 좁으면 화살표로 쪽을 넘긴다
+                    child: PagedGrid(
+                      key: ValueKey(group),
+                      itemCount: ZodiacInfo.of(group).length,
+                      initialIndex: ZodiacInfo.of(group).indexOf(selected),
+                      minCellWidth: 64,
+                      minCellHeight: 64,
+                      gap: 8,
+                      itemBuilder: (context, i) {
+                        final z = ZodiacInfo.of(group)[i];
+                        return ZodiacTile(
+                          zodiac: z,
+                          selected: z == selected,
+                          onTap: () => _pick(z),
                         );
                       },
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  PillButton(
-                    width: double.infinity,
-                    height: 64,
-                    color: Palette.pink,
-                    edge: const Color(0xFFD9799A),
-                    sound: null,
-                    onTap: _done,
-                    semanticLabel: widget.onboarding ? '이 친구로 할래요' : '바꾸기',
-                    child: FitBox(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.check_rounded,
-                            color: Colors.white,
-                            size: 34,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            widget.onboarding ? '이 친구로 할래요' : '이 친구로 바꾸기',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 ],

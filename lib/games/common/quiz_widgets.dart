@@ -1,10 +1,10 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 
 import '../../core/palette.dart';
 import '../../widgets/common.dart';
+import '../../widgets/listen_again_button.dart';
 import 'game_frame.dart';
 
 /// 보기 [count]개를 [area]에 가장 크게 놓는 격자 (가로 화면이라 옆으로 밀기 없음).
@@ -177,50 +177,15 @@ class QuizHintBox extends StatelessWidget {
 }
 
 /// 큰 노란 "다시 듣기" 버튼 (62px). 6초마다 한 번 통통 튀어 눈에 띈다.
-class ReplayButton extends StatefulWidget {
+/// 앱 공용 [ListenAgainButton](공용 20fps 시계, 튈 때만 다시 그림)을 그대로 쓴다.
+class ReplayButton extends StatelessWidget {
   const ReplayButton({super.key, required this.onTap, this.size = 62});
   final VoidCallback onTap;
   final double size;
 
   @override
-  State<ReplayButton> createState() => _ReplayButtonState();
-}
-
-class _ReplayButtonState extends State<ReplayButton> {
-  Timer? _timer;
-  int _hop = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 6), (_) {
-      if (mounted) setState(() => _hop++);
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
-    key: ValueKey(_hop),
-    tween: Tween(begin: _hop == 0 ? 1 : 0, end: 1),
-    duration: const Duration(milliseconds: 600),
-    builder: (_, t, child) => Transform.translate(
-      offset: Offset(0, -sin(t * pi * 2).abs() * (1 - t) * 10),
-      child: child,
-    ),
-    child: RoundIconButton(
-      icon: Icons.volume_up_rounded,
-      label: '다시 듣기',
-      size: widget.size,
-      color: Palette.yellow,
-      onTap: widget.onTap,
-    ),
-  );
+  Widget build(BuildContext context) =>
+      ListenAgainButton(onTap: onTap, size: size);
 }
 
 /// 보기 칸 하나: 누르면 살짝 작아지고, 틀리면 흔들리며 흐려지고, 두 번 틀리면 정답이 빛난다.
