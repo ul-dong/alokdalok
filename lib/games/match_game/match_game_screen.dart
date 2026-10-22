@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../core/economy.dart';
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
 import '../../services/audio_service.dart';
@@ -12,7 +13,7 @@ import '../common/quiz_widgets.dart';
 import 'match_round.dart';
 
 /// 짝 맞추기(회전목마): 모두 보이는 카드 중 같은 그림 두 장을 차례로 누르기.
-/// 한 판(5문제) = 카드 판 5개. 판의 짝을 모두 맞추면 한 문제를 푼 것이다.
+/// 한 판(3문제) = 카드 판 3개. 판의 짝을 모두 맞추면 한 문제를 푼 것이다.
 class MatchGameScreen extends StatefulWidget {
   const MatchGameScreen({super.key, required this.stageId, this.random});
 
@@ -42,6 +43,9 @@ class _MatchGameScreenState extends State<MatchGameScreen>
     final sel = round.selected;
     return sel == null ? MatchBoard.prompt : round.board.pickedLine(sel);
   }
+
+  @override
+  int get questionCount => Economy.matchQuestionsPerSession;
 
   @override
   Widget nextStageScreen() => MatchGameScreen(stageId: stage.id + 1);

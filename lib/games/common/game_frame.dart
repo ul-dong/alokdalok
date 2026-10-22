@@ -60,9 +60,15 @@ class SessionSummary {
     required this.coins,
     required this.stars,
     required this.reward,
+    this.total = Economy.questionsPerSession,
   });
   final int coins;
+
+  /// 한 번에 맞힌 문제 수 (= 노란 별 수)
   final int stars;
+
+  /// 한 판의 문제 수 (= 별 칸 수)
+  final int total;
   final SessionReward reward;
 }
 
@@ -462,14 +468,14 @@ class _ResultOverlayState extends State<_ResultOverlay> {
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          for (var i = 0; i < Economy.questionsPerSession; i++)
+          for (var i = 0; i < s.total; i++)
             _PopIn(
               delayMs: 200 + i * 120,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 3),
                 child: StarIcon(
                   // 가운데 별이 가장 크다 (왕관처럼)
-                  size: 44 + (2 - (i - 2).abs()) * 5.0,
+                  size: 44 + (2 - (i - (s.total - 1) / 2).abs()) * 5.0,
                   color: i < s.stars ? Palette.yellow : const Color(0xFFE6DCCB),
                 ),
               ),

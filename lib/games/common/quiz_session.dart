@@ -13,7 +13,7 @@ import 'scene_game.dart';
 /// 모양·크기·짝 맞추기 놀이가 함께 쓰는 한 판 흐름.
 ///
 /// 문제 읽기 → (오답: 부드러운 안내) → 정답: 효과음·칭찬·코인 → 다음 문제,
-/// 5문제를 끝내면 별·코인 결과와 "또 하기 / 다음 단계 / 집으로".
+/// [questionCount]문제(기본 5, 짝 맞추기 3)를 끝내면 별·코인 결과와 "또 하기 / 다음 단계 / 집으로".
 /// 단계마다 계절 배경과 음악이 바뀐다.
 mixin QuizSession<T extends StatefulWidget> on State<T> {
   /// 놀이 종류 (진행 저장 위치)
@@ -28,6 +28,9 @@ mixin QuizSession<T extends StatefulWidget> on State<T> {
 
   /// 다음 단계 화면
   Widget nextStageScreen();
+
+  /// 한 판의 문제 수 (발자국·골인 길·결과 별이 모두 이 수를 따른다)
+  int get questionCount => Economy.questionsPerSession;
 
   late final Season season = seasonForStage(stageId);
   late final AudioService _quizAudio = AppScope.read(context).audio;
@@ -114,7 +117,7 @@ mixin QuizSession<T extends StatefulWidget> on State<T> {
 
   Future<void> _next() async {
     if (!mounted) return;
-    if (done >= Economy.questionsPerSession) {
+    if (done >= questionCount) {
       final reward = await state.completeSession(kind, stageId);
       state.audio.play(Sfx.fanfare);
       state.audio.say('정말 잘했어요! 코인을 받았어요.');
@@ -123,6 +126,7 @@ mixin QuizSession<T extends StatefulWidget> on State<T> {
         summary = SessionSummary(
           coins: sessionCoins,
           stars: sessionStars,
+          total: questionCount,
           reward: reward,
         );
         bubble = null;
@@ -159,6 +163,7 @@ mixin QuizSession<T extends StatefulWidget> on State<T> {
     final hasNext = stageId < kind.stageCount && stageId < unlocked;
     return GameFrame(
       done: done,
+      total: questionCount,
       cheer: cheer,
       bubble: bubble,
       result: summary,

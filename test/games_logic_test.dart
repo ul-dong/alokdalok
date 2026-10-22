@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:alokdalok/core/economy.dart';
 import 'package:alokdalok/data/game_objects.dart';
 import 'package:alokdalok/data/stages.dart';
 import 'package:alokdalok/games/color_game/color_game_screen.dart';
@@ -15,7 +16,6 @@ import 'package:alokdalok/games/shape_game/shape_game_screen.dart';
 import 'package:alokdalok/games/shape_game/shape_round.dart';
 import 'package:alokdalok/games/size_game/size_game_screen.dart';
 import 'package:alokdalok/games/size_game/size_round.dart';
-import 'package:alokdalok/core/economy.dart';
 import 'package:alokdalok/services/audio_service.dart';
 import 'package:alokdalok/services/game_state.dart';
 import 'package:alokdalok/services/save_data.dart';
@@ -341,8 +341,11 @@ void main() {
   });
 
   group('짝 맞추기', () {
-    test('단계별 2→3→4→5→6쌍', () {
-      expect([for (final s in Stages.match) s.pairs], [2, 3, 4, 5, 6]);
+    test('단계별 2→2→3→3→4쌍 (최대 4쌍), 한 판 3장', () {
+      expect([for (final s in Stages.match) s.pairs], [2, 2, 3, 3, 4]);
+      expect(Stages.match.every((s) => s.pairs <= 4), isTrue);
+      expect(Economy.matchQuestionsPerSession, 3);
+      expect(Economy.questionsPerSession, 5, reason: '다른 놀이는 그대로 5문제');
       expect(Stages.match.last.colorVariant, isTrue);
       expect(Stages.match.take(4).any((s) => s.colorVariant), isFalse);
     });
@@ -381,6 +384,25 @@ void main() {
         } else {
           expect(kinds.length, stage.pairs);
         }
+      }
+    });
+
+    test('2단계는 1단계와 다른 물건으로 시작한다', () {
+      final first = Stages.match[0].objects.toSet();
+      expect(Stages.match[1].objects.toSet().intersection(first), isEmpty);
+    });
+
+    test('5단계: 같은 물건, 서로 다른 색 4가지, 색을 바꿀 수 있는 물건만', () {
+      final stage = Stages.match.last;
+      expect(stage.objects.every((k) => k.tintable), isTrue);
+      final rng = Random(12);
+      for (var k = 0; k < 100; k++) {
+        final b = MatchBoard.generate(stage, rng);
+        final kinds = b.cards.map((c) => c.kind).toSet();
+        expect(kinds.length, 1);
+        expect(kinds.single.tintable, isTrue);
+        expect(b.cards.map((c) => c.color.id).toSet().length, 4);
+        expect(b.colorVariant, isTrue);
       }
     });
 

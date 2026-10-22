@@ -447,29 +447,32 @@ class Stages {
     SizeStage(id: 5, choiceCount: 4, smallest: .58, objects: ObjectKind.values),
   ];
 
+  /// 짝 맞추기: 2→2→3→3→4쌍, 한 판 3장 (2026-10-22 사용자 결정: 짧고 쉽게)
   static const match = [
+    // 1단계: 생김새가 아주 다른 물건 두 쌍
     MatchStage(
       id: 1,
       pairs: 2,
       objects: [ObjectKind.apple, ObjectKind.duck, ObjectKind.car],
     ),
+    // 2단계: 1단계와 다른 물건 (공·풍선처럼 조금 닮은 것도 섞임)
     MatchStage(
       id: 2,
-      pairs: 3,
+      pairs: 2,
       objects: [
-        ObjectKind.apple,
-        ObjectKind.duck,
-        ObjectKind.car,
         ObjectKind.star,
         ObjectKind.ball,
+        ObjectKind.balloon,
+        ObjectKind.flower,
+        ObjectKind.fish,
       ],
     ),
-    MatchStage(id: 3, pairs: 4, objects: ObjectKind.values),
-    MatchStage(id: 4, pairs: 5, objects: ObjectKind.values),
-    // 마지막: 같은 물건을 여러 색으로 → 같은 색끼리 짝
+    MatchStage(id: 3, pairs: 3, objects: ObjectKind.values),
+    MatchStage(id: 4, pairs: 3, objects: ObjectKind.values),
+    // 마지막: 같은 물건을 여러 색으로 → 같은 색끼리 짝 (색을 바꿀 수 있는 물건만)
     MatchStage(
       id: 5,
-      pairs: 6,
+      pairs: 4,
       colorVariant: true,
       objects: [
         ObjectKind.balloon,

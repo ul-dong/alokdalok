@@ -110,45 +110,53 @@ void main() {
     (Size(1280, 800), FakeViewPadding()),
   ]) {
     final w = size.width.toInt();
-    testWidgets('result $w', (t) async {
-      t.view.physicalSize = size;
-      t.view.devicePixelRatio = 1;
-      t.view.padding = pad;
-      t.view.viewPadding = pad;
-      addTearDown(t.view.reset);
-      final s = await rich();
-      await t.pumpWidget(
-        _app(
-          s,
-          GameFrame(
-            done: 5,
-            card: const SizedBox(),
-            cheer: 1,
-            bubble: null,
-            onReady: (_) {},
-            result: const SessionSummary(
-              coins: 9,
-              stars: 4,
-              reward: SessionReward(
-                complete: 3,
-                firstPlay: 5,
-                newStage: 5,
-                unlockedStage: 2,
+    // 보통 놀이(5문제)와 짝 맞추기(한 판 3장)
+    for (final (name, total, stars, coins) in const [
+      ('main_result', 5, 4, 9),
+      ('main_result_match', 3, 2, 5),
+    ]) {
+      testWidgets('$name $w', (t) async {
+        t.view.physicalSize = size;
+        t.view.devicePixelRatio = 1;
+        t.view.padding = pad;
+        t.view.viewPadding = pad;
+        addTearDown(t.view.reset);
+        final s = await rich();
+        await t.pumpWidget(
+          _app(
+            s,
+            GameFrame(
+              done: total,
+              total: total,
+              card: const SizedBox(),
+              cheer: 1,
+              bubble: null,
+              onReady: (_) {},
+              result: SessionSummary(
+                coins: coins,
+                stars: stars,
+                total: total,
+                reward: const SessionReward(
+                  complete: 3,
+                  firstPlay: 5,
+                  newStage: 5,
+                  unlockedStage: 2,
+                ),
               ),
+              onReplay: () {},
+              onNext: () {},
             ),
-            onReplay: () {},
-            onNext: () {},
           ),
-        ),
-      );
-      await _pump(t, 25);
-      expect(t.takeException(), isNull);
-      await expectLater(
-        find.byType(MaterialApp).first,
-        matchesGoldenFile('shots/main_result_$w.png'),
-      );
-      await t.pumpWidget(const SizedBox());
-      await t.pump(const Duration(seconds: 3));
-    });
+        );
+        await _pump(t, 25);
+        expect(t.takeException(), isNull);
+        await expectLater(
+          find.byType(MaterialApp).first,
+          matchesGoldenFile('shots/${name}_$w.png'),
+        );
+        await t.pumpWidget(const SizedBox());
+        await t.pump(const Duration(seconds: 3));
+      });
+    }
   }
 }

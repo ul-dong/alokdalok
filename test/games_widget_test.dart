@@ -2,7 +2,9 @@
 import 'dart:math';
 
 import 'package:alokdalok/core/economy.dart';
+import 'package:alokdalok/core/palette.dart';
 import 'package:alokdalok/data/stages.dart';
+import 'package:alokdalok/games/common/journey_trail.dart';
 import 'package:alokdalok/games/common/quiz_widgets.dart';
 import 'package:alokdalok/games/game_entry.dart';
 import 'package:alokdalok/games/match_game/match_game_screen.dart';
@@ -279,9 +281,7 @@ void main() {
       await done(t);
     });
 
-    testWidgets('1단계(이름 듣고 찾기): 처음엔 견본 없음, 한 번 틀리면 정답과 다른 색 견본', (
-      t,
-    ) async {
+    testWidgets('1단계(이름 듣고 찾기): 처음엔 견본 없음, 한 번 틀리면 정답과 다른 색 견본', (t) async {
       await setSize(t, const Size(844, 390));
       final s = await makeState();
       final q = ShapeQuestion.generate(Stages.shape[0], Random(9));
@@ -374,6 +374,15 @@ void main() {
       expect(t.takeException(), isNull);
       expect(find.text('또 하기'), findsOneWidget);
       expect(s.stars, stars + Economy.questionsPerSession);
+      expect(
+        t
+            .widgetList<StarIcon>(find.byType(StarIcon))
+            .where((w) => w.size >= 44 && w.color == Palette.yellow)
+            .length,
+        5,
+        reason: '다른 놀이는 그대로 5문제 = 별 5개',
+      );
+      expect(t.widget<PawProgress>(find.byType(PawProgress)).total, 5);
       expect(s.unlockedStage(GameKind.size), 2);
       await done(t);
     });
@@ -395,9 +404,9 @@ void main() {
     testWidgets('카드는 모두 보이고, 두 장을 차례로 눌러 짝을 맞춘다', (t) async {
       await setSize(t, const Size(844, 390));
       final s = await makeState();
-      final b = MatchBoard.generate(Stages.match[1], Random(4));
+      final b = MatchBoard.generate(Stages.match[2], Random(4));
       await t.pumpWidget(
-        wrap(s, MatchGameScreen(stageId: 2, random: Random(4))),
+        wrap(s, MatchGameScreen(stageId: 3, random: Random(4))),
       );
       await settle(t);
       expect(find.byType(QuizTile), findsNWidgets(6), reason: '3쌍 = 6장');
@@ -440,7 +449,7 @@ void main() {
         wrap(s, MatchGameScreen(stageId: 5, random: Random(6))),
       );
       await settle(t);
-      expect(find.byType(QuizTile), findsNWidgets(12));
+      expect(find.byType(QuizTile), findsNWidgets(8), reason: '4쌍 = 8장');
       final (a, twin) = pairsOf(b).first;
       final others = [
         for (var i = 0; i < b.cards.length; i++)
@@ -470,7 +479,7 @@ void main() {
       await done(t);
     });
 
-    testWidgets('5판을 끝내면 결과, 틀린 판은 별 없이 코인 1', (t) async {
+    testWidgets('3판을 끝내면 3문제 기준 결과(발자국·별·코인), 틀린 판은 별 없이 코인 1', (t) async {
       await setSize(t, const Size(844, 390));
       final s = await makeState();
       final mirror = Random(9);
@@ -478,10 +487,13 @@ void main() {
         wrap(s, MatchGameScreen(stageId: 1, random: Random(9))),
       );
       await settle(t);
+      // 위 발자국과 아래 골인 길이 3칸
+      expect(t.widget<PawProgress>(find.byType(PawProgress)).total, 3);
+      expect(t.widget<JourneyTrail>(find.byType(JourneyTrail)).total, 3);
       final start = s.coins;
       final stars = s.stars;
       MatchBoard? prev;
-      for (var k = 0; k < Economy.questionsPerSession; k++) {
+      for (var k = 0; k < Economy.matchQuestionsPerSession; k++) {
         final b = MatchBoard.generate(Stages.match[0], mirror, previous: prev);
         prev = b;
         final pairs = pairsOf(b);
@@ -496,19 +508,26 @@ void main() {
           await tapTile(t, y);
         }
         await settle(t, 2400);
+        expect(t.widget<PawProgress>(find.byType(PawProgress)).done, k + 1);
       }
       await settle(t, 600);
       expect(find.text('또 하기'), findsOneWidget);
-      expect(s.stars, stars + 4);
-      expect(
-        s.coins,
-        start +
-            Economy.correctAfterRetry +
-            Economy.correctFirstTry * 4 +
-            Economy.sessionComplete +
-            Economy.firstPlayBonus +
-            Economy.newStageBonus,
-      );
+      expect(s.stars, stars + 2);
+      // 결과 별: 3칸 중 노란 별 2개
+      final resultStars = t
+          .widgetList<StarIcon>(find.byType(StarIcon))
+          .where((w) => w.size >= 44)
+          .toList();
+      expect(resultStars.length, 3);
+      expect(resultStars.where((w) => w.color == Palette.yellow).length, 2);
+      final earned =
+          Economy.correctAfterRetry +
+          Economy.correctFirstTry * 2 +
+          Economy.sessionComplete +
+          Economy.firstPlayBonus +
+          Economy.newStageBonus;
+      expect(s.coins, start + earned);
+      expect(find.text('+$earned'), findsOneWidget, reason: '결과 금액 = 실제 지급액');
       expect(s.unlockedStage(GameKind.match), 2);
       await done(t);
     });

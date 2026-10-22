@@ -29,8 +29,11 @@ void main() {
         Size(844, 390),
         Size(568, 320),
       ]) {
-        // 큰 화면은 모든 단계, 작은 화면은 첫·마지막 단계만
-        if (size.width < 1280 && stage != 1 && stage != kind.stageCount) {
+        // 큰 화면은 모든 단계, 작은 화면은 첫·마지막 단계만 (짝 맞추기는 모두)
+        if (size.width < 1280 &&
+            kind != GameKind.match &&
+            stage != 1 &&
+            stage != kind.stageCount) {
           continue;
         }
         testWidgets('${kind.name} $stage ${size.width}', (t) async {

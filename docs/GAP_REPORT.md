@@ -12,6 +12,7 @@
 | `flutter pub get` | 성공 (13개 패키지 상위 버전 있음, 제약상 미적용) |
 | `flutter analyze` | 한글 경로에서 분석 서버 크래시(JSON FormatException). ASCII 경로 복사본에서 **No issues found** |
 | 통합 마무리 (2026-10-22) | `flutter test` **323개 전부 통과**, `flutter analyze` **0건** (이 경로는 ASCII라 바로 실행), `flutter test test_preview --update-goldens` **131개 통과** (568×320·844×390·1280×800 주요 화면 그림 확인). 빌드 3종은 11장 참고 |
+| 짝 맞추기 짧게 (2026-10-22, match5) | `flutter test` **440개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **197개 통과** (game_match_1~5 × 568·844·1280, 결과 화면 5문제·3장) |
 | 점검 수정 (2026-10-22, release2) | `flutter test` **395개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **187개 통과**. 문장 목록 577 = manifest 577 = mp3 577 (14장) |
 | 기준선 `flutter test` (test/) | **120개 전부 통과** (소스상 `test`/`testWidgets` 72곳: state 33·widget 19·logic 14·eye_guard 6, 화면 크기 반복 포함 실행 120건). 사양 목표 142 |
 | 기준선 `flutter test test_preview` | 그대로 돌리면 9 통과 / 32 실패 (골든 비교: `shots/` 없음 + 저장된 PNG 픽셀 차이). 미리보기 생성기이므로 `--update-goldens`로 돌리면 **41개 전부 통과** |
@@ -31,7 +32,7 @@
 
 ## 2. 놀이 5종
 
-공통 규칙: 단계 5개(숫자 8개), 한 판 5문제(`Economy.questionsPerSession = 5` 있음), 목소리 문제 + "다시 듣기".
+공통 규칙: 단계 5개(숫자 8개), 한 판 5문제(`Economy.questionsPerSession = 5` 있음, 짝 맞추기는 한 판 3장 `Economy.matchQuestionsPerSession = 3`), 목소리 문제 + "다시 듣기".
 
 | 놀이 | 상태 | 현재 코드 / 메모 |
 |---|---|---|
@@ -42,7 +43,7 @@
 | 색깔 놀이 (그네), 5단계 | 있음 | `games/color_game/`, `Stages.color` 5단계 (`swatchFromStart`, `mixedShapes`) |
 | 모양 놀이 (모래놀이터) | 있음 (트랙 B) | `games/shape_game/` (`shape_round.dart` 순수 로직, `shape_art.dart` 그림), `Stages.shape` 5단계: 쉬운 세 모양(견본은 한 번 틀리면 회색 힌트) → 여섯 모양 → 같은 색 → 회전 → 견본과 같은 모양 |
 | 크기 놀이 (시소) | 있음 (트랙 B) | `games/size_game/`, `Stages.size` 5단계: 보기 2→2→3→3→4, 3개 이상은 "가장 큰/작은", 이웃 크기 비율 2.2→1.2로 감소 |
-| 짝 맞추기 (회전목마) | 있음 (트랙 B) | `games/match_game/`, `Stages.match` 2→3→4→5→6쌍, 카드 모두 보임, 5단계는 같은 물건 다른 색. 한 문제 = 카드 한 판 |
+| 짝 맞추기 (회전목마) | 있음 (트랙 B) | `games/match_game/`, `Stages.match` 2→2→3→3→4쌍(최대 4쌍), 카드 모두 보임, 5단계는 같은 물건 다른 색(색을 바꿀 수 있는 물건만). 한 문제 = 카드 한 판, 한 판 3장(2026-10-22 사용자 결정) |
 | 공통 흐름: 정답→효과음·칭찬·코인→다음, 결과(별·코인, 또 하기/다음 단계/집으로) | 있음 | `game_frame.dart` 결과 화면 |
 | 단계마다 계절 배경·음악 | 있음 | `scene_game.dart` `seasonForStage`, 계절 음악 4곡 |
 | 1번 틀림 그림 힌트, 2번 틀림 정답 빛남, 틀린 보기 흐려짐 | 있음 | 숫자(`wrongPicks`, `glow`, opacity .35), 색깔(`faded`, `glow`) |
@@ -154,7 +155,7 @@
 | 안드로이드 `install_and_build.command`, arm 전용(armeabi-v7a, arm64-v8a) | 있음 | 저장소 루트 스크립트(caffeinate). `abiFilters` + `disable-abi-filtering=true`. release 키는 `android/key.properties`(git 제외) + 비밀번호 직접 입력, 없으면 debug 키 |
 | ML Kit Play 서비스 버전(용량 줄이기) | 있음 | `com.google.mlkit:face-detection` 제외 → `play-services-mlkit-face-detection:17.1.0`, 매니페스트 `com.google.mlkit.vision.DEPENDENCIES=face`. APK 89.6MB → 42.0MB. 2026-10-22 arm 전용 release APK(debug 키 서명) **43.3MB** 빌드 성공 (armeabi-v7a, arm64-v8a) |
 | 음성 `gen_voice.command` | 있음 | `tool/gen_voice.command` (목록 내보내기 → 없는 문장만 `assets/voice`에 녹음, manifest 합치기). 2026-10-22 `~/alokdev/melo-venv`로 135문장 녹음(69초) |
-| 테스트 142개 | 있음 | 323개 (트랙 A `screens_test`, B `games_*_test`, C `safety_*_test`, D `vehicle_test`, 통합 `polish_test` 18개 등) |
+| 테스트 142개 | 있음 | 440개 (2026-10-22 match5 기준, 트랙 A `screens_test`, B `games_*_test`, C `safety_*_test`, D `vehicle_test`, 통합 `polish_test` 18개 등) |
 
 ## 12. iOS 준비 상태
 
@@ -212,3 +213,11 @@
 | 모양 1단계: 왼쪽 견본이 처음부터 정답과 같은 색·같은 모양이라 소리를 안 들어도 그림만 맞춰 풀림 | 이름을 듣고 찾는 단계(1~4)는 처음에 견본을 숨기고, 한 번 틀리면 회색(`GameColor.gray`) 견본을 힌트로. 두 번 틀리면 정답 빛남은 그대로. `ShapeStage.sampleFromStart` 삭제. 견본 찾기(5단계)는 처음부터 견본, 색은 보기에 없는 색. 견본 자리가 비어도 보기 묶음은 `QuizCenter`로 판 가운데 | 이름 단계: 처음 견본 없음 → 한 번 틀리면 견본(정답·모든 보기와 다른 색) → 두 번 틀리면 빛남. 견본 찾기: 처음부터 견본, 보기와 다른 색 (로직 + 화면) |
 | 다른 놀이 점검 | 크기·짝 맞추기: 그림 힌트는 한 번 틀린 뒤에만 나옴(그대로). 색깔 놀이 1~3단계 견본은 물건 그림이 아니라 둥근 물감 칩(`_Swatch`)이라 색만 알려 줌(그대로) | |
 | 숫자 보기 주사위 발자국 | 사용자 결정으로 제거, 숫자만 버튼 안쪽(높이 78%·폭 72%)에 크게. `number_shape.dart`(주사위·발자국 그림) 삭제, 숫자 색표는 `number_colors.dart`. 세는 소리·큰 숫자판·틀리면 힌트·두 번 틀리면 빛남은 그대로 | 568·844·1280 숫자 보기에 그림(painter) 없음, 숫자 하나가 버튼 높이 40% 이상 |
+
+### 14-3. 짝 맞추기 짧고 쉽게 (match5, 2026-10-22 사용자 결정 "한 판 3장, 최대 4쌍")
+
+| 점검 항목 | 고친 내용 | 테스트 |
+|---|---|---|
+| 한 판이 길다 (마지막 단계 6쌍 × 5장 = 30짝) | 짝 맞추기만 한 판 3장(`Economy.matchQuestionsPerSession`). `QuizSession.questionCount`가 발자국(`PawProgress`)·골인 길(`JourneyTrail`)·결과 별 칸(`SessionSummary.total`) 수를 정한다. 별은 한 번에 맞힌 판마다 1개(3장 다 한 번에 → 별 3개 가득). 다른 놀이는 그대로 5문제 | 결과 화면 발자국 3칸·별 3칸 중 노란 별 2개·`+코인` = 실제 지급액. 크기 놀이는 별 5개·발자국 5칸 |
+| 쌍 수 | 2→2→3→3→4쌍. 2단계는 1단계(사과·오리·자동차)와 다른 물건(별·공·풍선·꽃·물고기). 5단계 4쌍은 같은 물건 다른 색, 색을 바꿀 수 있는 물건만(풍선·자동차·공·물고기·별) | `[2,2,3,3,4]`, 2단계 물건이 1단계와 겹치지 않음, 5단계 한 물건·4색·`tintable` |
+| 코인 | `core/economy.dart` 값 그대로 (한 번에 2, 다시 1, 한 판 3). 문제 수만 줄어 한 판 코인이 조금 적다 | 위 결과 화면 테스트 |

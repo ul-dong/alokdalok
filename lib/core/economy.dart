@@ -24,6 +24,9 @@ class Economy {
   /// 한 판의 문제 수 (약 30초~2분)
   static const int questionsPerSession = 5;
 
+  /// 짝 맞추기 한 판의 카드 판 수 (한 판이 길어지지 않게 3장, 2026-10-22 결정)
+  static const int matchQuestionsPerSession = 3;
+
   /// 같은 문제에서 이만큼 틀리면 시각 힌트를 보여 준다
   static const int hintAfterWrong = 1;
 
