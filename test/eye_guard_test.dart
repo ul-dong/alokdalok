@@ -10,20 +10,36 @@ import 'package:flutter_test/flutter_test.dart';
 
 class FakeSensor implements EyeSensor {
   final ctrl = StreamController<FaceReading?>.broadcast();
+  int starts = 0, stops = 0;
+  final intervals = <Duration>[];
+
+  /// 지금 카메라가 켜져 있는지 (start 뒤 stop 전)
+  bool get on => starts > stops;
+
   @override
   bool get supported => true;
   @override
-  Stream<FaceReading?> start() => ctrl.stream;
+  Stream<FaceReading?> start() {
+    starts++;
+    return ctrl.stream;
+  }
+
   @override
-  Future<void> stop() async {}
+  Future<void> stop() async => stops++;
+  @override
+  void setInterval(Duration interval) => intervals.add(interval);
 
   /// 테스트에서는 size 값을 그대로 "1/거리" 로 쓴다: size = 1/cm
   @override
   double defaultDistanceCm(double size) => 1 / size;
 }
 
-FaceReading at(double cm, {double yaw = 0, double pitch = 0, double roll = 0}) =>
-    FaceReading(size: 1 / cm, yaw: yaw, pitch: pitch, roll: roll);
+FaceReading at(
+  double cm, {
+  double yaw = 0,
+  double pitch = 0,
+  double roll = 0,
+}) => FaceReading(size: 1 / cm, yaw: yaw, pitch: pitch, roll: roll);
 
 void main() {
   group('눈 지킴이 판단', () {
@@ -136,6 +152,10 @@ void main() {
     await t.pump(const Duration(milliseconds: 400));
     expect(find.text('화면이 너무 가까워요!'), findsNothing);
     expect(audio.spoken.last, '잘했어요! 다시 놀아요.');
+    // 홈 화면이라 경고가 풀리면 1초 뒤 카메라를 끈다
+    expect(sensor.on, isTrue);
+    await t.pump(const Duration(milliseconds: 1100));
+    expect(sensor.on, isFalse);
     await t.pumpWidget(const SizedBox());
   });
 }

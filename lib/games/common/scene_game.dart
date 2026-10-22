@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame/particles.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/palette.dart';
@@ -159,6 +160,30 @@ class SceneGame extends FlameGame {
   bool _onSlow = false;
   async.Timer? _fast;
 
+  bool _attached = false;
+  bool _frozen = false;
+
+  /// 멈춤·결과 화면이나 덮개가 장면을 가리는 동안은 움직임을 멈추고 다시 그리지 않는다
+  bool get frozen => _frozen;
+  set frozen(bool on) {
+    if (_frozen == on) return;
+    _frozen = on;
+    _listenSlow(_attached && !on);
+  }
+
+  void _listenSlow(bool on) {
+    if (on == _onSlow) return;
+    _onSlow = on;
+    if (on) {
+      _lastUs = _clock.elapsedMicroseconds; // 멈춘 동안의 시간은 건너뛴다
+      SlowClock.instance.addListener(_tick);
+    } else {
+      SlowClock.instance.removeListener(_tick);
+      _fast?.cancel();
+      _fast = null;
+    }
+  }
+
   @override
   void onAttach() {
     super.onAttach();
@@ -167,18 +192,14 @@ class SceneGame extends FlameGame {
       ..reset()
       ..start();
     _lastUs = 0;
-    if (!_onSlow) {
-      SlowClock.instance.addListener(_tick);
-      _onSlow = true;
-    }
+    _attached = true;
+    _listenSlow(!_frozen);
   }
 
   @override
   void onDetach() {
-    if (_onSlow) {
-      SlowClock.instance.removeListener(_tick);
-      _onSlow = false;
-    }
+    _attached = false;
+    _listenSlow(false);
     _fast?.cancel();
     _fast = null;
     super.onDetach();
@@ -1070,6 +1091,28 @@ class SceneBackground extends StatefulWidget {
 class _SceneBackgroundState extends State<SceneBackground> {
   late SceneGame game = _make();
 
+  /// 위에서 TickerMode(enabled: false)로 가리면(멈춤·덮개) 장면을 멈춘다
+  ValueListenable<TickerModeData>? _tickerOn;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final n = TickerMode.getValuesNotifier(context);
+    if (!identical(n, _tickerOn)) {
+      _tickerOn?.removeListener(_syncFrozen);
+      _tickerOn = n..addListener(_syncFrozen);
+    }
+    _syncFrozen();
+  }
+
+  void _syncFrozen() => game.frozen = !(_tickerOn?.value.enabled ?? true);
+
+  @override
+  void dispose() {
+    _tickerOn?.removeListener(_syncFrozen);
+    super.dispose();
+  }
+
   SceneGame _make() => SceneGame(
     season: widget.season ?? seasonOf(DateTime.now()),
     groundLevel: widget.groundLevel,
@@ -1091,6 +1134,7 @@ class _SceneBackgroundState extends State<SceneBackground> {
     super.didUpdateWidget(old);
     if (old.season != widget.season || old.groundLevel != widget.groundLevel) {
       game = _make();
+      _syncFrozen();
       widget.onReady?.call(game);
     }
   }

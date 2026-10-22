@@ -106,6 +106,7 @@
 | iOS ML Kit | 빌드됨, 카메라는 실기기 확인 필요 | `eye_sensor_io.dart`가 `Platform.isIOS` 지원 (bgra8888, 회전 처리) |
 | 부모님 거리 맞추기(보정) | 있음 | `calibrateNow` + 경고 거리 선택(`EyeGuard.tooCloseCm`, 풀림 = +4cm), 설정 `_EyeGuardCard` |
 | 덮개 "조금 더 멀리서 봐요" | 있음 | `widgets/eye_guard_overlay.dart` |
+| 눈 보호 카메라 발열 줄이기 (사양 원칙 8) | 있음 | 카메라는 놀이 화면(GameFrame)이 보일 때만 켜고, 홈·놀이터·상점·내 캐릭터·설정·단계 고르기, 멈춤 화면, "오늘은 여기까지!"·눈 쉬기 덮개, 백그라운드에서는 끈다(짧은 전환 1초 지연, 경고 덮개 중엔 계속 켬): `EyeGuard.wanted`. 네이티브 낮은 해상도 + fps 요청(안드로이드 10, iOS 5) + 미리보기 멈춤, 검사 간격 평소 1.5초·기준 가까이(36cm 이하, 각도 80% 이상)·경고 중 0.5초. ML Kit은 얼굴 상자·고개 각도만. 웹 320×240, 초당 5(최대 10). 덮개·멈춤 화면 뒤 장면은 TickerMode로 멈춤. `test/eye_camera_test.dart`. 실기기 측정 전 |
 | 하루 놀이 시간 (제한 없음·10·15·20·30·45·60분), "오늘은 여기까지!", 부모 확인 후 +15분, 다음 날 리셋 | 있음 | 순수 로직 `services/play_clock.dart` `PlayClock`(시계 주입), 덮개 `widgets/play_guard_overlay.dart`(`app.dart`에서 전체 화면 위). 논 시간은 저장(30초마다·백그라운드 갈 때) |
 | 눈 쉬기 10/20분(기본 10) → 20초 "창밖 먼 곳을 봐요", 산 그림 + 줄어드는 고리, 5분 이상 안 보면 쉰 것으로 | 있음 | `PlayClock` + `EyeBreakCard`(`WindowViewPainter`, `ShrinkingRingPainter`, 공용 20fps 시계). 백그라운드 5분 이상이면 쉰 것. "오늘은 여기까지"가 20초 넘게 떠 있어도 쉰 것 |
 

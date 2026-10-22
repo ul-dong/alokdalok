@@ -15,6 +15,7 @@ extension type _Guard(JSObject _) implements JSObject {
     JSFunction onError,
   );
   external void stop();
+  external void setInterval(JSNumber ms);
 }
 
 /// 웹: web/eye_guard.js (MediaPipe 얼굴 랜드마크)를 부른다.
@@ -28,6 +29,10 @@ class _WebEyeSensor implements EyeSensor {
 
   @override
   bool get supported => _guard != null;
+
+  @override
+  void setInterval(Duration interval) =>
+      _guard?.setInterval(interval.inMilliseconds.toJS);
 
   @override
   Stream<FaceReading?> start() {

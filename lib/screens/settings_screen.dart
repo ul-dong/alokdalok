@@ -634,6 +634,8 @@ class _EyeGuardCard extends StatelessWidget {
           status = eye.error!;
         } else if (!on) {
           status = '앞카메라로 화면과의 거리(30cm 이상)와 바른 자세를 살펴봐요';
+        } else if (!eye.running) {
+          status = '놀이하는 동안 앞카메라로 거리(30cm 이상)와 바른 자세를 살펴봐요';
         } else if (r == null || d == null) {
           status = '얼굴을 찾는 중이에요…';
         } else {

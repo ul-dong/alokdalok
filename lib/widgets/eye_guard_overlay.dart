@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../character/character_view.dart';
 import '../core/palette.dart';
 import '../services/eye_guard.dart';
+import '../services/game_state.dart';
+import '../services/play_clock.dart';
 import 'common.dart';
 
 /// 눈 지킴이 경고 화면. 화면이 너무 가깝거나 자세가 비뚤어지면 놀이 위를 덮어서 잠깐 멈추게 한다.
@@ -16,23 +18,68 @@ class EyeGuardOverlay extends StatefulWidget {
   State<EyeGuardOverlay> createState() => _EyeGuardOverlayState();
 }
 
-class _EyeGuardOverlayState extends State<EyeGuardOverlay> {
+///
+/// 카메라를 끄고 켜는 때도 여기서 알려 준다 (발열 줄이기):
+/// 앱이 뒤로 가면 끄고, "오늘은 여기까지!"·눈 쉬기 덮개가 떠 있으면 끈다.
+class _EyeGuardOverlayState extends State<EyeGuardOverlay>
+    with WidgetsBindingObserver {
   EyeGuard? _eye;
+  GameState? _state;
   EyeAlert _shown = EyeAlert.none;
   Timer? _repeat;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final eye = AppScope.read(context).eye;
+    final state = AppScope.read(context);
+    if (!identical(state, _state)) {
+      _state?.removeListener(_blockChanged);
+      _state = state..addListener(_blockChanged);
+    }
+    final eye = state.eye;
     if (!identical(eye, _eye)) {
       _eye?.removeListener(_changed);
       _eye = eye..addListener(_changed);
+      final life = WidgetsBinding.instance.lifecycleState;
+      eye.setForeground(life == null || life == AppLifecycleState.resumed);
     }
+    _blockChanged();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState s) {
+    final eye = _eye;
+    if (eye == null) return;
+    switch (s) {
+      case AppLifecycleState.resumed:
+        eye.setForeground(true);
+      case AppLifecycleState.inactive:
+        // 알림창을 내리는 등 잠깐일 수 있으니 조금 기다렸다가 끈다
+        eye.setForeground(false);
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        // inactive를 거쳐 끄려고 기다리는 중이어도 기다리지 않고 바로 끈다
+        eye.setForeground(false, immediate: true);
+    }
+  }
+
+  void _blockChanged() {
+    final state = _state;
+    if (state == null) return;
+    state.eye.blocked = state.playBlock != PlayBlock.none;
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _state?.removeListener(_blockChanged);
     _eye?.removeListener(_changed);
     _repeat?.cancel();
     super.dispose();

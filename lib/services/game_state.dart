@@ -131,7 +131,8 @@ class GameState extends ChangeNotifier {
       bonusMinutes: _d.playBonusMin,
     );
     eye.calibration = _d.eyeCalibration;
-    if (_d.eyeGuardOn && eye.supported) unawaited(eye.start());
+    // 켜 두기만 하고, 카메라는 놀이 화면이 보일 때만 켠다 (EyeGuard.wanted)
+    eye.enabled = _d.eyeGuardOn;
     _loaded = true;
     notifyListeners();
   }
@@ -161,13 +162,14 @@ class GameState extends ChangeNotifier {
 
   Future<void> setEyeGuard(bool on) async {
     _d.eyeGuardOn = on;
-    on ? await eye.start() : await eye.stop();
+    eye.enabled = on;
     await _commit();
   }
 
   /// 지금 거리를 30cm 기준으로 저장. 얼굴이 안 보이면 false.
   Future<bool> calibrateEye() async {
-    final v = eye.calibrateNow();
+    // 설정 화면에서는 카메라가 꺼져 있으니 잠깐 켜서 얼굴을 한 번 본다
+    final v = await eye.measureAndCalibrate();
     if (v == null) return false;
     _d.eyeCalibration = v;
     await _commit();
@@ -515,14 +517,10 @@ class GameState extends ChangeNotifier {
     return null;
   }
 
-  /// 저장값의 눈 보호 켜짐/꺼짐에 맞춰 카메라를 켜거나 끈다
+  /// 저장값의 눈 보호 켜짐/꺼짐을 눈 지킴이에 알린다 (카메라는 필요할 때만 켜진다)
   void _applyEyeRunning() {
     eye.calibration = _d.eyeCalibration;
-    if (_d.eyeGuardOn && eye.supported && !eye.running) {
-      unawaited(eye.start());
-    } else if (!_d.eyeGuardOn && eye.running) {
-      unawaited(eye.stop());
-    }
+    eye.enabled = _d.eyeGuardOn;
   }
 
   /// 부모용: 모든 진행 기록 지우기

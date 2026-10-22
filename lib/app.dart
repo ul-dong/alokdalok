@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'core/app_theme.dart';
 import 'screens/zodiac_picker_screen.dart';
 import 'screens/home_screen.dart';
+import 'services/eye_guard.dart';
 import 'services/game_state.dart';
+import 'services/play_clock.dart';
 import 'widgets/common.dart';
 import 'widgets/eye_guard_overlay.dart';
 import 'widgets/play_guard_overlay.dart';
@@ -36,7 +38,7 @@ class AlokdalokApp extends StatelessWidget {
                 : MinHeightScaler(
                     child: Stack(
                       children: [
-                        child!,
+                        _StillWhenCovered(child: child!),
                         // 놀이 시간 끝("오늘은 여기까지!")·눈 쉬기("창밖 먼 곳을 봐요") 덮개
                         const Positioned.fill(child: PlayGuardOverlay()),
                         // 화면이 너무 가깝거나 자세가 비뚤어지면 덮는 안내 (눈 지킴이)
@@ -71,6 +73,28 @@ class RootGate extends StatelessWidget {
               key: ValueKey('onboarding'),
               onboarding: true,
             ),
+    );
+  }
+}
+
+/// 놀이 시간·눈 쉬기·눈 지킴이 덮개가 화면을 가리는 동안은 뒤 화면의 움직임(배경 장면,
+/// 캐릭터 숨쉬기, 애니메이션)을 멈춘다. 안 보이는 장면을 계속 다시 그리지 않게 (발열 줄이기).
+class _StillWhenCovered extends StatelessWidget {
+  const _StillWhenCovered({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.read(context);
+    return ListenableBuilder(
+      listenable: Listenable.merge([state, state.eye]),
+      builder: (context, child) => TickerMode(
+        enabled:
+            state.playBlock == PlayBlock.none &&
+            state.eye.alert == EyeAlert.none,
+        child: child!,
+      ),
+      child: child,
     );
   }
 }

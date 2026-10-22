@@ -7,6 +7,7 @@ import '../../character/character_view.dart';
 import '../../core/economy.dart';
 import '../../core/palette.dart';
 import '../../services/audio_service.dart';
+import '../../services/eye_guard.dart';
 import '../../services/game_state.dart';
 import '../../widgets/common.dart';
 import '../../widgets/hold_button.dart';
@@ -68,103 +69,137 @@ class SessionSummary {
 class _GameFrameState extends State<GameFrame> {
   bool _paused = false;
 
+  /// 눈 지킴이: 놀이 화면이 보이는 동안만 카메라를 켜고, 멈춤 화면에서는 끈다
+  EyeGuard? _eye;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final eye = AppScope.read(context).eye;
+    if (!identical(eye, _eye)) {
+      _eye?.hidePlay(this);
+      _eye = eye..showPlay(this, paused: _paused);
+    }
+  }
+
+  @override
+  void dispose() {
+    _eye?.hidePlay(this);
+    super.dispose();
+  }
+
+  void _setPaused(bool on) {
+    setState(() => _paused = on);
+    _eye?.showPlay(this, paused: on);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    // 멈춤·결과 화면이 덮고 있으면 뒤의 배경(구름·새)과 캐릭터 움직임을 멈춘다 (다시 그리지 않게)
+    final still = _paused || widget.result != null;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) setState(() => _paused = true);
+        if (!didPop) _setPaused(true);
       },
       child: Scaffold(
         body: Stack(
           children: [
             Positioned.fill(
-              child: SceneBackground(
-                groundLevel: .78,
-                season: widget.season,
-                onReady: widget.onReady,
-              ),
-            ),
-            SafeArea(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1180),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          height: 60,
-                          child: Row(
-                            children: [
-                              RoundIconButton(
-                                icon: Icons.pause_rounded,
-                                label: '잠깐 멈추기',
-                                size: 58,
-                                onTap: () {
-                                  state.audio.stopVoice();
-                                  setState(() => _paused = true);
-                                },
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: FitBox(
-                                    child: PawProgress(
-                                      total: widget.total,
-                                      done: widget.done,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              FitBox(
-                                child: CountBadge(
-                                  icon: const CoinIcon(size: 32),
-                                  value: state.coins,
-                                  label: '코인',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: LayoutBuilder(
-                            builder: (context, c) {
-                              // 아래쪽은 골인 지점까지 가는 길, 위쪽은 문제 카드
-                              final trailH = (c.maxHeight * .3).clamp(
-                                64.0,
-                                150.0,
-                              );
-                              return Column(
-                                children: [
-                                  Expanded(child: widget.card),
-                                  const SizedBox(height: 4),
-                                  SizedBox(
-                                    height: trailH,
-                                    child: JourneyTrail(
-                                      total: widget.total,
-                                      done: widget.done,
-                                      cheer: widget.cheer,
-                                      bubble: widget.bubble,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+              child: TickerMode(
+                enabled: !still,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: SceneBackground(
+                        groundLevel: .78,
+                        season: widget.season,
+                        onReady: widget.onReady,
+                      ),
                     ),
-                  ),
+                    SafeArea(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1180),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                  height: 60,
+                                  child: Row(
+                                    children: [
+                                      RoundIconButton(
+                                        icon: Icons.pause_rounded,
+                                        label: '잠깐 멈추기',
+                                        size: 58,
+                                        onTap: () {
+                                          state.audio.stopVoice();
+                                          _setPaused(true);
+                                        },
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: FitBox(
+                                            child: PawProgress(
+                                              total: widget.total,
+                                              done: widget.done,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      FitBox(
+                                        child: CountBadge(
+                                          icon: const CoinIcon(size: 32),
+                                          value: state.coins,
+                                          label: '코인',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Expanded(
+                                  child: LayoutBuilder(
+                                    builder: (context, c) {
+                                      // 아래쪽은 골인 지점까지 가는 길, 위쪽은 문제 카드
+                                      final trailH = (c.maxHeight * .3).clamp(
+                                        64.0,
+                                        150.0,
+                                      );
+                                      return Column(
+                                        children: [
+                                          Expanded(child: widget.card),
+                                          const SizedBox(height: 4),
+                                          SizedBox(
+                                            height: trailH,
+                                            child: JourneyTrail(
+                                              total: widget.total,
+                                              done: widget.done,
+                                              cheer: widget.cheer,
+                                              bubble: widget.bubble,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            if (_paused)
-              _PauseOverlay(onResume: () => setState(() => _paused = false)),
+            if (_paused) _PauseOverlay(onResume: () => _setPaused(false)),
             if (widget.result != null)
               _ResultOverlay(
                 summary: widget.result!,

@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/slow_clock.dart';
@@ -51,10 +52,28 @@ class _CharacterViewState extends State<CharacterView>
     setState(() => _idleT = (ms % _idlePeriodMs) / _idlePeriodMs);
   }
 
+  // 멈춤 화면·덮개가 가리면(TickerMode 꺼짐) 숨쉬기를 멈추고 시계에서 빠진다
+  ValueListenable<TickerModeData>? _tickerOn;
+  bool _listening = false;
+
+  void _syncClock() {
+    final on = _tickerOn?.value.enabled ?? true;
+    if (on == _listening) return;
+    _listening = on;
+    on
+        ? SlowClock.instance.addListener(_onClock)
+        : SlowClock.instance.removeListener(_onClock);
+  }
+
   @override
-  void initState() {
-    super.initState();
-    SlowClock.instance.addListener(_onClock);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final n = TickerMode.getValuesNotifier(context);
+    if (!identical(n, _tickerOn)) {
+      _tickerOn?.removeListener(_syncClock);
+      _tickerOn = n..addListener(_syncClock);
+    }
+    _syncClock();
   }
 
   late final AnimationController _hop = AnimationController(
@@ -70,7 +89,8 @@ class _CharacterViewState extends State<CharacterView>
 
   @override
   void dispose() {
-    SlowClock.instance.removeListener(_onClock);
+    _tickerOn?.removeListener(_syncClock);
+    if (_listening) SlowClock.instance.removeListener(_onClock);
     _hop.dispose();
     super.dispose();
   }
