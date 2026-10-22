@@ -530,19 +530,31 @@ class CountBoard extends StatelessWidget {
                   ? '${KoreanNumbers.count(number)}! $praise'
                   : KoreanNumbers.count(number))
             : '';
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(min(28.0, h * .12)),
-            border: Border.all(color: Palette.yellow, width: 5),
-            boxShadow: const [
-              BoxShadow(
-                color: Palette.panelShadow,
-                blurRadius: 12,
-                offset: Offset(0, 6),
-              ),
-            ],
+        final compact = h < CountBoard.compactBelow;
+        final numberText = TweenAnimationBuilder<double>(
+          // 숫자가 바뀔 때마다 "쾅" 하고 커졌다 자리 잡는다
+          key: ValueKey(number),
+          tween: Tween(begin: number > 0 ? 1.5 : 1, end: 1),
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+          builder: (_, s, child) => Transform.scale(scale: s, child: child),
+          child: Text(
+            number > 0 ? '$number' : ' ',
+            key: numberKey,
+            style: TextStyle(fontSize: 220, height: 1.0, color: color),
           ),
+        );
+        if (compact) {
+          return _frame(
+            h,
+            border: 4,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            child: _compactBody(c, numberText, reading, color),
+          );
+        }
+        return _frame(
+          h,
+          border: 5,
           padding: EdgeInsets.symmetric(horizontal: 10, vertical: h * .04),
           child: Column(
             children: [
@@ -556,28 +568,7 @@ class CountBoard extends StatelessWidget {
                   ),
                 ),
               ),
-              Expanded(
-                child: FitBox(
-                  // 숫자가 바뀔 때마다 "쾅" 하고 커졌다 자리 잡는다
-                  child: TweenAnimationBuilder<double>(
-                    key: ValueKey(number),
-                    tween: Tween(begin: number > 0 ? 1.5 : 1, end: 1),
-                    duration: const Duration(milliseconds: 240),
-                    curve: Curves.easeOutCubic,
-                    builder: (_, s, child) =>
-                        Transform.scale(scale: s, child: child),
-                    child: Text(
-                      number > 0 ? '$number' : ' ',
-                      key: numberKey,
-                      style: TextStyle(
-                        fontSize: 220,
-                        height: 1.0,
-                        color: color,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              Expanded(child: FitBox(child: numberText)),
               SizedBox(
                 height: h * .2,
                 width: double.infinity,
@@ -594,6 +585,88 @@ class CountBoard extends StatelessWidget {
         );
       },
     ),
+  );
+
+  /// 판 높이가 이보다 낮으면(568×320 휴대폰) 숫자를 왼쪽에 크게, 제목·한글 읽기를
+  /// 오른쪽에 [compactTextSize] 글씨로 놓는다. 위아래로 쌓으면 글씨가 9px까지 작아진다.
+  static const compactBelow = 110.0;
+
+  /// 작은 판의 제목·한글 읽기 글씨 크기 (화면 전체가 340 높이 기준으로 줄어도 16px 이상)
+  static const compactTextSize = 17.5;
+
+  Widget _compactBody(
+    BoxConstraints c,
+    Widget numberText,
+    String reading,
+    Color color,
+  ) {
+    final innerH = max(0.0, c.maxHeight - 8 - 6);
+    final innerW = max(0.0, c.maxWidth - 8 - 16);
+    final numberW = min(innerH * 1.15, innerW * .3);
+    return Row(
+      children: [
+        SizedBox(
+          width: numberW,
+          height: innerH,
+          child: FitBox(child: numberText),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FitBox(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: compactTextSize,
+                    height: 1.15,
+                    color: Palette.text,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              FitBox(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  reading.isEmpty ? ' ' : reading,
+                  key: readingKey,
+                  style: TextStyle(
+                    fontSize: compactTextSize,
+                    height: 1.15,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _frame(
+    double h, {
+    required double border,
+    required EdgeInsets padding,
+    required Widget child,
+  }) => Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(min(28.0, h * .12)),
+      border: Border.all(color: Palette.yellow, width: border),
+      boxShadow: const [
+        BoxShadow(
+          color: Palette.panelShadow,
+          blurRadius: 12,
+          offset: Offset(0, 6),
+        ),
+      ],
+    ),
+    padding: padding,
+    child: child,
   );
 }
 
@@ -649,6 +722,31 @@ List<int> objectRows(int n) {
   return [(n + 1) ~/ 2, n ~/ 2];
 }
 
+/// 물건 칸 높이가 이보다 낮으면(568×320 휴대폰) 작은 화면 배치를 쓴다:
+/// 물건을 칸에 꽉 차게 키우고, 도장은 물건보다 작게 오른쪽 위 모서리에 붙인다.
+/// 844×390(약 129)과 1280×800은 예전 배치 그대로.
+const compactFieldBelow = 100.0;
+
+bool isCompactField(Size area) => area.height < compactFieldBelow;
+
+/// 작은 화면 도장 크기: 물건의 절반쯤 (물건이 보이게)
+double compactBadge(double objectSize) => max(16.0, objectSize * .5);
+
+/// 흩어 놓은 물건 [n]개를 [area]에 가장 크게 놓는 (줄, 칸) 수 (1~3줄)
+(int rows, int cols) compactScatterGrid(int n, Size area) {
+  var best = (1, max(1, n));
+  var bestCell = 0.0;
+  for (var r = 1; r <= min(3, max(1, n)); r++) {
+    final cols = (n / r).ceil();
+    final cell = min(area.width / cols, area.height / r);
+    if (cell > bestCell + .5) {
+      bestCell = cell;
+      best = (r, cols);
+    }
+  }
+  return best;
+}
+
 /// 문제 사물 배치. 개수에 따라 줄을 나눠 크게 보여 준다.
 /// 그려지는 사물 수는 항상 [count]와 같다 (인덱스를 미리 계산해 실수로 더 그리지 않게 한다).
 class ObjectField extends StatelessWidget {
@@ -678,7 +776,8 @@ class ObjectField extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, c) {
         final cell = min(c.maxWidth / cols, c.maxHeight / max(1, rows.length));
-        final size = min(cell * .86, 150.0);
+        final compact = isCompactField(c.biggest);
+        final size = min(cell * (compact ? .94 : .86), 150.0);
         var start = 0;
         final rowWidgets = <Widget>[];
         for (final n in rows) {
@@ -687,7 +786,8 @@ class ObjectField extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                for (var k = 0; k < n; k++) _item(first + k, size, cell),
+                for (var k = 0; k < n; k++)
+                  _item(first + k, size, cell, compact),
               ],
             ),
           );
@@ -701,7 +801,7 @@ class ObjectField extends StatelessWidget {
     );
   }
 
-  Widget _item(int i, double size, double cell) =>
+  Widget _item(int i, double size, double cell, bool compact) =>
       TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: 1),
         duration: Duration(milliseconds: 380 + i * 90),
@@ -714,11 +814,24 @@ class ObjectField extends StatelessWidget {
           child: SayName(
             name: kind.sayName(),
             enabled: canName,
-            child: Stamped(
-              number: i < hintShown ? i + 1 : null,
-              badgeSize: max(30, size * .4),
-              child: ObjectIcon(kind, color: tint, size: size),
-            ),
+            child: compact
+                // 작은 화면: 물건 크기만 한 상자에 작은 도장을 오른쪽 위 모서리로
+                ? Center(
+                    child: SizedBox.square(
+                      dimension: size,
+                      child: Stamped(
+                        number: i < hintShown ? i + 1 : null,
+                        badgeSize: compactBadge(size),
+                        corner: true,
+                        child: ObjectIcon(kind, color: tint, size: size),
+                      ),
+                    ),
+                  )
+                : Stamped(
+                    number: i < hintShown ? i + 1 : null,
+                    badgeSize: max(30, size * .4),
+                    child: ObjectIcon(kind, color: tint, size: size),
+                  ),
           ),
         ),
       );
@@ -744,6 +857,7 @@ class ScatterField extends StatelessWidget {
     final order = question.targetsInOrder;
     return LayoutBuilder(
       builder: (context, c) {
+        if (isCompactField(c.biggest)) return _compact(c.biggest, order);
         final cellW = c.maxWidth / question.cols;
         final cellH = c.maxHeight / question.rows;
         final size = min(min(cellW * .8, cellH * .9), 120.0);
@@ -792,6 +906,77 @@ class ScatterField extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  /// 작은 화면(568×320): 칸 수를 화면 비율에 맞게 다시 나눠 물건을 가장 크게 놓는다.
+  /// 읽는 순서(위→아래, 왼→오른)는 그대로 두고, 세는 물건은 도장 번호 순서대로 놓아
+  /// 1, 2, 3 …이 화면에서도 왼쪽 위부터 차례로 찍힌다. 물건마다 살짝 흔들어 흩어 놓은 느낌을 남긴다.
+  Widget _compact(Size area, List<SceneObject> order) {
+    final n = question.scene.length;
+    final (rows, cols) = compactScatterGrid(n, area);
+    final cellW = area.width / cols;
+    final cellH = area.height / rows;
+    final size = min(min(cellW, cellH) * .92, 120.0);
+    // 원래 자리의 읽는 순서대로 칸에 놓는다 (세는 물건 자리에는 번호 순서대로)
+    final reading = [...question.scene]
+      ..sort((a, b) {
+        final dy = a.y - b.y;
+        if (dy.abs() > .12) return dy.sign.toInt();
+        return a.x.compareTo(b.x);
+      });
+    var nextTarget = 0;
+    final placed = [
+      for (final o in reading) o.target ? order[nextTarget++] : o,
+    ];
+    // 마지막 줄이 덜 차면 가운데로
+    final lastRow = n - (rows - 1) * cols;
+    final counting = hintShown > 0;
+    final slackX = max(0.0, cellW - size), slackY = max(0.0, cellH - size);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        for (var k = 0; k < n; k++)
+          () {
+            final o = placed[k];
+            final r = k ~/ cols, col = k % cols;
+            final rowShift = r == rows - 1 ? (cols - lastRow) * cellW / 2 : 0.0;
+            // 원래 자리의 소수 부분으로 정해지는 작은 흔들림 (그릴 때마다 같다)
+            final jx = ((o.x * 97) % 1 - .5) * slackX;
+            final jy = ((o.y * 89) % 1 - .5) * slackY;
+            final target = o.target ? order.indexOf(o) : -1;
+            return Positioned(
+              left: col * cellW + rowShift + (cellW - size) / 2 + jx,
+              top: r * cellH + (cellH - size) / 2 + jy,
+              width: size,
+              height: size,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: Duration(milliseconds: 380 + k * 60),
+                curve: Curves.easeOutBack,
+                builder: (_, t, child) =>
+                    Transform.scale(scale: max(0.0, t), child: child),
+                child: SayName(
+                  name: o.kind.sayName(o.color),
+                  enabled: canName,
+                  child: Stamped(
+                    number: target >= 0 && target < hintShown
+                        ? target + 1
+                        : null,
+                    badgeSize: compactBadge(size),
+                    corner: true,
+                    child: ObjectIcon(
+                      o.kind,
+                      color: o.color?.color,
+                      size: size,
+                      faded: counting && !o.target,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }(),
+      ],
     );
   }
 }

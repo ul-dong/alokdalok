@@ -157,8 +157,9 @@ class ItemTile extends StatelessWidget {
 
   /// 격자 칸 크기 (가장 작게 ~ 가장 크게). 칸은 정사각형([aspect])이고,
   /// 큰 화면(1280)에서는 칸이 커져 빈 곳이 줄어든다. 가장 작게도 아이 손가락 기준(60~72px)보다 크다.
-  static const minWidth = 80.0;
-  static const minHeight = 80.0;
+  /// 568 상점은 칸 영역을 땅(안내 띠) 위로 올려서 높이가 줄었다: 72로 두 줄을 지킨다.
+  static const minWidth = 72.0;
+  static const minHeight = 72.0;
   static const maxWidth = 230.0;
   static const maxHeight = 230.0;
 

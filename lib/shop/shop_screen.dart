@@ -207,7 +207,13 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                 ),
                 const SizedBox(height: 10),
                 Expanded(
-                  child: vehicleTab ? _vehicleGrid(state) : _itemGrid(state),
+                  // 칸 영역이 배경 아래 땅(안내 띠) 위에 걸치지 않게 그만큼 비운다
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      bottom: ShopBackdropPainter.gridBottomInset(context),
+                    ),
+                    child: vehicleTab ? _vehicleGrid(state) : _itemGrid(state),
+                  ),
                 ),
               ],
             ),
@@ -246,7 +252,8 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
   Widget _vehicleGrid(GameState state) => PagedGrid(
     itemCount: Vehicles.all.length,
     minCellWidth: 64,
-    minCellHeight: 48,
+    // 누르는 칸 60px 이상 (땅 위로 올리느라 높이가 줄면 4칸 2줄로 바뀐다)
+    minCellHeight: 60,
     maxCellWidth: 200,
     maxCellHeight: 154,
     arrowBuilder: FlatPageArrow.new,
@@ -583,6 +590,23 @@ class _FlatChip extends StatelessWidget {
 class ShopBackdropPainter extends CustomPainter {
   const ShopBackdropPainter();
 
+  /// 땅(안내 띠)이 시작하는 높이 (화면 높이 대비)
+  static const groundTop = .86;
+
+  /// 땅과 칸 사이 틈
+  static const groundGap = 6.0;
+
+  /// [LandscapePage] 아래 여백
+  static const pageBottomPadding = 12.0;
+
+  /// 오른쪽 칸 영역 아래를 비울 높이: 칸 영역 아래 끝이 땅 위 [groundGap]에서 멈추게
+  static double gridBottomInset(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final h = mq.size.height;
+    final contentBottom = h - mq.padding.bottom - pageBottomPadding;
+    return max(0.0, contentBottom - (h * groundTop - groundGap));
+  }
+
   @override
   void paint(Canvas c, Size s) {
     final w = s.width, h = s.height;
@@ -617,7 +641,7 @@ class ShopBackdropPainter extends CustomPainter {
     // 땅
     c.drawRRect(
       RRect.fromRectAndCorners(
-        Rect.fromLTWH(0, h * .86, w, h * .14 + 1),
+        Rect.fromLTWH(0, h * groundTop, w, h * (1 - groundTop) + 1),
         topLeft: Radius.circular(h * .05),
         topRight: Radius.circular(h * .05),
       ),

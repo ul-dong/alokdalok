@@ -16,12 +16,20 @@ class Stamped extends StatefulWidget {
     required this.number,
     required this.badgeSize,
     this.badgeTop = 0,
+    this.corner = false,
   });
 
   final Widget child;
   final int? number;
   final double badgeSize;
   final double badgeTop;
+
+  /// 도장을 물건 가운데 위가 아니라 오른쪽 위 모서리에 붙인다
+  /// (작은 화면에서 작은 도장이 물건을 덮지 않게). 이때 [badgeTop]은 쓰지 않는다.
+  final bool corner;
+
+  /// 모서리 도장이 물건 밖으로 나가는 정도 (도장 크기 대비)
+  static const cornerOut = .22;
 
   /// 도장 효과 전체 길이
   static const duration = Duration(milliseconds: 520);
@@ -81,6 +89,8 @@ class _StampedState extends State<Stamped> with SingleTickerProviderStateMixin {
           ? 0.0
           : sin(pi * hit) * exp(-1.5 * hit);
       final s = widget.badgeSize;
+      final badgeTop = widget.corner ? -s * Stamped.cornerOut : widget.badgeTop;
+      final double? badgeRight = widget.corner ? -s * Stamped.cornerOut : null;
       final badgeScale = n == null
           ? 1.0
           : falling
@@ -103,7 +113,10 @@ class _StampedState extends State<Stamped> with SingleTickerProviderStateMixin {
             // 잉크 퍼짐
             if (!falling && hit < 1)
               Positioned(
-                top: widget.badgeTop + s / 2 - s * (.6 + .8 * hit),
+                top: badgeTop + s / 2 - s * (.6 + .8 * hit),
+                right: badgeRight == null
+                    ? null
+                    : badgeRight + s / 2 - s * (.6 + .8 * hit),
                 child: IgnorePointer(
                   child: Container(
                     width: s * (1.2 + 1.6 * hit),
@@ -120,7 +133,8 @@ class _StampedState extends State<Stamped> with SingleTickerProviderStateMixin {
                 ),
               ),
             Positioned(
-              top: widget.badgeTop,
+              top: badgeTop,
+              right: badgeRight,
               child: Opacity(
                 opacity: falling ? min(1.0, t / .12) : 1,
                 child: Transform.rotate(

@@ -91,42 +91,46 @@ class QuizCard extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                children: [
-                  if (showText) ...[
-                    // 큰 화면에서는 문제 글도 조금 크게 (숫자·색깔 놀이 제목과 같은 크기까지)
-                    SizedBox(
-                      height: (c.maxHeight * .1).clamp(32.0, 60.0),
-                      width: double.infinity,
-                      child: FitBox(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          prompt,
-                          style: TextStyle(
-                            fontSize: quizPromptSize(c.maxHeight),
-                            color: Palette.text,
+              // 보기 묶음이 카드(판) 가운데에 오도록 왼쪽 줄 폭을 알려 준다
+              child: QuizCenter(
+                leftInset: side + 12,
+                child: Column(
+                  children: [
+                    if (showText) ...[
+                      // 큰 화면에서는 문제 글도 조금 크게 (숫자·색깔 놀이 제목과 같은 크기까지)
+                      SizedBox(
+                        height: (c.maxHeight * .1).clamp(32.0, 60.0),
+                        width: double.infinity,
+                        child: FitBox(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            prompt,
+                            style: TextStyle(
+                              fontSize: quizPromptSize(c.maxHeight),
+                              color: Palette.text,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: Gaps.sm),
-                  ],
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        Positioned.fill(child: body),
-                        Positioned(
-                          top: 0,
-                          right: 4,
-                          child: CoinPop(
-                            amount: coinPopAmount,
-                            trigger: coinPopTrigger,
+                      const SizedBox(height: Gaps.sm),
+                    ],
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          Positioned.fill(child: body),
+                          Positioned(
+                            top: 0,
+                            right: 4,
+                            child: CoinPop(
+                              amount: coinPopAmount,
+                              trigger: coinPopTrigger,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -134,6 +138,21 @@ class QuizCard extends StatelessWidget {
       },
     ),
   );
+}
+
+/// [QuizCard]의 보기 칸이 카드 왼쪽에서 [leftInset]만큼 떨어져 있다는 것을 [QuizGrid]에 알려 준다.
+/// 보기 칸 안에서 그냥 가운데에 놓으면 왼쪽 "다시 듣기" 줄 때문에 카드 묶음이 판 가운데보다
+/// 오른쪽(1280 화면에서 약 100px)으로 치우친다.
+class QuizCenter extends InheritedWidget {
+  const QuizCenter({super.key, required this.leftInset, required super.child});
+
+  final double leftInset;
+
+  static double insetOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<QuizCenter>()?.leftInset ?? 0;
+
+  @override
+  bool updateShouldNotify(QuizCenter old) => old.leftInset != leftInset;
 }
 
 /// 힌트·견본을 담는 모래빛 둥근 판
@@ -296,28 +315,55 @@ class QuizGrid extends StatelessWidget {
   /// (위치, 칸 너비, 칸 높이) → 보기
   final Widget Function(int index, double w, double h) builder;
 
+  /// 카드 묶음 중심이 판 중심에서 벗어나도 되는 거리
+  static const centerSlack = 16.0;
+
+  /// 가운데로 모으느라 칸을 줄이는 것은 칸이 이만큼 이상 클 때만 (태블릿).
+  /// 휴대폰에서는 칸 크기를 지키고, 남는 자리 안에서만 가운데로 옮긴다.
+  static const shrinkToCenterFrom = 120.0;
+
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, c) {
-      final g = TileGrid.fit(
-        count,
-        c.biggest,
-        aspect: aspect,
-        gap: gap,
-        maxTile: maxTile,
-        maxRows: TileGrid.quizMaxRows,
-      );
-      final w = g.tile, h = g.tile * aspect;
-      return Center(
-        child: GridRows(
-          last: count,
-          cols: g.cols,
-          cellWidth: w,
-          cellHeight: h,
+  Widget build(BuildContext context) {
+    final inset = QuizCenter.insetOf(context);
+    return LayoutBuilder(
+      builder: (context, c) {
+        TileGrid fit(double width) => TileGrid.fit(
+          count,
+          Size(width, c.maxHeight),
+          aspect: aspect,
           gap: gap,
-          itemBuilder: (i) => builder(i, w, h),
-        ),
-      );
-    },
-  );
+          maxTile: maxTile,
+          maxRows: TileGrid.quizMaxRows,
+        );
+        var g = fit(c.maxWidth);
+        if (inset > 0) {
+          // 판 가운데 기준으로 좌우가 같은 폭 (+ 조금의 여유) 안에 넣어 본다
+          final centered = fit(c.maxWidth - inset + 2 * centerSlack);
+          if (centered.tile >= shrinkToCenterFrom &&
+              centered.tile >= g.tile * .75) {
+            g = centered;
+          }
+        }
+        final w = g.tile, h = g.tile * aspect;
+        final gridW = g.cols * w + gap * (g.cols - 1);
+        final free = c.maxWidth - gridW;
+        // 판(카드 전체) 가운데에 오게 하되 보기 칸 밖으로는 나가지 않게
+        final left = ((c.maxWidth + inset) / 2 - gridW / 2 - inset).clamp(
+          0.0,
+          max(0.0, free),
+        );
+        return Align(
+          alignment: Alignment(free > 0 ? 2 * left / free - 1 : 0, 0),
+          child: GridRows(
+            last: count,
+            cols: g.cols,
+            cellWidth: w,
+            cellHeight: h,
+            gap: gap,
+            itemBuilder: (i) => builder(i, w, h),
+          ),
+        );
+      },
+    );
+  }
 }
