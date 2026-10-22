@@ -130,6 +130,8 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                         label: HomeScreen.playgroundLabel,
                         color: const Color(0xFFD3F1E2),
                         art: const _PlaygroundArt(),
+                        // 놀이터가 "뭘 하고 놀까요?"로 맞아 주니 버튼 이름은 읽지 않는다
+                        speakLabel: false,
                         onTap: () => _go(const PlaygroundScreen()),
                       ),
                     ),
@@ -249,6 +251,7 @@ class _MenuTile extends StatelessWidget {
     required this.color,
     required this.art,
     required this.onTap,
+    this.speakLabel = true,
   });
 
   final String label;
@@ -256,11 +259,14 @@ class _MenuTile extends StatelessWidget {
   final Widget art;
   final VoidCallback onTap;
 
+  /// 누르면 [label]을 말한다 (들어간 화면이 바로 인사하면 끈다)
+  final bool speakLabel;
+
   @override
   Widget build(BuildContext context) => Pressable(
     onTap: onTap,
     semanticLabel: label,
-    speak: label,
+    speak: speakLabel ? label : null,
     child: Container(
       decoration: BoxDecoration(
         color: color,

@@ -22,6 +22,7 @@ import 'package:alokdalok/services/storage_service.dart';
 import 'package:alokdalok/services/voice_lines.dart';
 import 'package:alokdalok/widgets/common.dart';
 import 'package:alokdalok/widgets/hold_button.dart';
+import 'package:alokdalok/screens/playground_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -344,6 +345,7 @@ void main() {
     // 말 → 기대하는 조각 문장들
     final cases = {
       HoldToConfirm.hint: ['꾹 누르고 있어요.'],
+      PlaygroundScreen.greeting: ['뭘 하고 놀까요?'],
       NumberGameScreen.boardTitle: ['같이 세어 볼까요?'],
       '${KoreanNumbers.count(3)}, ${NumberGameScreen.praise}': [
         '셋',

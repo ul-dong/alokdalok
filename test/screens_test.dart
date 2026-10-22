@@ -187,7 +187,7 @@ void main() {
   });
 
   group('홈 화면', () {
-    testWidgets('큰 버튼 세 개와 톱니바퀴만 있고, 누르면 이름을 말한다', (t) async {
+    testWidgets('큰 버튼 세 개와 톱니바퀴만 있고, 누르면 이름을 말한다 (놀이터는 인사말로)', (t) async {
       await setSize(t, const Size(844, 390));
       final s = await makeState();
       await t.pumpWidget(AlokdalokApp(state: s));
@@ -216,7 +216,9 @@ void main() {
 
       await t.tap(pressable(HomeScreen.playgroundLabel));
       await settle(t, 800);
-      expect(audioOf(s).spoken, contains(HomeScreen.playgroundLabel));
+      // 버튼 이름 대신 놀이터가 "뭘 하고 놀까요?"로 맞아 준다
+      expect(audioOf(s).spoken, isNot(contains(HomeScreen.playgroundLabel)));
+      expect(audioOf(s).spoken, contains(PlaygroundScreen.greeting));
       expect(audioOf(s).played, contains(Sfx.tap));
       expect(find.byType(PlaygroundScreen), findsOneWidget);
     });
@@ -243,6 +245,24 @@ void main() {
       }
       await settle(t, 1000);
       expect(find.byType(SettingsScreen), findsOneWidget);
+    });
+
+    testWidgets('놀이터 가기: 버튼 이름 없이 "뭘 하고 놀까요?" 한 문장만 말한다', (t) async {
+      await setSize(t, const Size(844, 390));
+      final s = await makeState();
+      await t.pumpWidget(AlokdalokApp(state: s));
+      await settle(t);
+      audioOf(s).spoken.clear();
+      await t.tap(pressable(HomeScreen.playgroundLabel));
+      await settle(t, 800);
+      expect(find.byType(PlaygroundScreen), findsOneWidget);
+      expect(PlaygroundScreen.greeting, '뭘 하고 놀까요?');
+      expect(audioOf(s).spoken, [PlaygroundScreen.greeting]);
+      final lines = VoiceLines.all();
+      expect(lines, contains(PlaygroundScreen.greeting));
+      for (final old in ['놀이터 가기', '놀이터에 왔어요!', '어디에서 놀까요?']) {
+        expect(lines, isNot(contains(old)), reason: '안 쓰는 문장');
+      }
     });
 
     testWidgets('내 캐릭터·꾸미기 상점 버튼으로 간다', (t) async {
@@ -670,7 +690,6 @@ void main() {
         for (var i = 0; i < lines.length; i++) lines[i]: 'v$i.mp3',
       });
       for (final text in [
-        HomeScreen.playgroundLabel,
         HomeScreen.characterLabel,
         HomeScreen.shopLabel,
         PlaygroundScreen.greeting,

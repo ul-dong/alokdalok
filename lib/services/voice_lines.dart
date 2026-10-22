@@ -2,6 +2,7 @@ import '../character/nickname.dart';
 import '../character/zodiac.dart';
 import '../data/game_objects.dart';
 import '../data/item_catalog.dart';
+import '../data/stages.dart';
 import '../data/vehicles.dart';
 import '../data/game_kinds.dart';
 import '../games/common/korean_numbers.dart';
@@ -9,8 +10,8 @@ import 'game_state.dart';
 
 /// 녹음 음성 팩에 들어가는 모든 문장 조각.
 ///
-/// 앱이 하는 말은 "빨간 풍선이 / 세 개! / 정말 잘했어요!" 처럼 조각으로 나눌 수 있게 만들어서,
-/// 조각 몇 백 개만 녹음해 두면 수천 가지 문장을 이어 붙여 말할 수 있다.
+/// 놀이 문제에서 나오는 문장은 [sentences]로 한 문장씩 통째로 녹음하고 (이음새에서 끊기지 않게),
+/// 그 밖의 말은 "빨간 풍선이 / 세 개!"처럼 조각을 이어 붙여 말할 수 있게 조각도 함께 둔다.
 /// 여기 없는 문장(아이 이름 등)은 기기 음성(TTS)으로 말한다.
 class VoiceLines {
   VoiceLines._();
@@ -62,14 +63,12 @@ class VoiceLines {
     '똑같아요!',
     '가장',
     // 화면과 버튼 이름 (누르면 말해 준다)
-    '놀이터 가기',
     '내 캐릭터',
     '꾸미기 상점',
     '집으로',
     '뒤로',
     '다시 듣기',
-    '놀이터에 왔어요!',
-    '어디에서 놀까요?',
+    '뭘 하고 놀까요?', // 놀이터에 들어왔을 때
     '꾹 누르고 있어요.',
     // 캐릭터를 콕 눌렀을 때 (widgets/poke_character.dart, "나는 ○○야!"는 친구 고르기 문장)
     '간지러워!',
@@ -165,6 +164,89 @@ class VoiceLines {
 
     // 이름을 비워 두면 지어 주는 이름 ("별이, 반가워!")
     out.addAll(Nickname.randomPool);
+
+    // 통문장: 조각을 이어 붙이면 이음새에서 끊기고 억양이 따로 놀아서,
+    // 놀이에서 실제로 나오는 문장은 한 문장씩 통째로 녹음한다.
+    // (VoicePack.plan은 가장 긴 녹음부터 맞추므로 통문장이 있으면 그것을 쓴다)
+    out.addAll(sentences());
+    return out.toList();
+  }
+
+  /// 놀이 문제에서 나올 수 있는 문장 전부 (단계 자료에서 만든다).
+  /// 숫자 세기("하나, 둘")는 도장 박자에 맞춰 한 마디씩 말하므로 여기 넣지 않는다.
+  static List<String> sentences() {
+    final out = <String>{};
+    String ask(String what) => '$what 찾아볼까요?';
+    String askAgain(String what) => '$what 다시 찾아볼까요?';
+
+    // 숫자: "사과가 몇 개 있을까요?" / "빨간 풍선은 몇 개 있을까요?" / "빨간 풍선이 세 개!"
+    for (final st in Stages.number) {
+      final colored =
+          st.mode == NumberMode.mixColors || st.mode == NumberMode.mixBoth;
+      for (final k in st.objects) {
+        for (final c in colored ? st.colors : const <GameColor?>[null]) {
+          final label = c == null ? k.ko : '${c.adjective} ${k.ko}';
+          out.add(
+            st.scattered
+                ? '${_topic(label)} 몇 ${k.counter} 있을까요?'
+                : '${_subject(label)} 몇 ${k.counter} 있을까요?',
+          );
+          for (var n = st.min; n <= st.max; n++) {
+            out.add(
+              '${_subject(label)} ${KoreanNumbers.pieces(n, k.counter)}!',
+            );
+          }
+        }
+      }
+    }
+
+    // 색깔: "빨간 자동차를 찾아볼까요?"
+    for (final st in Stages.color) {
+      for (final c in st.colors) {
+        for (final k in st.objects.where((k) => k.tintable)) {
+          out.add(ask('${c.adjective} ${k.object}'));
+        }
+      }
+    }
+
+    // 모양: "동그라미를 찾아볼까요?" / "동그라미를 다시 찾아볼까요?"
+    for (final sh in ShapeKind.values) {
+      out
+        ..add(ask(sh.object))
+        ..add(askAgain(sh.object));
+    }
+
+    // 크기: "큰 사과를 찾아볼까요?" / "가장 작은 오리를 다시 찾아볼까요?"
+    for (final st in Stages.size) {
+      for (final k in st.objects) {
+        for (final a in SizeAsk.values) {
+          final t = '${st.superlative ? '가장 ' : ''}${a.adjective} ${k.object}';
+          out
+            ..add(ask(t))
+            ..add(askAgain(t));
+        }
+      }
+    }
+
+    // 짝 맞추기: "똑같은 사과를 찾아볼까요?" / "똑같은 빨간 자동차를 다시 찾아볼까요?"
+    for (final st in Stages.match) {
+      final labels = st.colorVariant
+          ? [
+              for (final k in st.objects.where((k) => k.tintable))
+                for (final c in st.colors) '${c.adjective} ${k.ko}',
+            ]
+          : [for (final k in st.objects) k.ko];
+      for (final l in labels) {
+        out
+          ..add(ask('똑같은 ${_object(l)}'))
+          ..add(askAgain('똑같은 ${_object(l)}'));
+      }
+    }
+
+    // 색칠 물감이 모자랄 때: "분홍색은 코인 10개가 필요해요."
+    for (final p in Vehicles.paints) {
+      out.add('${p.name}은 코인 ${Vehicles.paintPrice}개가 필요해요.');
+    }
     return out.toList();
   }
 }
@@ -183,9 +265,13 @@ class VoicePack {
   /// 모든 녹음 파일 이름
   Iterable<String> get files => _files.values.toSet();
 
-  /// 조각 사이 쉼: 쉼표 뒤는 조금 길게 (숫자 세기 박자)
+  /// 조각 사이 쉼: 한 문장 안은 짧게, 문장이 끝난 뒤(. ! ?)는 숨 쉬듯, 쉼표 뒤는 숫자 세기 박자
   static const shortPause = Duration(milliseconds: 60);
+  static const sentencePause = Duration(milliseconds: 280);
   static const commaPause = Duration(milliseconds: 380);
+
+  static bool _endsSentence(String s) =>
+      s.endsWith('.') || s.endsWith('!') || s.endsWith('?');
 
   /// [text]를 녹음 조각으로 나눈다. 하나라도 녹음이 없으면 null (기기 음성으로 말한다).
   List<VoiceClip>? plan(String text) {
@@ -193,6 +279,7 @@ class VoicePack {
     final clips = <VoiceClip>[];
     var i = 0;
     var comma = false;
+    String? prev;
     while (true) {
       // 조각 사이의 띄어쓰기·쉼표는 건너뛴다
       while (i < text.length && (text[i] == ' ' || text[i] == ',')) {
@@ -218,9 +305,12 @@ class VoicePack {
           _files[hit]!,
           pauseBefore: clips.isEmpty
               ? Duration.zero
-              : (comma ? commaPause : shortPause),
+              : comma
+              ? commaPause
+              : (_endsSentence(prev!) ? sentencePause : shortPause),
         ),
       );
+      prev = hit;
       comma = false;
       i += hit.length;
     }

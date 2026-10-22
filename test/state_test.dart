@@ -12,6 +12,9 @@ import 'package:alokdalok/services/voice_lines.dart';
 import 'package:alokdalok/data/stages.dart';
 import 'package:alokdalok/games/number_game/number_round.dart';
 import 'package:alokdalok/games/color_game/color_round.dart';
+import 'package:alokdalok/games/match_game/match_round.dart';
+import 'package:alokdalok/games/shape_game/shape_round.dart';
+import 'package:alokdalok/games/size_game/size_round.dart';
 import 'package:alokdalok/games/common/korean_numbers.dart';
 
 import 'dart:math';
@@ -670,13 +673,97 @@ void main() {
       }
     });
 
+    test('놀이 문제의 말은 문장마다 통문장 하나로 재생된다 (문장 안 이음새 없음)', () {
+      final says = <String>[];
+      for (final st in Stages.number) {
+        final rng = Random(st.id);
+        for (var k = 0; k < 300; k++) {
+          final q = NumberQuestion.generate(st, rng);
+          says
+            ..add(q.prompt)
+            ..add('${q.answerLine} 정말 잘했어요!');
+        }
+      }
+      for (final st in Stages.color) {
+        final rng = Random(st.id);
+        for (var k = 0; k < 300; k++) {
+          final q = ColorQuestion.generate(st, rng);
+          says
+            ..add(q.prompt)
+            ..add('${q.target.color.name}! 정말 잘했어요!');
+          for (final c in q.choices) {
+            says.add('이건 ${c.color.name}이에요. ${q.target.color.name}을 찾아볼까요?');
+          }
+        }
+      }
+      for (final st in Stages.shape) {
+        final rng = Random(st.id);
+        for (var k = 0; k < 300; k++) {
+          final q = ShapeQuestion.generate(st, rng);
+          says
+            ..add(q.prompt)
+            ..add(q.praise);
+          for (var i = 0; i < q.choices.length; i++) {
+            if (i != q.answerIndex) says.add(q.wrongLine(i));
+          }
+        }
+      }
+      for (final st in Stages.size) {
+        final rng = Random(st.id);
+        for (var k = 0; k < 300; k++) {
+          final q = SizeQuestion.generate(st, rng);
+          says
+            ..add(q.prompt)
+            ..add(q.wrongLine);
+        }
+      }
+      for (final st in Stages.match) {
+        final rng = Random(st.id);
+        for (var k = 0; k < 300; k++) {
+          final b = MatchBoard.generate(st, rng);
+          for (var i = 0; i < b.cards.length; i++) {
+            says
+              ..add(b.pickedLine(i))
+              ..add(b.wrongLine(i))
+              ..add('${b.matchedLine(i)} 정말 잘했어요!');
+          }
+        }
+      }
+      for (final p in Vehicles.paints) {
+        says.add('${p.name}은 코인 ${Vehicles.paintPrice}개가 필요해요. 놀이하면서 모아 볼까요?');
+      }
+      for (final text in says) {
+        final clips = pack.plan(text);
+        expect(clips, isNotNull, reason: text);
+        final sentences = RegExp(r'[.!?]').allMatches(text).length;
+        expect(clips!.length, sentences, reason: text);
+        expect(
+          clips.skip(1).every((c) => c.pauseBefore == VoicePack.sentencePause),
+          isTrue,
+          reason: text,
+        );
+      }
+      // 통문장 녹음 개수가 너무 늘지 않게 (재녹음 시간·앱 크기)
+      expect(VoiceLines.sentences().length, lessThan(700));
+    });
+
     test('조각 나누기: 쉼표 뒤는 쉬고, 없는 말(아이 이름)은 기기 음성으로', () {
       final count = pack.plan('같이 세어 볼까요? 하나, 둘, 셋')!;
       expect(count.length, 4);
       expect(count[2].pauseBefore, VoicePack.commaPause);
       final answer = pack.plan('빨간 풍선이 세 개! 정말 잘했어요!')!;
-      expect(answer.length, 3);
-      expect(answer[1].pauseBefore, VoicePack.shortPause);
+      expect(answer.length, 2, reason: '"빨간 풍선이 세 개!"는 통문장');
+      expect(answer[1].pauseBefore, VoicePack.sentencePause);
+      // 통문장 녹음이 없으면 조각을 이어 붙이고, 문장 안의 이음새는 짧게 쉰다
+      final pieces = VoicePack(const {
+        '빨간 풍선이': 'a.mp3',
+        '세 개!': 'b.mp3',
+        '정말 잘했어요!': 'c.mp3',
+      }).plan('빨간 풍선이 세 개! 정말 잘했어요!')!;
+      expect(
+        [for (final c in pieces) c.pauseBefore],
+        [Duration.zero, VoicePack.shortPause, VoicePack.sentencePause],
+      );
       expect(pack.plan('하랑이, 반가워!'), isNull);
       expect(VoicePack(const {}).plan('안녕!'), isNull);
       // 단어 중간에서 끊지 않는다 ("안녕!" 다음에 글자가 붙어 있으면 안 됨)

@@ -123,7 +123,7 @@
 
 | # | 사양 | 상태 | 메모 |
 |---|---|---|---|
-| 1 | 목소리 먼저: 모든 문제·칭찬·안내 음성 | 있음 | `services/audio_service.dart`, `voice_lines.dart`, 녹음 조각 577개(문장 목록 577 = manifest 577 = mp3 577, 2026-10-22 점검에서 새로 녹음할 문장 없음) |
+| 1 | 목소리 먼저: 모든 문제·칭찬·안내 음성 | 있음 | `services/audio_service.dart`, `voice_lines.dart`, 녹음 조각 575개 + 놀이 문제 통문장 464개 녹음 대기(문장 목록 1039, manifest·mp3 575. 통문장이 녹음되기 전에는 조각을 이어 붙여 말한다. 놀이터 인사말은 "뭘 하고 놀까요?" 한 문장) |
 | 1 | 물건·탈것·옷 누르면 이름 말하기 | 있음 | `Pressable(speak:)` / `RoundIconButton(speakLabel:)`: 홈 버튼·놀이터 기구·옷·탈것. 놀이 화면은 `SayName`(widgets/common.dart): 숫자 놀이 세는 물건("사과!", 섞인 물건은 "빨간 사과!"), 모양·크기·짝 견본 그림, 색깔 견본. 보기 칸에는 붙이지 않아 답 고르기와 겹치지 않고, 같이 세는 중에는 말하지 않는다 |
 | 1 | 큰 노란 "다시 듣기" 62px, 6초마다 통통 | 있음 | 공용 위젯 `widgets/listen_again_button.dart`(공용 20fps 시계, 튈 때만 구독). 모양·크기·짝의 `ReplayButton`(`games/common/quiz_widgets.dart`)과 숫자·색깔 화면 모두 이 위젯 하나를 쓴다 |
 | 2 | 놀이를 기구 그림으로 고르기, 단계 카드에 문제 그림 | 있음 | 놀이터 기구(트랙 A), 단계 카드 그림 |

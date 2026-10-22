@@ -24,7 +24,9 @@ class PlaygroundScreen extends StatefulWidget {
     GameKind.match,
   ];
 
-  static const greeting = '놀이터에 왔어요! 어디에서 놀까요?';
+  /// 들어오면 한 문장만 말한다. 홈의 "놀이터 가기" 버튼은 이름을 읽지 않아서
+  /// 버튼 이름이 반쯤 나오다 끊겨 "놀이… 놀이터에 왔어요"처럼 겹쳐 들리지 않는다.
+  static const greeting = '뭘 하고 놀까요?';
 
   @override
   State<PlaygroundScreen> createState() => _PlaygroundScreenState();
