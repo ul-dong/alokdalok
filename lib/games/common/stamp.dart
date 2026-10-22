@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../core/palette.dart';
-import 'number_shape.dart';
+import 'number_colors.dart';
 
 /// 물건 위에 숫자 도장을 "쾅!" 찍는 효과.
 ///
@@ -124,7 +124,7 @@ class _StampedState extends State<Stamped> with SingleTickerProviderStateMixin {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: NumberShape.colorOf(n)
+                        color: NumberColors.of(n)
                             .withValues(alpha: .55 * (1 - hit)),
                         width: 5,
                       ),
@@ -160,7 +160,7 @@ class _StampFace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = NumberShape.colorOf(n);
+    final color = NumberColors.of(n);
     return Container(
       width: size,
       height: size,

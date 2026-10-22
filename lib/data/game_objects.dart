@@ -103,6 +103,9 @@ class GameColor {
   static const pink = GameColor('pink', '분홍색', '분홍', Color(0xFFFF4F9A));
   static const brown = GameColor('brown', '갈색', '갈색', Color(0xFF8B5A2B));
 
+  /// 힌트 견본용 회색 (보기 색으로는 쓰지 않는다)
+  static const gray = GameColor('gray', '회색', '회색', Color(0xFF9AA3AD));
+
   static const all = [red, blue, yellow, green, orange, purple];
 
   /// 더 어려운 단계용 (분홍·갈색 추가)

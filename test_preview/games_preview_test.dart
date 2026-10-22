@@ -58,7 +58,12 @@ void main() {
           if (size.width == 1280) {
             final tiles = find.byType(QuizTile);
             var wrongs = 0;
-            for (var i = 0; i < tiles.evaluate().length && wrongs < 2; i++) {
+            var tries = 0;
+            for (
+              var i = 0;
+              i < tiles.evaluate().length && wrongs < 2 && tries < 40;
+              i++, tries++
+            ) {
               final before = (s.audio as RecordingAudio).played.length;
               await t.tap(tiles.at(i), warnIfMissed: false);
               await t.pump(const Duration(milliseconds: 50));
@@ -67,7 +72,10 @@ void main() {
                 wrongs++;
               } else if (played.length > before &&
                   played.last.name == 'correct') {
-                break;
+                // 처음 누른 게 정답이면 다음 문제에서 다시 (힌트 그림을 보려고)
+                if (wrongs > 0) break;
+                await _pump(t, 40);
+                i = -1;
               }
             }
             await _pump(t, 8);

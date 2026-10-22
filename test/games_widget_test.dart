@@ -7,6 +7,7 @@ import 'package:alokdalok/games/common/quiz_widgets.dart';
 import 'package:alokdalok/games/game_entry.dart';
 import 'package:alokdalok/games/match_game/match_game_screen.dart';
 import 'package:alokdalok/games/match_game/match_round.dart';
+import 'package:alokdalok/games/shape_game/shape_art.dart';
 import 'package:alokdalok/games/shape_game/shape_game_screen.dart';
 import 'package:alokdalok/games/shape_game/shape_round.dart';
 import 'package:alokdalok/games/size_game/size_game_screen.dart';
@@ -258,6 +259,63 @@ void main() {
       await settle(t);
       expect(find.byType(QuizHintBox), findsOneWidget);
       expect(audioOf(s).spoken.last, '똑같은 모양을 찾아볼까요?');
+      // 견본 색은 보기(정답 포함) 색과 다르다: 색이 아니라 모양을 보고 찾게
+      final sample = t.widget<ShapeIcon>(
+        find.descendant(
+          of: find.byType(QuizHintBox),
+          matching: find.byType(ShapeIcon),
+        ),
+      );
+      final tileColors = {
+        for (final w in t.widgetList<ShapeIcon>(
+          find.descendant(
+            of: find.byType(QuizTile),
+            matching: find.byType(ShapeIcon),
+          ),
+        ))
+          w.color,
+      };
+      expect(tileColors, isNot(contains(sample.color)));
+      await done(t);
+    });
+
+    testWidgets('1단계(이름 듣고 찾기): 처음엔 견본 없음, 한 번 틀리면 정답과 다른 색 견본', (
+      t,
+    ) async {
+      await setSize(t, const Size(844, 390));
+      final s = await makeState();
+      final q = ShapeQuestion.generate(Stages.shape[0], Random(9));
+      await t.pumpWidget(
+        wrap(s, ShapeGameScreen(stageId: 1, random: Random(9))),
+      );
+      await settle(t);
+      expect(audioOf(s).spoken.last, q.prompt);
+      expect(q.matchSample, isFalse);
+      expect(
+        find.byType(QuizHintBox),
+        findsNothing,
+        reason: '처음부터 견본이 보이면 소리를 듣지 않고 그림만 맞춰도 풀린다',
+      );
+      final wrong = q.answerIndex == 0 ? 1 : 0;
+      await tapTile(t, wrong);
+      await settle(t, 400);
+      expect(find.byType(QuizHintBox), findsOneWidget, reason: '한 번 틀리면 견본 힌트');
+      final sample = t.widget<ShapeIcon>(
+        find.descendant(
+          of: find.byType(QuizHintBox),
+          matching: find.byType(ShapeIcon),
+        ),
+      );
+      expect(sample.shape, q.shape);
+      final answer = t.widget<ShapeIcon>(
+        find.descendant(
+          of: tile(q.answerIndex),
+          matching: find.byType(ShapeIcon),
+        ),
+      );
+      expect(sample.color, isNot(answer.color), reason: '견본 색은 정답 보기와 다르다');
+      expect(tileWidget(t, q.answerIndex).glow, isFalse);
+      expect(t.takeException(), isNull);
       await done(t);
     });
   });

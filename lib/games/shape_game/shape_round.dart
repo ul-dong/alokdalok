@@ -29,7 +29,8 @@ class ShapeQuestion {
   final List<ShapeChoice> choices;
   final int answerIndex;
 
-  /// 견본을 칠할 색 (견본 찾기 단계에서는 보기와 다른 색)
+  /// 견본을 칠할 색. 늘 정답 보기와 다른 색이라 색만 보고 고를 수 없다.
+  /// (이름 단계의 힌트 견본은 회색, 견본 찾기 단계는 보기와 다른 색)
   final GameColor sampleColor;
 
   /// true면 견본을 보고 "똑같은 모양"을 찾는다
@@ -87,10 +88,15 @@ class ShapeQuestion {
           angle: stage.rotate ? tiltFor(picked[i], rng) : 0,
         ),
     ];
-    // 견본 색: 견본 찾기 단계는 보기와 다른 색으로 (색이 아니라 모양을 보게)
+    // 견본 색: 정답 보기와 같은 색이면 그림만 맞춰 보고 고를 수 있으므로 늘 다른 색으로.
+    // 견본 찾기 단계는 보기에 없는 다른 색, 이름 단계의 힌트 견본은 회색 (색이 아니라 모양을 보게)
+    final used = {for (final c in choices) c.color.id};
     final sampleColor = stage.matchSample
-        ? colors.firstWhere((c) => c.id != same.id, orElse: () => same)
-        : choices.first.color;
+        ? colors.firstWhere(
+            (c) => !used.contains(c.id),
+            orElse: () => GameColor.gray,
+          )
+        : GameColor.gray;
 
     final target = choices.first;
     choices.shuffle(rng);
@@ -104,22 +110,19 @@ class ShapeQuestion {
 }
 
 class ShapeRound {
-  ShapeRound(this.question, {required this.sampleFromStart});
+  ShapeRound(this.question);
 
   final ShapeQuestion question;
-
-  /// 처음부터 견본을 보여 주는 단계인지
-  final bool sampleFromStart;
   final Set<int> wrongPicks = {};
   bool solved = false;
 
   bool get firstTry => wrongPicks.isEmpty;
 
-  /// 견본 그림 (쉬운 단계·견본 찾기는 처음부터, 그 외에는 한 번 틀리면 힌트로)
+  /// 견본 그림: 견본 찾기 단계는 처음부터 (견본을 보는 과제),
+  /// 이름을 듣고 찾는 단계는 처음엔 숨기고 한 번 틀리면 회색 견본을 힌트로.
+  /// (처음부터 보이면 소리를 듣지 않고 그림만 맞춰도 풀리기 때문)
   bool get showSample =>
-      sampleFromStart ||
-      question.matchSample ||
-      wrongPicks.length >= Economy.hintAfterWrong;
+      question.matchSample || wrongPicks.length >= Economy.hintAfterWrong;
 
   /// 두 번 틀리면 정답이 반짝인다.
   bool get highlightAnswer => wrongPicks.length >= Economy.hintAfterWrong + 1;

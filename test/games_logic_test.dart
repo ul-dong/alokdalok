@@ -71,7 +71,7 @@ void main() {
       }
     });
 
-    test('1단계는 쉬운 세 모양, 보기 2개, 견본이 처음부터', () {
+    test('1단계는 쉬운 세 모양, 보기 2개, 견본은 처음에 숨김', () {
       final s = Stages.shape.first;
       expect(s.shapes.toSet(), {
         ShapeKind.circle,
@@ -79,11 +79,51 @@ void main() {
         ShapeKind.square,
       });
       expect(s.choiceCount, 2);
-      final r = ShapeRound(
-        ShapeQuestion.generate(s, Random(1)),
-        sampleFromStart: s.sampleFromStart,
-      );
-      expect(r.showSample, isTrue);
+      expect(s.showsSample, isFalse);
+      final r = ShapeRound(ShapeQuestion.generate(s, Random(1)));
+      expect(r.showSample, isFalse, reason: '처음부터 견본이 보이면 그림만 맞춰도 풀린다');
+    });
+
+    test('이름 단계: 처음엔 견본 없음 → 한 번 틀리면 정답과 다른 색 견본 → 두 번 틀리면 정답 빛남', () {
+      for (final stage in Stages.shape.where((s) => !s.matchSample)) {
+        final rng = Random(stage.id + 40);
+        for (var k = 0; k < 50; k++) {
+          final r = ShapeRound(ShapeQuestion.generate(stage, rng));
+          final q = r.question;
+          expect(q.matchSample, isFalse);
+          expect(r.showSample, isFalse, reason: '${stage.id}단계: 처음엔 견본 없음');
+          final wrong = [
+            for (var i = 0; i < q.choices.length; i++)
+              if (i != q.answerIndex) i,
+          ];
+          expect(r.answer(wrong.first), AnswerOutcome.wrong);
+          expect(r.showSample, isTrue, reason: '한 번 틀리면 견본 힌트');
+          expect(r.highlightAnswer, isFalse);
+          // 견본 색은 정답 보기와 (다른 보기들과도) 다르다
+          for (final c in q.choices) {
+            expect(q.sampleColor.id, isNot(c.color.id));
+          }
+          expect(q.sampleColor.id, isNot(q.target.color.id));
+          if (wrong.length > 1) {
+            expect(r.answer(wrong[1]), AnswerOutcome.wrong);
+            expect(r.highlightAnswer, isTrue, reason: '두 번 틀리면 정답이 빛남');
+          }
+        }
+      }
+    });
+
+    test('견본 찾기 단계: 견본은 처음부터 있고 정답 보기와 다른 색', () {
+      final stage = Stages.shape.firstWhere((s) => s.matchSample);
+      expect(stage.showsSample, isTrue);
+      final rng = Random(7);
+      for (var k = 0; k < 100; k++) {
+        final r = ShapeRound(ShapeQuestion.generate(stage, rng));
+        expect(r.showSample, isTrue);
+        expect(r.question.sampleColor.id, isNot(r.question.target.color.id));
+        for (final c in r.question.choices) {
+          expect(r.question.sampleColor.id, isNot(c.color.id));
+        }
+      }
     });
 
     test('단계가 오르면: 같은 색 → 회전 → 견본과 같은 모양', () {
@@ -172,10 +212,7 @@ void main() {
 
     test('한 문제: 한 번 틀리면 견본 힌트, 두 번 틀리면 정답이 빛난다', () {
       final stage = Stages.shape[1]; // 견본은 힌트로만
-      final r = ShapeRound(
-        ShapeQuestion.generate(stage, Random(4)),
-        sampleFromStart: stage.sampleFromStart,
-      );
+      final r = ShapeRound(ShapeQuestion.generate(stage, Random(4)));
       final wrong = [
         for (var i = 0; i < r.question.choices.length; i++)
           if (i != r.question.answerIndex) i,

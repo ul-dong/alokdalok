@@ -88,7 +88,6 @@ class ShapeStage {
     this.sameColor = false,
     this.rotate = false,
     this.matchSample = false,
-    this.sampleFromStart = false,
     this.colors = GameColor.all,
   });
 
@@ -107,12 +106,10 @@ class ShapeStage {
   /// true면 이름 대신 견본을 보여 주고 "똑같은 모양"을 찾는다.
   final bool matchSample;
 
-  /// true면 처음부터 견본 그림을 보여 준다. false면 한 번 틀렸을 때 힌트로 보여 준다.
-  final bool sampleFromStart;
   final List<GameColor> colors;
 
-  /// 견본이 처음부터 보이는지
-  bool get showsSample => matchSample || sampleFromStart;
+  /// 견본이 처음부터 보이는지 (견본 찾기 단계만. 이름을 듣고 찾는 단계는 한 번 틀리면 힌트로)
+  bool get showsSample => matchSample;
 }
 
 /// 크기 놀이 단계 (시소).
@@ -371,12 +368,12 @@ class Stages {
   static const _allShapes = ShapeKind.values;
 
   static const shape = [
-    // 1: 쉬운 세 모양, 보기 2개, 색이 다르고 견본을 처음부터 보여 준다
+    // 1: 쉬운 세 모양, 보기 2개, 색이 다르다. 견본은 한 번 틀리면 회색으로
+    // (처음부터 정답과 같은 견본을 보여 주면 소리를 듣지 않고 그림만 맞춰도 풀려서 뺐다)
     ShapeStage(
       id: 1,
       shapes: [ShapeKind.circle, ShapeKind.triangle, ShapeKind.square],
       choiceCount: 2,
-      sampleFromStart: true,
       colors: [GameColor.red, GameColor.blue, GameColor.yellow],
     ),
     // 2: 여섯 모양, 보기 3개 (색은 달라도 됨)

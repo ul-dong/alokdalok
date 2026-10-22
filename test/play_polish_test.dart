@@ -508,6 +508,53 @@ void main() {
       await settle(t, 3000);
     });
 
+    for (final size in const [Size(568, 320), Size(844, 390), Size(1280, 800)]) {
+      testWidgets(
+        '${size.width.toInt()} 숫자 보기에는 숫자만 크게 (주사위 발자국 그림 없음)',
+        (t) async {
+          await setSize(t, size);
+          final s = await makeState();
+          await t.pumpWidget(
+            wrap(s, NumberGameScreen(stageId: 1, random: Random(1))),
+          );
+          await settle(t, 900);
+          final digitButtons = [
+            for (final e in find.byType(PillButton).evaluate())
+              if (RegExp(
+                r'^\d+$',
+              ).hasMatch((e.widget as PillButton).semanticLabel ?? ''))
+                e.widget,
+          ];
+          expect(digitButtons, isNotEmpty);
+          for (final b in digitButtons) {
+            final paints = find.descendant(
+              of: find.byWidget(b),
+              matching: find.byType(CustomPaint),
+            );
+            for (final p in t.widgetList<CustomPaint>(paints)) {
+              expect(p.painter, isNull, reason: '보기 안에 주사위 그림이 없다');
+              expect(p.foregroundPainter, isNull);
+            }
+            final digit = find.descendant(
+              of: find.byWidget(b),
+              matching: find.byWidgetPredicate(
+                (w) => w is Text && RegExp(r'^\d+$').hasMatch(w.data ?? ''),
+              ),
+            );
+            expect(digit, findsOneWidget, reason: '숫자 하나만');
+            // 숫자가 버튼 높이의 절반 가까이 차지할 만큼 크다
+            expect(
+              t.getRect(digit).height / t.getSize(find.byWidget(b)).height,
+              greaterThan(.4),
+            );
+          }
+          expect(t.takeException(), isNull);
+          await t.pumpWidget(const SizedBox());
+          await settle(t, 3000);
+        },
+      );
+    }
+
     test('문제 글씨는 화면(카드 높이)에 비례해 커진다', () {
       expect(quizPromptSize(200), 28);
       expect(quizPromptSize(560), greaterThan(36));

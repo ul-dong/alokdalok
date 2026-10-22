@@ -43,10 +43,8 @@ class _ShapeGameScreenState extends State<ShapeGameScreen>
   @override
   Widget nextStageScreen() => ShapeGameScreen(stageId: stage.id + 1);
 
-  ShapeRound _newRound([ShapeQuestion? prev]) => ShapeRound(
-    ShapeQuestion.generate(stage, rng, previous: prev),
-    sampleFromStart: stage.sampleFromStart,
-  );
+  ShapeRound _newRound([ShapeQuestion? prev]) =>
+      ShapeRound(ShapeQuestion.generate(stage, rng, previous: prev));
 
   @override
   void nextQuestion() {
