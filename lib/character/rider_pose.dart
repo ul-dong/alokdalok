@@ -306,7 +306,14 @@ class RiderPose {
         c.drawPath(f, Paint()..color = far ? _dim(col) : col);
       }
     }
-    _limb(c, [shoulder, hand], w, far ? _dim(_sleeve) : _sleeve);
+    // 어깨에서 손잡이까지 아래로 살짝 휜 곡선 하나 (팔꿈치가 꺾이지 않게)
+    final sag = Offset(0, (hand - shoulder).distance * .16);
+    _limb(
+      c,
+      [shoulder, Offset.lerp(shoulder, hand, .5)! + sag, hand],
+      w,
+      far ? _dim(_sleeve) : _sleeve,
+    );
     c.drawCircle(hand, w * .55, Paint()..color = far ? _dim(_tip) : _tip);
     if (zodiac == Zodiac.iguanodon && !far) {
       // 엄지 가시 (손 위로 솟은 뿔)

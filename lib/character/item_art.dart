@@ -412,6 +412,9 @@ class ItemArt {
   /// 팔을 탈것 그림에서 따로 그릴 때는 소매도 그리지 않는다
   bool sleeves = true;
 
+  /// 짧은 팔(티라노): 소매도 짧은 팔 모양을 따른다
+  bool shortArms = false;
+
   void _sleeves(
     bool happy,
     Color color, {
@@ -420,67 +423,36 @@ class ItemArt {
     bool square = false,
   }) {
     if (!sleeves) return;
-    if (AnimalPainter.debugBodyVariant != 0) {
-      // 몸 틀 시안: 실루엣의 팔 부분을 소매 색으로 (손은 그대로)
-      c.save();
-      c.clipRect(Rect.fromLTRB(0, 0, 200, AnimalPainter.variantCuffY));
-      c.drawPath(
-        AnimalPainter.variantArms(),
-        Paint()..color = AnimalPainter.tone(color, .1),
-      );
-      c.restore();
-      return;
-    }
-    // 소매는 몸통 옷보다 한 톤 진하게, 아래·안쪽에 연한 그늘을 깔아 몸과 떨어져 보이게
-    final sleeve = AnimalPainter.tone(color, .1);
-    final shape = puff
-        ? (Path()..addOval(
-            Rect.fromCenter(
-              center: const Offset(0, -12),
-              width: 28,
-              height: 20,
-            ),
-          ))
-        : _sleeveShape(square);
-    for (final left in [true, false]) {
-      final (center, rot) = AnimalPainter.armPose(left, happy);
-      final m = left ? -1.0 : 1.0;
-      c.save();
-      c.clipPath(AnimalPainter.torsoPath);
-      c.translate(center.dx - m * 3.5, center.dy + 3);
-      c.rotate(rot);
-      c.drawPath(shape, Paint()..color = AnimalPainter.softShadow);
-      c.restore();
-      c.save();
-      c.translate(center.dx, center.dy);
-      c.rotate(rot);
-      if (puff) {
-        _fs(shape, sleeve);
-      } else {
-        _fs(shape, sleeve);
-        if (stripe != null) {
-          c.drawLine(
-            const Offset(-8, -3),
-            const Offset(8, -3),
-            _line(stripe, 4),
-          );
-        }
+    // 소매는 몸 실루엣의 팔 부분([AnimalPainter.armsPath])을 그대로 칠한다:
+    // 몸통 옷과 같은 색 면으로 어깨에서 끊김 없이 이어지고, 손목 위에서 끝난다.
+    // (음영은 친구 그림이 옷까지 다 그린 뒤 한꺼번에 얹는다)
+    final arms = AnimalPainter.armsPath(short: shortArms);
+    final cuff = AnimalPainter.cuffY(short: shortArms);
+    c.save();
+    c.clipPath(arms);
+    if (puff) {
+      // 볼록한 짧은 소매: 어깨만 덮는다
+      for (final m in [-1.0, 1.0]) {
+        c.drawOval(
+          Rect.fromCenter(
+            center: Offset(100 + m * 34, 156),
+            width: 30,
+            height: 26,
+          ),
+          Paint()..color = color,
+        );
       }
-      c.restore();
+    } else {
+      c.drawRect(Rect.fromLTRB(0, 0, 200, cuff), Paint()..color = color);
+      if (stripe != null) {
+        c.drawRect(
+          Rect.fromLTRB(0, cuff - 10, 200, cuff - 5),
+          Paint()..color = stripe,
+        );
+      }
     }
+    c.restore();
   }
-
-  /// 소매: 팔([AnimalPainter.armShape])을 조금 두툼하게 감싸고 손목 위에서 끝난다
-  static final Map<bool, Path> _sleeveCache = {};
-  static Path _sleeveShape(bool square) => _sleeveCache[square] ??= () {
-    final arm = AnimalPainter.armShape(1.12).shift(const Offset(0, -1));
-    final cuff = square
-        ? (Path()..addRect(const Rect.fromLTRB(-20, -40, 20, 6)))
-        : (Path()..addRRect(
-            RRect.fromLTRBR(-20, -40, 20, 6, const Radius.circular(3)),
-          ));
-    return Path.combine(PathOperation.intersect, arm, cuff);
-  }();
 
   // ================= 신발 =================
   void shoes(Item item) {
@@ -721,40 +693,41 @@ class ItemArt {
         }
       case 'jetpack':
       case 'firetank':
-        for (final x in [48.0, 152.0]) {
+        // 친구 몸 옆 뒤쪽의 날씬한 둥근 통 둘 (팔 뒤로 살짝 가려진다)
+        for (final x in [54.0, 146.0]) {
           if (item.style == 'jetpack') {
             final flame = Path()
-              ..moveTo(x - 8, 196)
-              ..quadraticBezierTo(x, 222, x + 8, 196)
+              ..moveTo(x - 7, 198)
+              ..quadraticBezierTo(x, 224, x + 7, 198)
               ..close();
             _fs(flame, _col(item, 2), width: 3);
           }
           _fs(
             Path()..addRRect(
               RRect.fromLTRBR(
-                x - 13,
-                134,
-                x + 13,
-                198,
-                const Radius.circular(12),
+                x - 10,
+                146,
+                x + 10,
+                200,
+                const Radius.circular(10),
               ),
             ),
             _col(item, 0),
           );
           if (item.style == 'jetpack') {
             final cone = Path()
-              ..moveTo(x - 13, 140)
-              ..quadraticBezierTo(x, 110, x + 13, 140)
+              ..moveTo(x - 10, 152)
+              ..quadraticBezierTo(x, 124, x + 10, 152)
               ..close();
             _fs(cone, _col(item, 1));
           } else {
             _fs(
               Path()..addRRect(
                 RRect.fromLTRBR(
-                  x - 6,
-                  124,
-                  x + 6,
-                  136,
+                  x - 5,
+                  139,
+                  x + 5,
+                  149,
                   const Radius.circular(3),
                 ),
               ),
@@ -762,8 +735,8 @@ class ItemArt {
               width: 3.5,
             );
             c.drawLine(
-              Offset(x - 9, 176),
-              Offset(x + 9, 176),
+              Offset(x - 7, 182),
+              Offset(x + 7, 182),
               _line(_col(item, 1), 4),
             );
           }
