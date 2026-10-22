@@ -3,7 +3,8 @@
 # 1) lib/services/voice_lines.dart 의 문장 목록을 tool/voice/lines.json 으로 내보내고
 # 2) assets/voice 에 녹음(mp3)이 없는 문장만 새로 만들어 넣은 뒤
 # 3) assets/voice/manifest.json 을 갱신한다 (기존 녹음은 건드리지 않는다).
-# 새 녹음은 모두 tool/voice/child_voice.py 의 어린이 느낌 처리를 거친다 (기존 녹음과 같은 목소리).
+# 새 녹음은 모두 tool/voice/child_voice.py 의 처리(어린이 느낌 음색 + 서울 말투 억양 + 따뜻한 EQ)를 거친다 (기존 녹음과 같은 목소리).
+# 목소리 설정을 바꿨다면 --all 로 전부 다시 녹음해야 섞이지 않는다.
 # 전부 다시 녹음하려면: tool/gen_voice.command --all
 # 필요: Homebrew (python@3.10, ffmpeg 은 자동 설치), Flutter 는 ~/alokdev/flutter.
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -55,7 +56,7 @@ fi
 python -c "import mecab; mecab.MeCab().pos('안녕하세요')" || fail "mecab 확인 실패"
 
 step "4/5 없는 문장만 녹음 → assets/voice"
-python "$HERE/voice/gen_voice.py" "$HERE/voice/lines.json" "$OUT" 0.8 "$@" || fail "음성 만들기 실패 (위 메시지 참고)"
+python "$HERE/voice/gen_voice.py" "$HERE/voice/lines.json" "$OUT" 0.82 "$@" || fail "음성 만들기 실패 (위 메시지 참고)"
 
 step "5/5 완료"
 echo "녹음 파일 $(ls "$OUT" | grep -c mp3)개. git status 로 새 mp3 와 manifest.json 을 확인하고 커밋하세요."

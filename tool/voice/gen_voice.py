@@ -1,7 +1,8 @@
 # MeloTTS(MIT 라이선스, 한국어 모델)로 놀이터 음성 조각을 만든다.
 # 사용: python gen_voice.py lines.json assets/voice [속도] [--all]  (tool/gen_voice.command 가 부른다)
 #   --all 을 붙이면 이미 있는 녹음도 모두 새로 만든다 (목소리 설정을 바꿨을 때만).
-# 녹음마다 child_voice.py 의 "어린이 느낌" 처리(피치 +5반음, 포먼트 ×1.12)와 음량 맞추기를 거친다.
+# 녹음마다 child_voice.py 의 처리(피치 +5반음, 포먼트 ×1.12, 서울 말투 억양, 따뜻한 EQ, 음량 맞추기)를 거친다.
+# MeloTTS 설정(sdp_ratio 등)과 난수 씨앗도 child_voice.py 에 있어서 같은 문장은 늘 같은 녹음이 나온다.
 # 그래서 나중에 문장을 더 넣고 다시 돌려도 새 문장이 같은 목소리로 나온다.
 import json, os, subprocess, sys, time
 
@@ -9,7 +10,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 redo_all = "--all" in sys.argv
 lines_path, out_dir = args[0], args[1]
-speed = float(args[2]) if len(args) > 2 else 0.8  # 0.8: 만 3세가 알아듣기 쉽게 조금 천천히
+import child_voice  # noqa: E402  (설정값만 먼저 읽는다. 무거운 모듈은 녹음할 때 불러온다)
+
+# 0.82: 만 3세가 알아듣기 쉽게 조금 천천히 (마지막 음절은 child_voice 가 1.3배로 늘인다)
+speed = float(args[2]) if len(args) > 2 else child_voice.MELO["speed"]
 lines = json.load(open(lines_path, encoding="utf-8"))
 os.makedirs(out_dir, exist_ok=True)
 
@@ -46,20 +50,23 @@ print(f"전체 {len(lines)}문장, 새로 만들 문장 {len(todo)}개", flush=T
 t0 = time.time()
 if todo:
     import soundfile as sf
+    import torch
     from melo.api import TTS
-
-    import child_voice
 
     model = TTS(language="KR", device="cpu")
     spk = model.hps.data.spk2id["KR"]
     tmp = os.path.join(out_dir, "_tmp.wav")
     for i, item in enumerate(todo):
         mp3 = os.path.join(out_dir, item["file"])
-        model.tts_to_file(item["text"], spk, tmp, speed=speed, quiet=True)
+        torch.manual_seed(child_voice.SEED)
+        model.tts_to_file(item["text"], spk, tmp, speed=speed, quiet=True,
+                          sdp_ratio=child_voice.MELO["sdp_ratio"],
+                          noise_scale=child_voice.MELO["noise_scale"],
+                          noise_scale_w=child_voice.MELO["noise_scale_w"])
         y, sr = sf.read(tmp)
         if y.ndim > 1:
             y = y.mean(axis=1)
-        sf.write(tmp, child_voice.process(y, sr), sr, subtype="PCM_16")
+        sf.write(tmp, child_voice.process(y, sr, item["text"]), sr, subtype="PCM_16")
         subprocess.run(
             ["ffmpeg", "-y", "-loglevel", "error", "-i", tmp,
              "-ac", "1", "-ar", "24000", "-b:a", "40k", mp3],
