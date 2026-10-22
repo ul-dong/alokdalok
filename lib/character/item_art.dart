@@ -420,6 +420,17 @@ class ItemArt {
     bool square = false,
   }) {
     if (!sleeves) return;
+    if (AnimalPainter.debugBodyVariant != 0) {
+      // 몸 틀 시안: 실루엣의 팔 부분을 소매 색으로 (손은 그대로)
+      c.save();
+      c.clipRect(Rect.fromLTRB(0, 0, 200, AnimalPainter.variantCuffY));
+      c.drawPath(
+        AnimalPainter.variantArms(),
+        Paint()..color = AnimalPainter.tone(color, .1),
+      );
+      c.restore();
+      return;
+    }
     // 소매는 몸통 옷보다 한 톤 진하게, 아래·안쪽에 연한 그늘을 깔아 몸과 떨어져 보이게
     final sleeve = AnimalPainter.tone(color, .1);
     final shape = puff

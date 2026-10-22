@@ -161,7 +161,9 @@ class AnimalPainter extends CustomPainter {
 
   /// 몸통 (서양배 모양: 어깨는 좁고 아래는 둥글게, 목은 머리 아래에 숨는다).
   /// 옷 그림도 이 모양을 그대로 쓴다.
-  static final Path torsoPath = Path()
+  static Path get torsoPath => debugBodyVariant == 0 ? _torso0 : variantTorso();
+
+  static final Path _torso0 = Path()
     ..moveTo(100, 136)
     ..cubicTo(118, 136, 130, 146, 133, 166)
     ..cubicTo(136, 184, 136, 200, 128, 210)
@@ -408,6 +410,7 @@ class AnimalPainter extends CustomPainter {
 
     final outfit = items[ItemSlot.outfit];
     if (outfit != null) art.outfit(outfit, happy: happy);
+    if (_variantOn && debugBodyVariant == 2 && drawArms) _variantHands(canvas);
     final shoes = items[ItemSlot.shoes];
     if (shoes != null && drawLegs) art.shoes(shoes);
     if (back != null) art.backFront(back);
@@ -1114,18 +1117,164 @@ class AnimalPainter extends CustomPainter {
     return armShape(small ? .66 : 1).transform(m);
   }
 
+  // ================= 몸 틀 시안 (미리보기 비교용) =================
+  /// 0: 지금 몸 틀, 1: A안(옆구리 작은 혹 팔), 2: B안(팔을 앞으로 모으고 손끝만 살짝),
+  /// 3: C안(몸에서 끊김 없이 이어져 살짝 벌어진 짧은 팔). 미리보기에서만 바꾼다.
+  static int debugBodyVariant = 0;
+
+  /// 오른쪽 반쪽 곡선 (각 [c1, c2, 끝점])을 왼쪽으로 뒤집어 붙인 좌우 대칭 실루엣
+  static Path _mirrored(List<List<Offset>> right) {
+    const start = Offset(100, 134);
+    Offset m(Offset o) => Offset(200 - o.dx, o.dy);
+    final p = Path()..moveTo(start.dx, start.dy);
+    for (final s in right) {
+      p.cubicTo(s[0].dx, s[0].dy, s[1].dx, s[1].dy, s[2].dx, s[2].dy);
+    }
+    for (var i = right.length - 1; i >= 0; i--) {
+      final from = i == 0 ? start : right[i - 1][2];
+      final a = m(right[i][1]), b = m(right[i][0]), e = m(from);
+      p.cubicTo(a.dx, a.dy, b.dx, b.dy, e.dx, e.dy);
+    }
+    return p..close();
+  }
+
+  static const _shoulder = [
+    [Offset(116, 134), Offset(128, 137), Offset(129, 148)],
+  ];
+  static const _sideC = [
+    [Offset(116, 134), Offset(127, 137), Offset(130, 146)],
+  ];
+  static const _legs2 = [
+    [Offset(130.5, 224), Offset(128, 231), Offset(116, 231)],
+    [Offset(106, 231), Offset(103.5, 227), Offset(103.5, 222)],
+    [Offset(103.5, 218), Offset(101.5, 216.5), Offset(100, 216.5)],
+  ];
+  static const _closed = [
+    [Offset(128, 222), Offset(112, 224), Offset(100, 224)],
+  ];
+
+  static List<List<Offset>> _variantArmCurves(int v) => switch (v) {
+    1 => const [
+      [Offset(134, 154), Offset(138, 170), Offset(137, 186)],
+      [Offset(136, 195), Offset(129, 197), Offset(128.5, 191)],
+      [Offset(129.5, 198), Offset(130.5, 205), Offset(130, 212)],
+    ],
+    2 => const [
+      [Offset(132, 156), Offset(134, 172), Offset(133, 184)],
+      [Offset(132.5, 190), Offset(130, 191), Offset(130, 193)],
+      [Offset(130.5, 200), Offset(130.5, 206), Offset(130, 212)],
+    ],
+    _ => const [
+      [Offset(137, 156), Offset(143, 176), Offset(145, 192)],
+      [Offset(146, 201), Offset(137, 203), Offset(135, 195)],
+      [Offset(134, 186), Offset(133, 177), Offset(131, 170)],
+      [Offset(131, 186), Offset(131, 202), Offset(130, 212)],
+    ],
+  };
+
+  static final Map<String, Path> _variantCache = {};
+
+  /// 시안 몸통 (팔·다리 없이, 옷이 이 모양을 채운다)
+  static Path variantTorso() =>
+      _variantCache['torso$debugBodyVariant'] ??= _mirrored([
+        ...(debugBodyVariant == 3 ? _sideC : _shoulder),
+        [
+          const Offset(131, 165),
+          const Offset(132, 195),
+          const Offset(130, 212),
+        ],
+        ..._closed,
+      ]);
+
+  /// 시안 실루엣: 팔·몸·다리를 path 하나로
+  static Path variantSil({required bool feet, required bool arms}) {
+    final v = debugBodyVariant;
+    return _variantCache['sil$v|$feet|$arms'] ??= _mirrored([
+      ...(v == 3 ? _sideC : _shoulder),
+      ...(arms
+          ? _variantArmCurves(v)
+          : [
+              [
+                const Offset(131, 165),
+                const Offset(132, 195),
+                const Offset(130, 212),
+              ],
+            ]),
+      ...(feet ? _legs2 : _closed),
+    ]);
+  }
+
+  /// 시안 팔 부분 (소매 칠하기용): 실루엣에서 몸통을 뺀 곳
+  static Path variantArms() =>
+      _variantCache['arms$debugBodyVariant'] ??= Path.combine(
+        PathOperation.difference,
+        variantSil(feet: false, arms: true),
+        variantTorso(),
+      );
+
+  /// 시안 소매가 끝나는 높이 (그 아래는 손)
+  static double get variantCuffY => switch (debugBodyVariant) {
+    1 => 184,
+    3 => 187,
+    _ => 240,
+  };
+
+  /// B안: 몸 앞에 모은 손끝 (아주 연한 같은 계열 색)
+  void _variantHands(Canvas c) {
+    for (final x in [82.0, 118.0]) {
+      c.drawOval(
+        Rect.fromCenter(center: Offset(x, 192), width: 17, height: 13),
+        Paint()..color = tone(fur, .06),
+      );
+    }
+  }
+
+  bool get _variantOn =>
+      debugBodyVariant != 0 && !_wings && !_noLegs && zodiac != Zodiac.sheep;
+
+  void _variantBody(Canvas c, {required bool feet, required bool arms}) {
+    final sil = variantSil(feet: feet, arms: arms);
+    c.drawPath(sil, Paint()..color = fur);
+    _bodyMarks(c);
+    if (!feet) return;
+    for (final x in [84.5, 115.5]) {
+      if (_hooves) {
+        c.save();
+        c.clipPath(sil);
+        c.drawOval(
+          Rect.fromCenter(center: Offset(x, 234), width: 34, height: 16),
+          Paint()..color = const Color(0xFF8A817C),
+        );
+        c.restore();
+      } else if (_dino) {
+        for (final dx in [-6.0, 6.0]) {
+          c.drawOval(
+            Rect.fromCenter(
+              center: Offset(x + dx, 229),
+              width: 5.5,
+              height: 4.5,
+            ),
+            Paint()..color = ivory,
+          );
+        }
+      }
+    }
+  }
+
   /// 몸통 + 팔 + 발을 합친 하나의 Path (같은 색 면은 한 번에 칠한다)
   Path _silhouette(bool happy, {required bool feet, required bool arms}) =>
-      _cached('sil|${zodiac == Zodiac.trex}|$happy|$feet|$arms', () {
-        var out = Path.from(feet ? bodyPath : torsoPath);
-        for (final p in [
-          if (feet) ...[_footShape(86), _footShape(114)],
-          if (arms) ...[_armAt(true, happy), _armAt(false, happy)],
-        ]) {
-          out = Path.combine(PathOperation.union, out, p);
-        }
-        return out;
-      });
+      _variantOn
+      ? variantSil(feet: feet, arms: arms)
+      : _cached('sil|${zodiac == Zodiac.trex}|$happy|$feet|$arms', () {
+          var out = Path.from(feet ? bodyPath : torsoPath);
+          for (final p in [
+            if (feet) ...[_footShape(86), _footShape(114)],
+            if (arms) ...[_armAt(true, happy), _armAt(false, happy)],
+          ]) {
+            out = Path.combine(PathOperation.union, out, p);
+          }
+          return out;
+        });
 
   /// 몸통 + 팔 + 발을 하나로 합친 몸.
   /// 한 번에 칠하고 외곽선이 없어서 "도형을 붙인" 이음매가 보이지 않는다.
@@ -1135,6 +1284,7 @@ class AnimalPainter extends CustomPainter {
     required bool feet,
     required bool arms,
   }) {
+    if (_variantOn) return _variantBody(c, feet: feet, arms: arms);
     final armPaths = arms
         ? [_armAt(true, happy), _armAt(false, happy)]
         : const <Path>[];
