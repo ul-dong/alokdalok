@@ -51,4 +51,13 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-_flutter.loader.load();
+// 앱은 body 전체가 아니라 안전 영역 안의 #app-host 에 띄운다 (web/index.html 참고).
+// 이렇게 하면 Flutter가 viewport 메타(viewport-fit=cover)를 바꿔 쓰지도 않는다.
+_flutter.loader.load({
+  onEntrypointLoaded: async function (engineInitializer) {
+    const appRunner = await engineInitializer.initializeEngine({
+      hostElement: document.getElementById('app-host'),
+    });
+    await appRunner.runApp();
+  },
+});
