@@ -32,8 +32,8 @@ class RiderPose {
   /// 어깨·엉덩이 관절 (캐릭터 좌표). 옆모습이라 앞쪽 팔다리는 몸 가운데보다 조금 앞에 있다.
   static const Offset shoulderNear = Offset(114, 162);
   static const Offset shoulderFar = Offset(94, 160);
-  static const Offset hipNear = Offset(110, 198);
-  static const Offset hipFar = Offset(96, 196);
+  static const Offset hipNear = Offset(123, 198);
+  static const Offset hipFar = Offset(108, 198);
 
   /// 팔·다리 굵기 (캐릭터 좌표)
   static const double armWidth = 15, legWidth = 17;
@@ -47,11 +47,11 @@ class RiderPose {
     Zodiac.pig,
   }.contains(zodiac);
 
-  /// 팔다리 색: 서 있을 때처럼 몸보다 한 톤 진하게 (외곽선 없이 몸과 구분)
-  Color get _skin => AnimalPainter.tone(
-    zodiac == Zodiac.sheep ? zodiac.look.accent : zodiac.look.fur,
-    .1,
-  );
+  /// 팔다리 색: 서 있을 때처럼 몸과 같은 색 (양은 얼굴색 팔다리를 한 톤 진하게).
+  /// 몸 앞을 지날 때는 아래에 연한 그늘을 깔아 구분한다 ([paintFront]).
+  Color get _skin => zodiac == Zodiac.sheep
+      ? AnimalPainter.tone(zodiac.look.accent, .1)
+      : zodiac.look.fur;
   Color get _tip => _hooves ? const Color(0xFF8A817C) : _skin;
   Color get _sleeve {
     final outfit = items[ItemSlot.outfit]?.colors.first;
@@ -164,10 +164,21 @@ class RiderPose {
     c.clipPath(_torsoAt(seatAt, scale));
     final shadow = AnimalPainter.softShadow;
     if (legs) {
-      _limb(c, [g.hipN + drop, g.kneeN + drop], legWidth * scale, shadow);
+      _limb(
+        c,
+        [Offset.lerp(g.hipN, g.kneeN, .4)! + drop, g.kneeN + drop],
+        legWidth * scale,
+        shadow,
+      );
     }
     if (!_wings) {
-      _limb(c, [g.shoulderN + drop, g.handN + drop], armWidth * scale, shadow);
+      // 어깨 끝에는 그늘을 두지 않는다 (둥근 끝이 동그랗게 떠 보이지 않게)
+      _limb(
+        c,
+        [Offset.lerp(g.shoulderN, g.handN, .4)! + drop, g.handN + drop],
+        armWidth * scale,
+        shadow,
+      );
     }
     c.restore();
     if (legs) _leg(c, g.hipN, g.kneeN, g.footN, scale);
@@ -296,7 +307,7 @@ class RiderPose {
       }
     }
     _limb(c, [shoulder, hand], w, far ? _dim(_sleeve) : _sleeve);
-    c.drawCircle(hand, w * .6, Paint()..color = far ? _dim(_tip) : _tip);
+    c.drawCircle(hand, w * .55, Paint()..color = far ? _dim(_tip) : _tip);
     if (zodiac == Zodiac.iguanodon && !far) {
       // 엄지 가시 (손 위로 솟은 뿔)
       final spike = Path()
@@ -313,7 +324,7 @@ class RiderPose {
   void grip(Canvas c, Offset at, double scale) {
     if (_wings || _noLimbs) return;
     final w = armWidth * scale * (zodiac == Zodiac.trex ? .72 : 1);
-    c.drawCircle(at, w * .6, Paint()..color = _tip);
+    c.drawCircle(at, w * .55, Paint()..color = _tip);
   }
 }
 

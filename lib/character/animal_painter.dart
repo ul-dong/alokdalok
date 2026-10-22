@@ -159,15 +159,35 @@ class AnimalPainter extends CustomPainter {
       ..close();
   }
 
-  /// 몸통 (서양배 모양). 옷 그림도 이 모양을 그대로 쓴다.
+  /// 몸통 (서양배 모양: 어깨는 좁고 아래는 둥글게, 목은 머리 아래에 숨는다).
+  /// 옷 그림도 이 모양을 그대로 쓴다.
   static final Path torsoPath = Path()
-    ..moveTo(100, 138)
-    ..cubicTo(121, 138, 132, 150, 134, 170)
-    ..cubicTo(137, 194, 133, 212, 112, 213)
-    ..lineTo(88, 213)
-    ..cubicTo(67, 212, 63, 194, 66, 170)
-    ..cubicTo(68, 150, 79, 138, 100, 138)
+    ..moveTo(100, 136)
+    ..cubicTo(118, 136, 130, 146, 133, 166)
+    ..cubicTo(136, 184, 136, 200, 128, 210)
+    ..cubicTo(120, 219, 80, 219, 72, 210)
+    ..cubicTo(64, 200, 64, 184, 67, 166)
+    ..cubicTo(70, 146, 82, 136, 100, 136)
     ..close();
+
+  /// 몸통 + 짧고 둥근 다리 두 개를 한 줄로 그린 실루엣.
+  /// 몸통 아랫부분이 둥글게 좁아지며 다리로 이어지고, 가랑이는 둥근 U 홈이다 (가로 이음매 없음).
+  static final Path bodyPath = Path()
+    ..moveTo(100, 136)
+    ..cubicTo(118, 136, 130, 146, 133, 166)
+    ..cubicTo(136, 184, 136, 199, 129, 209)
+    ..cubicTo(126.5, 213, 127, 219, 126.5, 224)
+    ..cubicTo(126, 231, 103.5, 231, 103, 224)
+    ..cubicTo(103, 217, 102.5, 211, 100, 211)
+    ..cubicTo(97.5, 211, 97, 217, 97, 224)
+    ..cubicTo(96.5, 231, 74, 231, 73.5, 224)
+    ..cubicTo(73, 219, 73.5, 213, 71, 209)
+    ..cubicTo(64, 199, 64, 184, 67, 166)
+    ..cubicTo(70, 146, 82, 136, 100, 136)
+    ..close();
+
+  /// 다리 가운데 x (발·신발 자리)
+  static const double legLeft = 85.5, legRight = 114.5;
 
   /// 예전 코드 호환용 (몸통을 감싸는 사각형)
   static final RRect torso = RRect.fromRectAndRadius(
@@ -222,8 +242,44 @@ class AnimalPainter extends CustomPainter {
           : (const Offset(140, 146), -0.9);
     }
     return left
-        ? (const Offset(68, 170), 0.38)
-        : (const Offset(132, 170), -0.38);
+        ? (const Offset(74, 170), 0.36)
+        : (const Offset(126, 170), -0.36);
+  }
+
+  /// 팔 모양 (어깨 쪽이 굵고 손끝으로 갈수록 살짝 가늘어지는 둥근 소시지).
+  /// [armPose] 자리에서 위(어깨) 끝은 몸통 안에 파묻히고 아래(손) 끝만 몸 옆으로 나온다.
+  static Path armShape([double scale = 1]) {
+    final r1 = 9 * scale, r2 = 7.5 * scale;
+    final top = -17 * scale, bottom = 15 * scale;
+    return Path()
+      ..moveTo(-r1, top)
+      ..cubicTo(
+        -r1,
+        top + 12 * scale,
+        -r2 - .6 * scale,
+        bottom - 8 * scale,
+        -r2,
+        bottom,
+      )
+      ..arcToPoint(
+        Offset(r2, bottom),
+        radius: Radius.circular(r2),
+        clockwise: false,
+      )
+      ..cubicTo(
+        r2 + .6 * scale,
+        bottom - 8 * scale,
+        r1,
+        top + 12 * scale,
+        r1,
+        top,
+      )
+      ..arcToPoint(
+        Offset(-r1, top),
+        radius: Radius.circular(r1),
+        clockwise: false,
+      )
+      ..close();
   }
 
   ZodiacLook get look => zodiac.look;
@@ -868,13 +924,26 @@ class AnimalPainter extends CustomPainter {
         );
         continue;
       }
-      // 양: 뭉툭한 발 (털 몸 아래)
-      final foot = _footShape(x);
+      // 양: 털 몸 아래로 나온 짧고 둥근 다리 + 발굽
+      final foot = _cached(
+        'sheep-leg|$x',
+        () => Path.combine(
+          PathOperation.union,
+          Path.combine(
+            PathOperation.intersect,
+            bodyPath,
+            Path()..addRect(
+              Rect.fromLTRB(x < 100 ? 0 : 100, 196, x < 100 ? 100 : 200, 240),
+            ),
+          ),
+          _footShape(x),
+        ),
+      );
       _fs(c, foot, tone(look.accent, .1));
       c.save();
       c.clipPath(foot);
-      c.drawRect(
-        Rect.fromLTWH(x - 14, 221, 28, 10),
+      c.drawOval(
+        Rect.fromCenter(center: Offset(x, 233), width: 36, height: 16),
         Paint()..color = const Color(0xFF8A817C),
       );
       c.restore();
@@ -892,8 +961,8 @@ class AnimalPainter extends CustomPainter {
     c.clipPath(wool);
     c.drawPath(wool.shift(const Offset(-5, -5)), Paint()..color = look.light);
     c.drawOval(
-      Rect.fromCenter(center: const Offset(100, 147), width: 80, height: 24),
-      Paint()..color = tone(look.light, .13),
+      Rect.fromCenter(center: const Offset(100, 145), width: 76, height: 18),
+      Paint()..color = tone(look.light, .07),
     );
     c.restore();
   }
@@ -1019,15 +1088,14 @@ class AnimalPainter extends CustomPainter {
     c.restore();
   }
 
-  /// 발 모양 (아래가 조금 넓고 바닥이 평평)
-  static Path _footShape(double x) => Path()
-    ..moveTo(x - 10, 196)
-    ..lineTo(x - 11.5, 219)
-    ..quadraticBezierTo(x - 13, 229, x - 3, 229)
-    ..lineTo(x + 3, 229)
-    ..quadraticBezierTo(x + 13, 229, x + 11.5, 219)
-    ..lineTo(x + 10, 196)
-    ..close();
+  /// 발 모양: 다리 끝의 둥근 콩 (바깥쪽으로 살짝 길다)
+  static Path _footShape(double x) {
+    final m = x < 100 ? -1.0 : 1.0;
+    final cx = (x < 100 ? legLeft : legRight) + m * 1.5;
+    return Path()..addOval(
+      Rect.fromCenter(center: Offset(cx, 225.5), width: 28, height: 14),
+    );
+  }
 
   /// 팔을 몸 좌표로 옮긴 모양
   Path _armAt(bool left, bool happy) {
@@ -1043,13 +1111,13 @@ class AnimalPainter extends CustomPainter {
       0, 0, 1, 0,
       tx, ty, 0, 1,
     ]);
-    return _armShape(small ? .66 : 1).transform(m);
+    return armShape(small ? .66 : 1).transform(m);
   }
 
   /// 몸통 + 팔 + 발을 합친 하나의 Path (같은 색 면은 한 번에 칠한다)
   Path _silhouette(bool happy, {required bool feet, required bool arms}) =>
       _cached('sil|${zodiac == Zodiac.trex}|$happy|$feet|$arms', () {
-        var out = Path.from(torsoPath);
+        var out = Path.from(feet ? bodyPath : torsoPath);
         for (final p in [
           if (feet) ...[_footShape(86), _footShape(114)],
           if (arms) ...[_armAt(true, happy), _armAt(false, happy)],
@@ -1094,53 +1162,47 @@ class AnimalPainter extends CustomPainter {
       }
     }
 
-    // 외곽선 없이 부위를 나누는 납작한 음영:
-    // 다리·팔은 한 톤 진하게, 몸 아래·턱 아래·팔 안쪽에는 연한 그늘 면을 깐다.
-    final limb = tone(fur, .1);
-
-    // 다리·발 (몸통 아래에 깔린다) + 몸 아래 그늘 (다리 윗부분과 다리 사이)
-    if (footPaths.isNotEmpty) {
-      final legs = _cached(
-        'legs',
-        () => Path.combine(PathOperation.union, footPaths[0], footPaths[1]),
-      );
-      c.drawPath(legs, Paint()..color = limb);
-      c.save();
-      c.clipPath(legs);
-      c.drawOval(
-        Rect.fromCenter(center: const Offset(100, 210), width: 80, height: 18),
-        Paint()..color = tone(fur, .22),
-      );
-      c.restore();
-    }
-
-    // 몸통: 오른쪽·아래 가장자리에만 아주 연한 음영 (단색 면 하나)
-    c.drawPath(torsoPath, Paint()..color = tone(fur, .07));
+    // 몸통·다리·발은 한 덩어리 (같은 색 면 하나). 외곽선 대신 아주 연한 음영으로만 입체감:
+    // 오른쪽·아래 가장자리와 가랑이 안쪽에 얇은 그늘이 생긴다.
+    final body = _cached(
+      'body|$feet',
+      () => feet
+          ? Path.combine(
+              PathOperation.union,
+              bodyPath,
+              Path.combine(PathOperation.union, footPaths[0], footPaths[1]),
+            )
+          : torsoPath,
+    );
+    c.drawPath(body, Paint()..color = tone(fur, .06));
     c.save();
-    c.clipPath(torsoPath);
-    c.drawPath(torsoPath.shift(const Offset(-5, -5)), Paint()..color = fur);
+    c.clipPath(body);
+    c.drawPath(body.shift(const Offset(-4, -3)), Paint()..color = fur);
     c.restore();
 
     // 몸통 무늬 (배, 줄무늬 등)
     _bodyMarks(c);
 
-    // 턱 그림자: 머리 바로 아래 몸통 위의 얇은 반달
+    // 턱 그림자: 머리 바로 아래 몸통 위의 얇고 부드러운 반달
     c.save();
     c.clipPath(torsoPath);
     c.drawOval(
-      Rect.fromCenter(center: const Offset(100, 147), width: 88, height: 24),
-      Paint()..color = tone(fur, .13),
+      Rect.fromCenter(center: const Offset(100, 146), width: 84, height: 20),
+      Paint()..color = tone(fur, .09),
     );
     c.restore();
 
-    // 팔: 몸 앞에 오는 자리 아래·안쪽에 연한 그늘을 깔고, 한 톤 진한 색으로
+    // 팔: 몸과 같은 색. 몸 앞에 겹치는 안쪽 가장자리에만 얇은 그늘을 깔아 구분한다
     for (final (i, a) in armPaths.indexed) {
       final m = i == 0 ? -1.0 : 1.0;
       c.save();
       c.clipPath(torsoPath);
-      c.drawPath(a.shift(Offset(-m * 3.5, 3)), Paint()..color = tone(fur, .17));
+      c.drawPath(
+        a.shift(Offset(-m * 2.6, 1.6)),
+        Paint()..color = tone(fur, .11),
+      );
       c.restore();
-      c.drawPath(a, Paint()..color = tone(fur, .12));
+      c.drawPath(a, Paint()..color = fur);
     }
 
     // 발굽·발톱
@@ -1149,16 +1211,16 @@ class AnimalPainter extends CustomPainter {
       if (_hooves) {
         c.save();
         c.clipPath(f);
-        c.drawRect(
-          Rect.fromLTWH(x - 14, 221, 28, 10),
+        c.drawOval(
+          Rect.fromCenter(center: Offset(x, 233), width: 36, height: 16),
           Paint()..color = const Color(0xFF8A817C),
         );
         c.restore();
       } else if (_dino) {
-        for (final dx in [-5.5, 5.5]) {
+        for (final dx in [-6.0, 6.0]) {
           c.drawOval(
             Rect.fromCenter(
-              center: Offset(x + dx, 227),
+              center: Offset(x + dx, 229),
               width: 5.5,
               height: 4.5,
             ),
@@ -1174,10 +1236,10 @@ class AnimalPainter extends CustomPainter {
         c.save();
         c.translate(center.dx, center.dy);
         c.rotate(rot);
-        final arm = _armShape(1);
+        final arm = armShape();
         c.clipPath(arm);
-        c.drawRect(
-          const Rect.fromLTWH(-12, 8, 24, 12),
+        c.drawOval(
+          Rect.fromCenter(center: const Offset(0, 21), width: 24, height: 18),
           Paint()..color = const Color(0xFF8A817C),
         );
         c.restore();
@@ -1228,35 +1290,6 @@ class AnimalPainter extends CustomPainter {
     }
   }
 
-  /// 뭉툭한 팔 (어깨에서 손까지 살짝 둥글게)
-  static Path _armShape(double scale) => Path()
-    ..moveTo(-7 * scale, -15 * scale)
-    ..cubicTo(
-      -10 * scale,
-      -2 * scale,
-      -10 * scale,
-      8 * scale,
-      -5 * scale,
-      14 * scale,
-    )
-    ..cubicTo(
-      -1 * scale,
-      19 * scale,
-      7 * scale,
-      17 * scale,
-      8 * scale,
-      11 * scale,
-    )
-    ..cubicTo(
-      9 * scale,
-      2 * scale,
-      8 * scale,
-      -7 * scale,
-      6 * scale,
-      -15 * scale,
-    )
-    ..close();
-
   void _arms(Canvas c, bool happy) {
     if (_noLegs) return;
     if (_wings) {
@@ -1267,15 +1300,27 @@ class AnimalPainter extends CustomPainter {
     for (final left in [true, false]) {
       final (center, rot) = armPose(left, happy);
       _at(c, center, rot, () {
-        final arm = _armShape(1);
+        final arm = armShape();
         _fs(c, arm, tone(look.accent, .1));
         c.save();
         c.clipPath(arm);
-        c.drawRect(
-          const Rect.fromLTWH(-12, 8, 24, 12),
+        c.drawOval(
+          Rect.fromCenter(center: const Offset(0, 21), width: 24, height: 18),
           Paint()..color = const Color(0xFF8A817C),
         );
         c.restore();
+        // 어깨는 털 뭉치 속에 파묻힌다 (팔 윗부분 끝이 보이지 않게)
+        _fs(
+          c,
+          Path()..addOval(
+            Rect.fromCenter(
+              center: const Offset(0, -13),
+              width: 30,
+              height: 30,
+            ),
+          ),
+          look.light,
+        );
       });
     }
   }

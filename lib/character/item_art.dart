@@ -430,9 +430,7 @@ class ItemArt {
               height: 20,
             ),
           ))
-        : (Path()..addRRect(
-            RRect.fromLTRBR(-11, -19, 11, 4, Radius.circular(square ? 4 : 9)),
-          ));
+        : _sleeveShape(square);
     for (final left in [true, false]) {
       final (center, rot) = AnimalPainter.armPose(left, happy);
       final m = left ? -1.0 : 1.0;
@@ -460,6 +458,18 @@ class ItemArt {
       c.restore();
     }
   }
+
+  /// 소매: 팔([AnimalPainter.armShape])을 조금 두툼하게 감싸고 손목 위에서 끝난다
+  static final Map<bool, Path> _sleeveCache = {};
+  static Path _sleeveShape(bool square) => _sleeveCache[square] ??= () {
+    final arm = AnimalPainter.armShape(1.12).shift(const Offset(0, -1));
+    final cuff = square
+        ? (Path()..addRect(const Rect.fromLTRB(-20, -40, 20, 6)))
+        : (Path()..addRRect(
+            RRect.fromLTRBR(-20, -40, 20, 6, const Radius.circular(3)),
+          ));
+    return Path.combine(PathOperation.intersect, arm, cuff);
+  }();
 
   // ================= 신발 =================
   void shoes(Item item) {
