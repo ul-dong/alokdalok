@@ -62,11 +62,26 @@ class AnimalPainter extends CustomPainter {
     this.drawLegs = true,
     this.drawArms = true,
     this.sideways = false,
+    this.walking = false,
   });
 
   /// 탈것에 탔을 때: 가는 쪽(오른쪽)을 보도록 얼굴을 돌린다.
   /// 24마리 모두 같은 머리 틀이라 [turnFace] 변환 하나로 처리한다 (꼬리·뒤로 뻗은 볏은 뒤쪽으로).
   final bool sideways;
+
+  /// 걸어가는 옆모습: 몸통을 옆에서 본 통통한 서양배 모양([sideTorsoPath])으로 그리고,
+  /// 배 무늬는 앞쪽 가장자리의 좁은 반달로만, 옷은 그 몸 안에만 보인다. 팔다리는 걷는 쪽에서 그린다.
+  final bool walking;
+
+  /// 옆에서 본 몸통 (배가 앞쪽으로 살짝 나온 서양배). 다리가 몸 아래로 나오도록 아래가 조금 짧다.
+  static final Path sideTorsoPath = Path()
+    ..moveTo(98, 136)
+    ..cubicTo(117, 136, 128, 150, 130, 166)
+    ..cubicTo(134, 185, 131, 202, 115, 208)
+    ..cubicTo(105, 212, 88, 212, 80, 207)
+    ..cubicTo(66, 199, 63, 182, 67, 164)
+    ..cubicTo(71, 146, 83, 136, 98, 136)
+    ..close();
 
   /// 얼굴이 보는 쪽
   FaceDirection get faceDirection =>
@@ -434,7 +449,13 @@ class AnimalPainter extends CustomPainter {
     }
 
     final outfit = items[ItemSlot.outfit];
-    if (outfit != null) art.outfit(outfit, happy: happy);
+    if (outfit != null) {
+      // 걷는 옆모습: 옷은 옆에서 본 몸 안에만 (치마·외투가 다리 위로 덮이지 않게)
+      canvas.save();
+      if (walking) canvas.clipPath(sideTorsoPath);
+      art.outfit(outfit, happy: happy);
+      canvas.restore();
+    }
     final shoes = items[ItemSlot.shoes];
     if (shoes != null && drawLegs) art.shoes(shoes);
     if (back != null) art.backFront(back);
@@ -1166,7 +1187,9 @@ class AnimalPainter extends CustomPainter {
 
   /// 몸통 + 팔 + 발을 합친 하나의 Path (같은 색 면은 한 번에 칠한다)
   Path _silhouette(bool happy, {required bool feet, required bool arms}) =>
-      silhouette(legs: feet, arms: arms, short: _shortArms);
+      walking
+      ? sideTorsoPath
+      : silhouette(legs: feet, arms: arms, short: _shortArms);
 
   /// 몸통 + 팔 + 발을 하나로 합친 몸.
   /// 한 번에 칠하고 외곽선이 없어서 "도형을 붙인" 이음매가 보이지 않는다.
@@ -1201,6 +1224,29 @@ class AnimalPainter extends CustomPainter {
     // 팔·몸·다리를 path 하나로 한 번에 칠한다 (음영은 옷까지 다 그린 뒤 [_shadeBody]에서 한꺼번에)
     final sil = _silhouette(happy, feet: feet, arms: arms);
     c.drawPath(sil, Paint()..color = fur);
+
+    if (walking) {
+      // 옆모습: 배 무늬는 몸 앞쪽 가장자리의 좁은 반달로만
+      if (!const {
+        Zodiac.ox,
+        Zodiac.rabbit,
+        Zodiac.rooster,
+        Zodiac.sheep,
+      }.contains(zodiac)) {
+        c.save();
+        c.clipPath(sil);
+        c.drawOval(
+          Rect.fromCenter(
+            center: const Offset(140, 186),
+            width: 40,
+            height: 50,
+          ),
+          Paint()..color = look.light,
+        );
+        c.restore();
+      }
+      return;
+    }
 
     // 몸통 무늬 (배, 줄무늬 등)
     _bodyMarks(c);
@@ -2926,5 +2972,6 @@ class AnimalPainter extends CustomPainter {
       old.phase != phase ||
       old.drawLegs != drawLegs ||
       old.drawArms != drawArms ||
-      old.sideways != sideways;
+      old.sideways != sideways ||
+      old.walking != walking;
 }

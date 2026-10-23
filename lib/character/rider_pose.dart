@@ -190,18 +190,30 @@ class RiderPose {
   /// 캐릭터 좌표에서 발바닥이 닿는 땅 (가운데)
   static const Offset ground = Offset(100, 232);
 
-  /// 걸을 때 발이 앞뒤로 나가는 거리 (캐릭터 좌표)
-  static const double strideReach = 16;
+  /// 걸을 때 발이 엉덩이 앞뒤로 나가는 거리 (캐릭터 좌표). 다리 길이 약 26이라 약 ±26도.
+  static const double strideReach = 13;
+
+  /// 엉덩이 높이 (캐릭터 좌표). 몸 아래로 다리가 확실히 나온다 (엉덩이~땅 36: 몸 높이의 약 37%).
+  static const double hipY = 196;
+
+  /// 발목이 땅에 닿을 때의 높이 (발 콩 바닥이 땅 [ground]에 닿는다)
+  static const double ankleY = 222;
 
   /// 한 걸음 주기 [step](0~1)에서 몸이 위아래로 출렁이는 양 (캐릭터 좌표, 위가 -)
-  static double walkBob(double step) => -2.2 * cos(step * 2 * pi).abs();
+  static double walkBob(double step) => -2.6 * cos(step * 2 * pi).abs();
 
   /// 걸음 주기에서 앞쪽 발의 앞뒤 위치 (-1 뒤 ~ 1 앞). 뒤쪽 발은 반대.
   static double nearFootSwing(double step) => sin(step * 2 * pi);
 
+  /// 걸음 주기에서 앞쪽 발이 들린 높이 (캐릭터 좌표). 앞으로 내딛는 동안만 든다.
+  static double nearFootLift(double step) =>
+      8 * max<double>(0, cos(step * 2 * pi));
+
   /// 걷는 친구를 옆모습으로 그린다 (가는 쪽 = 오른쪽).
   /// [groundAt] 발바닥 가운데가 닿는 곳, [scale] 캐릭터 크기 배율, [step] 걸음 주기(0~1, 0.5에 반대 발).
   /// [still]이면 걷기 동작 없이 선 자세 옆모습만 (움직임 줄이기).
+  /// 몸은 옆에서 본 통통한 서양배([AnimalPainter.sideTorsoPath]), 다리는 몸 아래로 나와
+  /// 아장아장 번갈아 걷는다: 앞으로 내딛는 발은 들리고 무릎이 굽고, 뒤 발은 땅을 민다.
   /// 뱀은 다리 대신 몸을 꿈틀거리고, 닭·프테라노돈은 가는 새 다리로 걷는다(날개는 접은 채).
   void paintWalk(
     Canvas c, {
@@ -211,11 +223,20 @@ class RiderPose {
     bool still = false,
   }) {
     final a = still ? 0.0 : step * 2 * pi;
-    final sw = sin(a), co = cos(a);
     final bob = still ? 0.0 : walkBob(step);
     final origin = groundAt - ground * scale + Offset(0, bob * scale);
     Offset up(Offset p) => origin + p * scale; // 몸에 붙은 점 (출렁임 따라감)
-    Offset low(Offset p) => groundAt + (p - ground) * scale; // 땅에 닿는 점
+    Offset low(Offset p) => groundAt + (p - ground) * scale; // 땅 기준 점
+    final walker = AnimalPainter(
+      zodiac: zodiac,
+      items: items,
+      mood: mood,
+      phase: phase,
+      drawLegs: false,
+      drawArms: false,
+      sideways: true,
+      walking: true,
+    );
 
     if (_noLimbs) {
       // 뱀: 몸을 S자로 꿈틀거리며 미끄러진다
@@ -224,45 +245,45 @@ class RiderPose {
       c.rotate(still ? 0 : sin(a) * .05);
       c.translate(-ground.dx * scale, -ground.dy * scale);
       c.scale(scale);
-      body.paint(c, AnimalPainter.design);
+      walker.paint(c, AnimalPainter.design);
       c.restore();
       return;
     }
 
-    // 다리: 앞쪽 발은 sin, 뒤쪽 발은 반대. 앞으로 내딛는 동안만 발을 든다.
-    final reach = still ? 0.0 : strideReach;
-    const hipN0 = Offset(106, 214), hipF0 = Offset(94, 213);
-    final liftN = still ? 0.0 : 6 * max<double>(0, co);
-    final liftF = still ? 0.0 : 6 * max<double>(0, -co);
-    final hipN = up(hipN0), hipF = up(hipF0);
-    final footN = low(Offset(hipN0.dx + reach * sw, 222 - liftN));
-    final footF = low(Offset(hipF0.dx - reach * sw, 222 - liftF));
-    // 무릎은 둥글게: 엉덩이와 발 사이에서 앞으로 살짝 (든 발일수록 더)
+    final sw = still ? 0.0 : nearFootSwing(step);
+    final liftN = still ? 0.0 : nearFootLift(step);
+    final liftF = still ? 0.0 : nearFootLift(step + .5);
+    const hipNx = 106.0, hipFx = 93.0;
+    final hipN = up(const Offset(hipNx, hipY)),
+        hipF = up(const Offset(hipFx, hipY - 1));
+    final footN = low(Offset(hipNx + strideReach * sw, ankleY - liftN));
+    final footF = low(Offset(hipFx - strideReach * sw, ankleY - liftF));
+    // 무릎: 든 발은 앞으로 둥글게 굽히고, 땅을 미는 발은 거의 곧게
     Offset knee(Offset hip, Offset foot, double lift) =>
         Offset.lerp(hip, foot, .5)! +
-        Offset((2.5 + lift * .6) * scale, -lift * .25 * scale);
+        Offset((1.5 + lift * .9) * scale, -lift * .3 * scale);
 
-    // 팔: 다리와 반대로 살짝 흔든다 (어깨에서 끊김 없이 휜 곡선)
-    final swing = still ? 0.0 : 7 * sw;
-    final shN = up(const Offset(110, 162)), shF = up(const Offset(96, 160));
-    final handN = up(Offset(114 - swing, 188)),
-        handF = up(Offset(98 + swing, 186));
+    // 팔: 다리와 반대로 흔든다 (어깨에서 끊김 없이 휜 곡선, 몸 옆면 위)
+    final swing = still ? 0.0 : 9 * sw;
+    final shN = up(const Offset(106, 160)), shF = up(const Offset(94, 158));
+    final handN = up(Offset(109 - swing, 188)),
+        handF = up(Offset(95 + swing, 186));
 
-    // 다리는 둘 다 둥근 몸 아래에서 나온다 (몸 뒤에 그려서 발만 번갈아 보인다).
-    // 뒤쪽 다리·팔은 조금 어둡게.
+    // 먼 쪽 다리·팔은 몸 뒤에 한 톤 진하게
     _walkLeg(c, hipF, knee(hipF, footF, liftF), footF, scale, far: true);
-    _walkLeg(c, hipN, knee(hipN, footN, liftN), footN, scale);
     if (!_wings) _arm(c, shF, handF, scale, far: true);
 
     // 몸과 머리 (얼굴은 가는 쪽으로, 꼬리는 등 뒤로)
     c.save();
     c.translate(origin.dx, origin.dy);
     c.scale(scale);
-    body.paint(c, AnimalPainter.design);
+    walker.paint(c, AnimalPainter.design);
     c.restore();
 
-    // 앞쪽 다리·팔. 몸 앞을 지나는 팔 아래에만 아주 연한 그늘 (몸 위에만)
+    // 가까운 쪽 다리는 몸과 같은 색으로 몸 아래에서 나온다 (윗부분은 몸과 한 면)
+    _walkLeg(c, hipN, knee(hipN, footN, liftN), footN, scale);
     if (!_wings) {
+      // 몸 앞을 지나는 팔 아래에만 아주 연한 그늘 (몸 위에만)
       c.save();
       c.clipPath(_torsoFrom(origin, scale));
       final drop = Offset(0, 3 * scale);
@@ -273,8 +294,27 @@ class RiderPose {
         AnimalPainter.softShadow,
       );
       c.restore();
+      _arm(c, shN, handN, scale);
     }
-    if (!_wings) _arm(c, shN, handN, scale);
+  }
+
+  /// 바지가 있는 옷이면 다리도 옷 색 (치마·외투·저지는 맨다리)
+  Color? get _pants {
+    final o = items[ItemSlot.outfit];
+    if (o == null) return null;
+    return const {
+          'robot',
+          'firesuit',
+          'police',
+          'camo',
+          'spacesuit',
+          'overalls',
+          'conductor',
+          'dinosuit',
+          'pirate',
+        }.contains(o.style)
+        ? o.colors.first
+        : null;
   }
 
   /// 걷는 다리 하나. 새(닭·프테라노돈)는 가는 다리와 세 발가락.
@@ -286,21 +326,23 @@ class RiderPose {
     double scale, {
     bool far = false,
   }) {
-    if (!_wings) return _leg(c, hip, knee, foot, scale, far: far);
+    if (!_wings) {
+      return _leg(c, hip, knee, foot, scale, far: far, limb: _pants);
+    }
     final base = zodiac == Zodiac.pteranodon
-        ? AnimalPainter.tone(zodiac.look.fur, .1)
-        : const Color(0xFFFFC94D);
+        ? AnimalPainter.tone(zodiac.look.fur, .12)
+        : const Color(0xFFFFB938);
     final col = far ? _dim(base) : base;
-    final toe = foot + Offset(0, 9 * scale);
-    _limb(c, [hip, knee, toe], 5 * scale, col);
-    for (final d in const [Offset(9, 1), Offset(5, 3), Offset(-4, 1)]) {
-      c.drawLine(toe, toe + d * scale, AnimalPainter.stroke(4 * scale, col));
+    final toe = foot + Offset(0, 8 * scale);
+    _limb(c, [hip, knee, toe], 7 * scale, col);
+    for (final d in const [Offset(12, 1), Offset(7, 3), Offset(-6, 1)]) {
+      c.drawLine(toe, toe + d * scale, AnimalPainter.stroke(5 * scale, col));
     }
   }
 
-  /// 몸통 모양을 [origin](캐릭터 좌표 0,0이 놓이는 곳)과 [scale]로 옮긴 것
+  /// 옆모습 몸통 모양을 [origin](캐릭터 좌표 0,0이 놓이는 곳)과 [scale]로 옮긴 것
   static Path _torsoFrom(Offset origin, double scale) =>
-      AnimalPainter.torsoPath.transform(
+      AnimalPainter.sideTorsoPath.transform(
         Float64List.fromList([
           scale, 0, 0, 0, //
           0, scale, 0, 0,
@@ -346,9 +388,10 @@ class RiderPose {
     Offset foot,
     double scale, {
     bool far = false,
+    Color? limb,
   }) {
-    final skin = far ? _dim(_skin) : _skin;
-    _limb(c, [hip, knee, foot], legWidth * scale, skin);
+    final base = limb ?? _skin;
+    _limb(c, [hip, knee, foot], legWidth * scale, far ? _dim(base) : base);
     // 발: 앞을 향한 둥근 발 (신발을 신었으면 신발 색)
     final shoe = _shoe;
     final footColor = shoe ?? _tip;

@@ -92,6 +92,45 @@ void main() {
     );
   });
 
+  // 실제 골인 길 크기 (높이 약 48px): 걷는 게 작은 크기에서도 보이는지
+  testWidgets('walk small', (t) async {
+    t.view.physicalSize = const Size(840, 336);
+    t.view.devicePixelRatio = 1;
+    await t.pumpWidget(
+      _sheet(
+        Wrap(
+          children: [
+            for (final z in Zodiac.values)
+              Container(
+                width: 210,
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    for (final f in _frames)
+                      SizedBox(
+                        width: 50,
+                        height: 48,
+                        child: CustomPaint(
+                          painter: WalkPainter(
+                            zodiac: z,
+                            items: const {},
+                            step: f,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+    await expectLater(
+      find.byType(RepaintBoundary).first,
+      matchesGoldenFile('shots/walk_small.png'),
+    );
+  });
+
   testWidgets('walk outfits', (t) async {
     t.view.physicalSize = const Size(1200, 480);
     t.view.devicePixelRatio = 1;
