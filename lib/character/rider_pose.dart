@@ -185,6 +185,130 @@ class RiderPose {
     if (!_wings) _arm(c, g.shoulderN, g.handN, scale);
   }
 
+  // ================= 걷는 옆모습 (탈것 없이) =================
+
+  /// 캐릭터 좌표에서 발바닥이 닿는 땅 (가운데)
+  static const Offset ground = Offset(100, 232);
+
+  /// 걸을 때 발이 앞뒤로 나가는 거리 (캐릭터 좌표)
+  static const double strideReach = 16;
+
+  /// 한 걸음 주기 [step](0~1)에서 몸이 위아래로 출렁이는 양 (캐릭터 좌표, 위가 -)
+  static double walkBob(double step) => -2.2 * cos(step * 2 * pi).abs();
+
+  /// 걸음 주기에서 앞쪽 발의 앞뒤 위치 (-1 뒤 ~ 1 앞). 뒤쪽 발은 반대.
+  static double nearFootSwing(double step) => sin(step * 2 * pi);
+
+  /// 걷는 친구를 옆모습으로 그린다 (가는 쪽 = 오른쪽).
+  /// [groundAt] 발바닥 가운데가 닿는 곳, [scale] 캐릭터 크기 배율, [step] 걸음 주기(0~1, 0.5에 반대 발).
+  /// [still]이면 걷기 동작 없이 선 자세 옆모습만 (움직임 줄이기).
+  /// 뱀은 다리 대신 몸을 꿈틀거리고, 닭·프테라노돈은 가는 새 다리로 걷는다(날개는 접은 채).
+  void paintWalk(
+    Canvas c, {
+    required Offset groundAt,
+    required double scale,
+    required double step,
+    bool still = false,
+  }) {
+    final a = still ? 0.0 : step * 2 * pi;
+    final sw = sin(a), co = cos(a);
+    final bob = still ? 0.0 : walkBob(step);
+    final origin = groundAt - ground * scale + Offset(0, bob * scale);
+    Offset up(Offset p) => origin + p * scale; // 몸에 붙은 점 (출렁임 따라감)
+    Offset low(Offset p) => groundAt + (p - ground) * scale; // 땅에 닿는 점
+
+    if (_noLimbs) {
+      // 뱀: 몸을 S자로 꿈틀거리며 미끄러진다
+      c.save();
+      c.translate(groundAt.dx + sin(a * 2) * 1.5 * scale, groundAt.dy);
+      c.rotate(still ? 0 : sin(a) * .05);
+      c.translate(-ground.dx * scale, -ground.dy * scale);
+      c.scale(scale);
+      body.paint(c, AnimalPainter.design);
+      c.restore();
+      return;
+    }
+
+    // 다리: 앞쪽 발은 sin, 뒤쪽 발은 반대. 앞으로 내딛는 동안만 발을 든다.
+    final reach = still ? 0.0 : strideReach;
+    const hipN0 = Offset(106, 214), hipF0 = Offset(94, 213);
+    final liftN = still ? 0.0 : 6 * max<double>(0, co);
+    final liftF = still ? 0.0 : 6 * max<double>(0, -co);
+    final hipN = up(hipN0), hipF = up(hipF0);
+    final footN = low(Offset(hipN0.dx + reach * sw, 222 - liftN));
+    final footF = low(Offset(hipF0.dx - reach * sw, 222 - liftF));
+    // 무릎은 둥글게: 엉덩이와 발 사이에서 앞으로 살짝 (든 발일수록 더)
+    Offset knee(Offset hip, Offset foot, double lift) =>
+        Offset.lerp(hip, foot, .5)! +
+        Offset((2.5 + lift * .6) * scale, -lift * .25 * scale);
+
+    // 팔: 다리와 반대로 살짝 흔든다 (어깨에서 끊김 없이 휜 곡선)
+    final swing = still ? 0.0 : 7 * sw;
+    final shN = up(const Offset(110, 162)), shF = up(const Offset(96, 160));
+    final handN = up(Offset(114 - swing, 188)),
+        handF = up(Offset(98 + swing, 186));
+
+    // 다리는 둘 다 둥근 몸 아래에서 나온다 (몸 뒤에 그려서 발만 번갈아 보인다).
+    // 뒤쪽 다리·팔은 조금 어둡게.
+    _walkLeg(c, hipF, knee(hipF, footF, liftF), footF, scale, far: true);
+    _walkLeg(c, hipN, knee(hipN, footN, liftN), footN, scale);
+    if (!_wings) _arm(c, shF, handF, scale, far: true);
+
+    // 몸과 머리 (얼굴은 가는 쪽으로, 꼬리는 등 뒤로)
+    c.save();
+    c.translate(origin.dx, origin.dy);
+    c.scale(scale);
+    body.paint(c, AnimalPainter.design);
+    c.restore();
+
+    // 앞쪽 다리·팔. 몸 앞을 지나는 팔 아래에만 아주 연한 그늘 (몸 위에만)
+    if (!_wings) {
+      c.save();
+      c.clipPath(_torsoFrom(origin, scale));
+      final drop = Offset(0, 3 * scale);
+      _limb(
+        c,
+        [Offset.lerp(shN, handN, .4)! + drop, handN + drop],
+        armWidth * scale,
+        AnimalPainter.softShadow,
+      );
+      c.restore();
+    }
+    if (!_wings) _arm(c, shN, handN, scale);
+  }
+
+  /// 걷는 다리 하나. 새(닭·프테라노돈)는 가는 다리와 세 발가락.
+  void _walkLeg(
+    Canvas c,
+    Offset hip,
+    Offset knee,
+    Offset foot,
+    double scale, {
+    bool far = false,
+  }) {
+    if (!_wings) return _leg(c, hip, knee, foot, scale, far: far);
+    final base = zodiac == Zodiac.pteranodon
+        ? AnimalPainter.tone(zodiac.look.fur, .1)
+        : const Color(0xFFFFC94D);
+    final col = far ? _dim(base) : base;
+    final toe = foot + Offset(0, 9 * scale);
+    _limb(c, [hip, knee, toe], 5 * scale, col);
+    for (final d in const [Offset(9, 1), Offset(5, 3), Offset(-4, 1)]) {
+      c.drawLine(toe, toe + d * scale, AnimalPainter.stroke(4 * scale, col));
+    }
+  }
+
+  /// 몸통 모양을 [origin](캐릭터 좌표 0,0이 놓이는 곳)과 [scale]로 옮긴 것
+  static Path _torsoFrom(Offset origin, double scale) =>
+      AnimalPainter.torsoPath.transform(
+        Float64List.fromList([
+          scale, 0, 0, 0, //
+          0, scale, 0, 0,
+          0, 0, 1, 0,
+          origin.dx, origin.dy, 0, 1,
+        ]),
+      );
+
   /// 허벅지는 앞으로 거의 수평, 정강이는 발 쪽으로. 짧은 다리라 무릎이 너무 멀리 가지 않게 한다.
   static (Offset, Offset) legPoints(Offset hip, Offset? foot, double scale) {
     if (foot == null) {

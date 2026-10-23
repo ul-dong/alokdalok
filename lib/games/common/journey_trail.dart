@@ -3,7 +3,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../character/character_view.dart';
+import '../../character/walk_view.dart';
+import '../../core/slow_clock.dart';
 import '../../core/palette.dart';
+import '../../data/item_catalog.dart';
 import '../../vehicle/ride_view.dart';
 import '../../widgets/common.dart';
 
@@ -64,31 +67,37 @@ class JourneyTrail extends StatelessWidget {
                   child: const StarIcon(size: 28),
                 ),
               ),
-            // 내 친구
-            TweenAnimationBuilder<double>(
-              tween: Tween(end: done.toDouble()),
-              duration: const Duration(milliseconds: 1100),
-              curve: Curves.easeInOut,
-              builder: (context, t, _) {
-                final moving = (t - done).abs() > .01;
-                final x = startX + (goalX - startX) * (t / max(1, total));
-                // 걸을 때는 통통 튄다
-                final step = moving && !riding
-                    ? -sin(t * pi * 6).abs() * h * .06
-                    : 0.0;
-                return Positioned(
-                  left: min(x, goalX) - riderW / 2,
-                  bottom: h * .02 - step,
-                  child: riding
-                      ? RideView(width: riderW, cheer: cheer, moving: moving)
-                      : CharacterView(
-                          equipped: state.equipped,
-                          cheer: cheer,
-                          size: riderH / 1.2,
-                        ),
-                );
-              },
-            ),
+            // 내 친구: 탈것을 타면 타고 가고, 아니면 옆을 보고 걸어간다
+            if (riding)
+              TweenAnimationBuilder<double>(
+                tween: Tween(end: done.toDouble()),
+                duration: const Duration(milliseconds: 1100),
+                curve: Curves.easeInOut,
+                builder: (context, t, _) {
+                  final moving = (t - done).abs() > .01;
+                  final x = startX + (goalX - startX) * (t / max(1, total));
+                  return Positioned(
+                    left: min(x, goalX) - riderW / 2,
+                    bottom: h * .02,
+                    child: RideView(
+                      width: riderW,
+                      cheer: cheer,
+                      moving: moving,
+                    ),
+                  );
+                },
+              )
+            else
+              JourneyWalker(
+                done: done,
+                total: total,
+                startX: startX,
+                goalX: goalX,
+                size: riderH / 1.2,
+                bottom: h * .02,
+                cheer: cheer,
+                equipped: state.equipped,
+              ),
             // 말풍선
             if (bubble != null)
               Positioned(
@@ -109,6 +118,125 @@ class JourneyTrail extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// 걸어가는 내 친구. 정답을 맞혀 [done]이 늘면 다음 깃발까지 옆을 보고 걸어가고,
+/// 도착하면 다시 정면을 본다. 움직임은 공용 20fps 시계([SlowClock])로, 걷는 동안에만 시계를 듣는다.
+class JourneyWalker extends StatefulWidget {
+  const JourneyWalker({
+    super.key,
+    required this.done,
+    required this.total,
+    required this.startX,
+    required this.goalX,
+    required this.size,
+    required this.bottom,
+    required this.equipped,
+    this.cheer = 0,
+  });
+
+  final int done;
+  final int total;
+  final double startX;
+  final double goalX;
+  final double size;
+  final double bottom;
+  final Map<ItemSlot, String> equipped;
+  final int cheer;
+
+  /// 깃발 하나를 걸어가는 시간 (초)
+  static const double duration = 1.1;
+
+  /// 깃발 하나를 걸어가는 걸음 수 (한 걸음 약 0.37초)
+  static const int steps = 3;
+
+  @override
+  State<JourneyWalker> createState() => JourneyWalkerState();
+}
+
+class JourneyWalkerState extends State<JourneyWalker> {
+  late double _pos = widget.done.toDouble();
+  double _from = 0;
+  int _ticks = 0;
+  bool _listening = false;
+
+  /// 지금 걸어가는 중인지
+  bool get walking => _listening;
+
+  /// 걸음 주기 (0~1, 0.5마다 앞뒤 발이 바뀐다). 걸어간 거리에 맞춰서 발이 미끄러지지 않게.
+  double get step {
+    final span = (widget.done - _from).abs();
+    if (span == 0) return 0;
+    final f = ((_pos - _from).abs() / span).clamp(0.0, 1.0);
+    return (f * JourneyWalker.steps / 2) % 1.0;
+  }
+
+  @override
+  void didUpdateWidget(JourneyWalker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.done == oldWidget.done) return;
+    if (widget.done < oldWidget.done) {
+      // 처음부터 다시: 걷지 않고 바로 그 자리로
+      _stop();
+      _pos = widget.done.toDouble();
+      return;
+    }
+    _from = _pos;
+    _ticks = 0;
+    if (!_listening) {
+      SlowClock.instance.addListener(_tick);
+      _listening = true;
+    }
+  }
+
+  void _stop() {
+    if (!_listening) return;
+    SlowClock.instance.removeListener(_tick);
+    _listening = false;
+  }
+
+  void _tick() {
+    if (!mounted) return;
+    _ticks++;
+    final t =
+        (_ticks *
+                SlowClock.interval.inMilliseconds /
+                1000 /
+                JourneyWalker.duration)
+            .clamp(0.0, 1.0);
+    setState(() {
+      _pos = _from + (widget.done - _from) * Curves.easeInOut.transform(t);
+      if (t >= 1) {
+        _pos = widget.done.toDouble();
+        _stop();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = widget;
+    final x = w.startX + (w.goalX - w.startX) * (_pos / max(1, w.total));
+    final calm = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    return Positioned(
+      left: min(x, w.goalX) - w.size / 2,
+      bottom: w.bottom,
+      child: walking
+          ? WalkView(
+              equipped: w.equipped,
+              step: step,
+              size: w.size,
+              still: calm,
+            )
+          : CharacterView(equipped: w.equipped, cheer: w.cheer, size: w.size),
     );
   }
 }
