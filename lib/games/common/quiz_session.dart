@@ -54,6 +54,8 @@ mixin QuizSession<T extends StatefulWidget> on State<T> {
 
   /// initState에서 부른다: 계절 음악을 켜고 첫 문제를 읽는다.
   void startQuiz() {
+    // 홈의 "또 하기" 자리에 띄울 마지막 놀이·단계
+    state.rememberPlay(kind, stageId);
     _musicId = _quizAudio.playMusic(season.track);
     WidgetsBinding.instance.addPostFrameCallback((_) => ask());
   }

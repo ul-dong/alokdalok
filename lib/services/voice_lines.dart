@@ -157,9 +157,12 @@ class VoiceLines {
       out.add(z.hello);
     }
 
-    // 놀이터 기구·이름표: "숫자 놀이!", "짝 맞추기!"
+    // 놀이터 그림·이름표: "숫자 놀이!", "짝 맞추기!"
+    // 길게 누르면(놀이터·홈 또 하기): "숫자 놀이야!", "짝 맞추기야!"
     for (final g in GameKind.values) {
-      out.add(g.invite);
+      out
+        ..add(g.invite)
+        ..add(g.nameLine);
     }
 
     // 이름을 비워 두면 지어 주는 이름 ("별이, 반가워!")

@@ -9,9 +9,10 @@ import 'playground_art.dart';
 import 'stage_picker.dart';
 import '../widgets/poke_character.dart';
 
-/// 놀이터: 목록 대신 놀이터 그림에서 기구를 눌러 놀이를 고른다.
-/// 미끄럼틀=숫자, 그네=색깔, 모래놀이터=모양, 시소=크기, 회전목마=짝 맞추기.
-/// 기구마다 그림 이름표와 깬 단계만큼 별이 있고, 내 캐릭터도 놀이터에 서 있다.
+/// 놀이터: 목록 대신 놀이터 그림에서 놀이 내용물 그림을 눌러 놀이를 고른다.
+/// 1·2·3 계단 미끄럼틀=숫자, 풍선 다발=색깔, 도형 블록=모양, 큰 공·작은 공=크기,
+/// 양말 한 켤레=짝 맞추기. 그림마다 그림 이름표와 깬 단계만큼 별이 있고, 내 캐릭터도 서 있다.
+/// 짧게 누르면 들어가고, 길게([LongPress.sayName]) 누르면 "숫자 놀이야!"처럼 이름만 말한다.
 class PlaygroundScreen extends StatefulWidget {
   const PlaygroundScreen({super.key});
 
@@ -50,6 +51,9 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> with ScreenMusic {
     state.audio.say(kind.invite);
     Navigator.of(context).push(softRoute(StagePicker(game: kind)));
   }
+
+  void _sayName(GameKind kind) =>
+      AppScope.read(context).audio.say(kind.nameLine);
 
   @override
   Widget build(BuildContext context) {
@@ -124,6 +128,7 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> with ScreenMusic {
                             kind: kind,
                             stars: state.clearedStages(kind).length,
                             onTap: () => _open(kind),
+                            onLongPress: () => _sayName(kind),
                           ),
                         ),
                       ),
@@ -138,28 +143,33 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> with ScreenMusic {
   }
 }
 
-/// 놀이 기구 하나: 위에 깬 단계만큼 별, 가운데 기구 그림, 아래 그림 이름표
+/// 놀이 하나: 위에 깬 단계만큼 별, 가운데 놀이 내용물 그림, 아래 그림 이름표
 class PlaygroundRide extends StatelessWidget {
   const PlaygroundRide({
     super.key,
     required this.kind,
     required this.stars,
     required this.onTap,
+    this.onLongPress,
   });
 
   final GameKind kind;
   final int stars;
   final VoidCallback onTap;
 
+  /// 길게 누르기: 놀이 이름 듣기
+  final VoidCallback? onLongPress;
+
   static const _starRow = 24.0;
 
   @override
   Widget build(BuildContext context) => Pressable(
     onTap: onTap,
+    onLongPress: onLongPress,
     semanticLabel: kind.title,
     child: LayoutBuilder(
       builder: (context, c) {
-        // 기구는 정사각형 칸에 그리고, 별은 기구 바로 위에 단다
+        // 그림은 정사각형 칸에 그리고, 별은 그림 바로 위에 단다
         // 이름표는 넓은 화면에서 조금 더 크게
         final tagH = (c.maxWidth * .26).clamp(44.0, 56.0).toDouble();
         final room = c.maxHeight - _starRow - tagH - 4;
@@ -187,7 +197,7 @@ class PlaygroundRide extends StatelessWidget {
             SizedBox(
               width: c.maxWidth,
               height: art,
-              child: CustomPaint(painter: EquipmentPainter(kind)),
+              child: CustomPaint(painter: PlayItemPainter(kind)),
             ),
             const SizedBox(height: 4),
             RideNameTag(kind: kind, height: tagH),

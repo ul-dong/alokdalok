@@ -311,8 +311,8 @@ void main() {
   });
 
   group('저장 버전 6', () {
-    test('버전 번호는 6이고, 단계 목록 길이와 같다', () {
-      expect(SaveData.currentVersion, 6);
+    test('버전 번호는 7이고(v7: 또 하기), 단계 목록 길이와 같다', () {
+      expect(SaveData.currentVersion, 7);
       expect(SaveData.steps.length, SaveData.currentVersion);
     });
 
@@ -335,7 +335,7 @@ void main() {
       expect(d.eyeDistanceCm, 30);
       expect(d.playDay, isNull);
       expect(d.playSeconds, 0);
-      expect(jsonDecode(d.encode())['version'], 6);
+      expect(jsonDecode(d.encode())['version'], SaveData.currentVersion);
     });
 
     test('버전 6에서 부모님이 끈 설정은 그대로 둔다', () {

@@ -5,6 +5,7 @@ import 'package:alokdalok/games/color_game/color_game_screen.dart';
 import 'package:alokdalok/games/number_game/number_game_screen.dart';
 import 'package:alokdalok/screens/bag_screen.dart';
 import 'package:alokdalok/screens/nickname_screen.dart';
+import 'package:alokdalok/screens/playground_art.dart';
 import 'package:alokdalok/screens/playground_screen.dart';
 import 'package:alokdalok/screens/settings_screen.dart';
 import 'package:alokdalok/screens/zodiac_picker_screen.dart';
@@ -50,8 +51,41 @@ Future<GameState> st() async {
 }
 
 void main() {
+  // 놀이터 놀이 그림 5개를 크게 모아 본다
+  testWidgets('playground items', (t) async {
+    t.view.physicalSize = const Size(1300, 300);
+    t.view.devicePixelRatio = 1;
+    await t.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: buildAppTheme(),
+        home: ColoredBox(
+          color: const Color(0xFFE6F4FC),
+          child: Row(
+            children: [
+              for (final k in GameKind.values)
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: SizedBox.square(
+                    dimension: 240,
+                    child: CustomPaint(painter: PlayItemPainter(k)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await t.pump();
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('shots/playground_items.png'),
+    );
+  });
+
   final pages = <String, Widget Function()>{
     'home': () => const SizedBox(),
+    'home_replay': () => const SizedBox(), // 또 하기 자리 (마지막 놀이: 숫자 4단계)
     'stages': () => const StagePicker(game: GameKind.number),
     'stages_shape': () => const StagePicker(game: GameKind.shape),
     'stages_match': () => const StagePicker(game: GameKind.match),
@@ -73,8 +107,9 @@ void main() {
         t.view.physicalSize = size;
         t.view.devicePixelRatio = 1;
         final s = await st();
+        if (e.key == 'home_replay') await s.rememberPlay(GameKind.number, 4);
         await t.pumpWidget(
-          e.key == 'home'
+          e.key.startsWith('home')
               ? AlokdalokApp(state: s)
               : AppScope(
                   state: s,

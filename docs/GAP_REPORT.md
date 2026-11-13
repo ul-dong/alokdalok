@@ -13,6 +13,7 @@
 | `flutter analyze` | 한글 경로에서 분석 서버 크래시(JSON FormatException). ASCII 경로 복사본에서 **No issues found** |
 | 통합 마무리 (2026-10-22) | `flutter test` **323개 전부 통과**, `flutter analyze` **0건** (이 경로는 ASCII라 바로 실행), `flutter test test_preview --update-goldens` **131개 통과** (568×320·844×390·1280×800 주요 화면 그림 확인). 빌드 3종은 11장 참고 |
 | 짝 맞추기 짧게 (2026-10-22, match5) | `flutter test` **440개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **197개 통과** (game_match_1~5 × 568·844·1280, 결과 화면 5문제·3장) |
+| 홈·놀이터 진입 개선 (2026-11-13, home3) | `flutter test` **513개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **218개 통과** (홈 기록 있음·없음, 놀이터 568·844·1280, `playground_items.png`), 터치 칸 감사 통과. 문장 목록 1044 = manifest 1044 = mp3 1044 |
 | 점검 수정 (2026-10-22, release2) | `flutter test` **395개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **187개 통과**. 문장 목록 577 = manifest 577 = mp3 577 (14장) |
 | 기준선 `flutter test` (test/) | **120개 전부 통과** (소스상 `test`/`testWidgets` 72곳: state 33·widget 19·logic 14·eye_guard 6, 화면 크기 반복 포함 실행 120건). 사양 목표 142 |
 | 기준선 `flutter test test_preview` | 그대로 돌리면 9 통과 / 32 실패 (골든 비교: `shots/` 없음 + 저장된 PNG 픽셀 차이). 미리보기 생성기이므로 `--update-goldens`로 돌리면 **41개 전부 통과** |
@@ -22,9 +23,10 @@
 | 사양 | 상태 | 현재 코드 / 메모 |
 |---|---|---|
 | 첫 실행: 친구 고르기 → 이름 짓기 → 이후 홈 | 있음 | `lib/app.dart` RootGate, `screens/zodiac_picker_screen.dart`, `screens/nickname_screen.dart` |
-| 홈: 큰 버튼 3개(놀이터 가기·내 캐릭터·꾸미기 상점)만 | 있음 (트랙 A) | `screens/home_screen.dart`. 누르면 이름을 말함. 내 가방(`bag_screen.dart`)은 홈에서 빠짐(내 캐릭터 화면이 같은 일을 함), 탈것 꾸미기는 내 캐릭터 → 탈것 탭에서 |
+| 홈: 맨 위 큰 자리 "또 하기"(마지막 놀이·단계, 기록이 없으면 놀이터 가기), 아래 줄 놀이터 가기·내 캐릭터·꾸미기 상점 | 있음 (2026-11-13) | `screens/home_screen.dart`. 또 하기는 내 캐릭터 + 놀이 내용물 그림(`PlayItemPainter`), 누르면 말 없이 `gameScreen(kind, replayStage)`로 바로(잠겨 있으면 열린 단계 중 가장 높은 단계), 길게 누르면 "숫자 놀이야!". 마지막 놀이는 놀이 화면이 열릴 때 `GameState.rememberPlay`로 저장(`SaveData.lastGame/lastStage`, 저장 버전 7). 나머지 버튼은 누르면 이름을 말함. 내 가방(`bag_screen.dart`)은 홈에서 빠짐(내 캐릭터 화면이 같은 일을 함), 탈것 꾸미기는 내 캐릭터 → 탈것 탭에서 |
 | 홈 구석 작은 톱니바퀴 → 부모 확인 → 설정 | 있음 | 톱니바퀴(60px) → `confirmParent(context)`(트랙 C `widgets/parental_gate.dart`) 통과하면 설정 (`HomeScreen._openSettings`) |
-| 놀이터 화면 (기구 그림 5개, 이름표, 깬 단계만큼 별, 내 캐릭터 서 있음) | 있음 (트랙 A) | `screens/playground_screen.dart` + `playground_art.dart`(CustomPainter). 기구를 누르면 "미끄럼틀! 숫자 놀이를 해 볼까요?" → 단계 고르기 → 놀이 |
+| 놀이터 화면 (놀이 내용물 그림 5개, 이름표, 깬 단계만큼 별, 내 캐릭터 서 있음) | 있음 (2026-11-13 그림 바꿈) | `screens/playground_screen.dart` + `playground_art.dart` `PlayItemPainter`(1·2·3 계단 미끄럼틀, 풍선 다발, 도형 블록, 큰 공·작은 공, 양말 한 켤레). 짧게 누르면 "숫자 놀이!" → 단계 고르기 → 놀이 |
+| 길게 누르기(400ms) = 놀이 이름 듣기 | 있음 (2026-11-13) | `widgets/common.dart` `LongPress.sayName`(400ms 상수), `Pressable.onLongPress`. 놀이터 그림·홈 또 하기. 음성 5개 "숫자 놀이야!", "색깔 놀이야!", "모양 놀이야!", "크기 놀이야!", "짝 맞추기야!"(`GameKind.nameLine`) |
 | 단계 고르기: 카드에 문제 그림 + 계절 아이콘, 아래 골인 길 | 있음 | `screens/stage_picker.dart`: `PagedGrid`(화살표 쪽 넘기기), 잠긴 카드 흔들림(`ShakeOnChange`) + 음성. 카드 그림은 `StageArtBox`가 카드 크기에 맞춰 줄이고 키운다(1280 화면에서도 크게), 계절 아이콘은 카드 머리줄 오른쪽. 그림·놀이 연결은 `games/game_entry.dart`(`stageArt`, `openGame`) |
 | 놀이 화면: 위 멈춤·발자국·코인 / 가운데 문제 카드 / 아래 길·말풍선 | 있음 | `games/common/game_frame.dart` |
 | 내 캐릭터: 옷 입기, 탈것 타기, 친구 바꾸기 | 있음 | `screens/character_screen.dart`. 옷 칸도 `PagedGrid`(밀기 없음). `screens/bag_screen.dart`는 홈에서 빠져 들어갈 길이 없음 — 지울지는 사용자 결정(13장) |
@@ -36,14 +38,14 @@
 
 | 놀이 | 상태 | 현재 코드 / 메모 |
 |---|---|---|
-| 숫자 놀이 (미끄럼틀), 8단계 | 있음 | `games/number_game/`, `data/stages.dart` `Stages.number` 8단계, 4단계부터 섞인 물건 중 한 가지만 세기 (`NumberMode`) |
+| 숫자 놀이 (1·2·3 미끄럼틀), 8단계 | 있음 | `games/number_game/`, `data/stages.dart` `Stages.number` 8단계, 4단계부터 섞인 물건 중 한 가지만 세기 (`NumberMode`) |
 | └ 보기에는 숫자만 크게 (2026-10-22 주사위 발자국 제거) | 있음 | `number_game_screen.dart` `_ChoiceFace` (숫자 색은 `games/common/number_colors.dart`) |
 | └ 정답·오답 모두 "하나, 둘…" 세기 + 도장 "쾅" + 보기 자리에 큰 숫자, 물건 가리지 않음 | 있음 | `_startCountingHint`, `games/common/stamp.dart`, `Sfx.stamp` |
 | └ 원색, 단계마다 다양, 많으면 줄 맞춤 | 있음 | `objectRows()` 줄 맞춤, 단계별 색 목록 |
-| 색깔 놀이 (그네), 5단계 | 있음 | `games/color_game/`, `Stages.color` 5단계 (`swatchFromStart`, `mixedShapes`) |
-| 모양 놀이 (모래놀이터) | 있음 (트랙 B) | `games/shape_game/` (`shape_round.dart` 순수 로직, `shape_art.dart` 그림), `Stages.shape` 5단계: 쉬운 세 모양(견본은 한 번 틀리면 회색 힌트) → 여섯 모양 → 같은 색 → 회전 → 견본과 같은 모양 |
-| 크기 놀이 (시소) | 있음 (트랙 B) | `games/size_game/`, `Stages.size` 5단계: 보기 2→2→3→3→4, 3개 이상은 "가장 큰/작은", 이웃 크기 비율 2.2→1.2로 감소 |
-| 짝 맞추기 (회전목마) | 있음 (트랙 B) | `games/match_game/`, `Stages.match` 2→2→3→3→4쌍(최대 4쌍), 카드 모두 보임, 5단계는 같은 물건 다른 색(색을 바꿀 수 있는 물건만). 한 문제 = 카드 한 판, 한 판 3장(2026-10-22 사용자 결정) |
+| 색깔 놀이 (풍선 다발), 5단계 | 있음 | `games/color_game/`, `Stages.color` 5단계 (`swatchFromStart`, `mixedShapes`) |
+| 모양 놀이 (도형 블록) | 있음 (트랙 B) | `games/shape_game/` (`shape_round.dart` 순수 로직, `shape_art.dart` 그림), `Stages.shape` 5단계: 쉬운 세 모양(견본은 한 번 틀리면 회색 힌트) → 여섯 모양 → 같은 색 → 회전 → 견본과 같은 모양 |
+| 크기 놀이 (큰 공·작은 공) | 있음 (트랙 B) | `games/size_game/`, `Stages.size` 5단계: 보기 2→2→3→3→4, 3개 이상은 "가장 큰/작은", 이웃 크기 비율 2.2→1.2로 감소 |
+| 짝 맞추기 (양말 한 켤레) | 있음 (트랙 B) | `games/match_game/`, `Stages.match` 2→2→3→3→4쌍(최대 4쌍), 카드 모두 보임, 5단계는 같은 물건 다른 색(색을 바꿀 수 있는 물건만). 한 문제 = 카드 한 판, 한 판 3장(2026-10-22 사용자 결정) |
 | 공통 흐름: 정답→효과음·칭찬·코인→다음, 결과(별·코인, 또 하기/다음 단계/집으로) | 있음 | `game_frame.dart` 결과 화면 |
 | 단계마다 계절 배경·음악 | 있음 | `scene_game.dart` `seasonForStage`, 계절 음악 4곡 |
 | 1번 틀림 그림 힌트, 2번 틀림 정답 빛남, 틀린 보기 흐려짐 | 있음 | 숫자(`wrongPicks`, `glow`, opacity .35), 색깔(`faded`, `glow`) |
@@ -119,7 +121,7 @@
 
 | 사양 | 상태 | 메모 |
 |---|---|---|
-| 기기 안에만 저장, 버전 번호 + 마이그레이션 | 있음 | `services/save_data.dart` **v6**. `migrate()` = 버전 단계 목록 `SaveData.steps`(n→n+1) + 매번 도는 멱등 정리 단계 `SaveData.repairs`(트랙 D 탈것 정리 자리). `services/storage_service.dart` (직전 값 백업 키) |
+| 기기 안에만 저장, 버전 번호 + 마이그레이션 | 있음 | `services/save_data.dart` **v7** (v6→v7: 홈 또 하기용 `lastGame`·`lastStage`, 예전 저장값은 기록 없음). `migrate()` = 버전 단계 목록 `SaveData.steps`(n→n+1) + 매번 도는 멱등 정리 단계 `SaveData.repairs`(트랙 D 탈것 정리 자리). `services/storage_service.dart` (직전 값 백업 키) |
 | 없어진 탈것 스티커를 새 탈것으로 옮김 | 있음 | v3→v4 색깔별 탈것 통합 + `SaveData.repairs`의 자전거·킥보드 → 기차·열기구 (5장) |
 | 'ALOK1-' 백업 문자열 복사/붙여 넣기 복구 | 있음 | `services/backup_code.dart`: `ALOK1-<base64url JSON>-<FNV-1a 체크섬>`, 버전 검사(새 버전 거절·예전 버전 마이그레이션), 띄어쓰기 무시, 잘못된 글자는 이유와 함께 거절. 카메라 보정·오늘 논 시간은 빼고 백업 |
 

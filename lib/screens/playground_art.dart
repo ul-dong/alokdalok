@@ -6,7 +6,8 @@ import '../core/palette.dart';
 import '../services/game_state.dart';
 
 /// 놀이터 그림 (모두 직접 그린 오리지널 그림).
-/// 기구: 미끄럼틀=숫자, 그네=색깔, 모래놀이터=모양, 시소=크기, 회전목마=짝 맞추기.
+/// 누르는 그림은 놀이 내용물: 1·2·3 계단 미끄럼틀=숫자, 풍선 다발=색깔, 도형 블록=모양,
+/// 큰 공·작은 공=크기, 양말 한 켤레=짝 맞추기.
 
 Paint _fill(Color c) => Paint()..color = c;
 Paint _line(double w, [Color c = Palette.outline]) => Paint()
@@ -304,10 +305,20 @@ class PlaygroundBackgroundPainter extends CustomPainter {
       old.groundLevel != groundLevel;
 }
 
-/// 놀이 기구 하나. 100×100 칸 좌표로 그린 뒤 크기에 맞춘다.
-class EquipmentPainter extends CustomPainter {
-  const EquipmentPainter(this.kind);
+/// 놀이터에서 누르는 놀이 그림: 기구 모양이 아니라 그 놀이의 내용물을 그린다
+/// (글을 못 읽는 아이가 그림만 보고 무슨 놀이인지 알 수 있게).
+/// 숫자 = 계단에 1·2·3이 적힌 미끄럼틀, 색깔 = 색색 풍선 다발, 모양 = 도형 블록,
+/// 크기 = 큰 공과 작은 공, 짝 맞추기 = 짝이 맞는 양말 두 짝.
+/// 100×100 칸 좌표로 그린 뒤 크기에 맞추고, 칸 아래쪽(땅)에 붙인다.
+class PlayItemPainter extends CustomPainter {
+  const PlayItemPainter(this.kind);
   final GameKind kind;
+
+  static const _red = Color(0xFFF26B5E);
+  static const _yellow = Color(0xFFFFCF4D);
+  static const _blue = Color(0xFF6FB7E8);
+  static const _green = Color(0xFF7CCB5B);
+  static const _purple = Color(0xFFB08AE0);
 
   @override
   void paint(Canvas c, Size s) {
@@ -322,266 +333,227 @@ class EquipmentPainter extends CustomPainter {
     );
     switch (kind) {
       case GameKind.number:
-        _slide(c);
+        _numberSlide(c);
       case GameKind.color:
-        _swing(c);
+        _balloons(c);
       case GameKind.shape:
-        _sandbox(c);
+        _blocks(c);
       case GameKind.size:
-        _seesaw(c);
+        _balls(c);
       case GameKind.match:
-        _carousel(c);
+        _socks(c);
     }
     c.restore();
   }
 
   static final _ol = _line(2.6);
 
-  void _slide(Canvas c) {
-    // 사다리
-    final rail = _fill(const Color(0xFFFFCF4D));
-    for (final x in [16.0, 30.0]) {
-      final r = RRect.fromRectAndRadius(
-        Rect.fromLTWH(x, 22, 6, 72),
-        const Radius.circular(3),
-      );
-      c.drawRRect(r, rail);
-      c.drawRRect(r, _ol);
-    }
-    for (var y = 34.0; y < 92; y += 12) {
-      c.drawLine(Offset(21, y), Offset(31, y), _line(3.4));
-    }
-    // 꼭대기 발판과 지붕
-    final deck = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(12, 20, 32, 7),
-      const Radius.circular(3),
-    );
-    c.drawRRect(deck, _fill(const Color(0xFF6FB7E8)));
-    c.drawRRect(deck, _ol);
-    final roof = Path()
-      ..moveTo(10, 10)
-      ..lineTo(28, 0)
-      ..lineTo(46, 10)
-      ..close();
-    c.drawPath(roof, _fill(const Color(0xFFF26B5E)));
-    c.drawPath(roof, _ol);
-    c.drawLine(const Offset(14, 10), const Offset(14, 20), _line(3));
-    c.drawLine(const Offset(42, 10), const Offset(42, 20), _line(3));
-    // 미끄럼판
+  /// 흰 글씨 + 갈색 테두리 숫자 (계단 칸에 크게)
+  static void _digit(Canvas c, String d, Offset center, double size) {
+    TextPainter tp(Paint fg) => TextPainter(
+      text: TextSpan(
+        text: d,
+        style: TextStyle(
+          fontFamily: 'Jua',
+          fontSize: size,
+          height: 1,
+          foreground: fg,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final stroke = tp(_line(size * .2));
+    final fill = tp(_fill(Colors.white));
+    final at = center - Offset(fill.width / 2, fill.height / 2);
+    stroke.paint(c, at);
+    fill.paint(c, at);
+  }
+
+  /// 숫자: 1·2·3이 적힌 계단을 올라가서 내려오는 미끄럼틀
+  void _numberSlide(Canvas c) {
+    // 미끄럼판 (계단 뒤에서 오른쪽 아래로)
     final chute = Path()
-      ..moveTo(40, 20)
-      ..cubicTo(62, 26, 66, 72, 94, 84)
-      ..lineTo(94, 94)
-      ..cubicTo(62, 84, 56, 40, 40, 30)
+      ..moveTo(50, 30)
+      ..cubicTo(70, 34, 76, 80, 97, 84)
+      ..lineTo(97, 93)
+      ..cubicTo(72, 90, 64, 46, 50, 41)
       ..close();
     c.drawPath(chute, _fill(Palette.pink));
     c.drawPath(chute, _ol);
     final shine = Path()
-      ..moveTo(44, 24)
-      ..cubicTo(60, 32, 64, 70, 90, 86);
+      ..moveTo(55, 34)
+      ..cubicTo(70, 40, 76, 78, 93, 85);
     c.drawPath(shine, _line(2.2, Colors.white.withValues(alpha: .8)));
-  }
-
-  void _swing(Canvas c) {
-    final frame = _line(6, const Color(0xFF4F95CF));
-    // 양쪽 A자 다리
-    for (final (top, l, r) in [(14.0, 4.0, 24.0), (86.0, 76.0, 96.0)]) {
-      c.drawLine(Offset(top, 12), Offset(l, 94), frame);
-      c.drawLine(Offset(top, 12), Offset(r, 94), frame);
-    }
-    c.drawLine(const Offset(10, 12), const Offset(90, 12), _line(7));
-    c.drawLine(
-      const Offset(10, 12),
-      const Offset(90, 12),
-      _line(4.5, const Color(0xFF6FB7E8)),
-    );
-    // 그네 두 개 (줄 + 의자)
-    for (final (x, color) in [
-      (36.0, const Color(0xFFF26B5E)),
-      (64.0, const Color(0xFFFFCF4D)),
+    // 계단 세 칸: 낮은 칸부터 1, 2, 3
+    for (final (i, top, color) in [
+      (0, 72.0, _red),
+      (1, 52.0, _yellow),
+      (2, 32.0, _blue),
     ]) {
-      c.drawLine(Offset(x - 7, 13), Offset(x - 7, 70), _line(1.8));
-      c.drawLine(Offset(x + 7, 13), Offset(x + 7, 70), _line(1.8));
-      final seat = RRect.fromRectAndRadius(
-        Rect.fromLTWH(x - 10, 68, 20, 6),
-        const Radius.circular(3),
+      final r = RRect.fromRectAndRadius(
+        Rect.fromLTRB(4 + i * 17.0, top, 22 + i * 17.0, 94),
+        const Radius.circular(4),
       );
-      c.drawRRect(seat, _fill(color));
-      c.drawRRect(seat, _ol);
+      c.drawRRect(r, _fill(color));
+      c.drawRRect(r, _ol);
+      _digit(c, '${i + 1}', Offset(13 + i * 17.0, top + 11), 17);
     }
+    // 꼭대기 둥근 손잡이
+    final rail = Path()
+      ..moveTo(41, 32)
+      ..cubicTo(40, 16, 54, 14, 54, 31);
+    c.drawPath(rail, _line(5.4));
+    c.drawPath(rail, _line(2.6, const Color(0xFFFFCF4D)));
   }
 
-  void _sandbox(Canvas c) {
-    // 나무 테두리 (앞이 넓은 사다리꼴)
-    final outer = Path()
-      ..moveTo(16, 56)
-      ..lineTo(84, 56)
-      ..lineTo(96, 92)
-      ..lineTo(4, 92)
+  /// 색깔: 색색 풍선 다발 (줄이 한 매듭으로 모인다)
+  void _balloons(Canvas c) {
+    const knot = Offset(50, 84);
+    const balloons = [
+      (Offset(28, 30), _red),
+      (Offset(72, 30), _blue),
+      (Offset(50, 20), _yellow),
+      (Offset(36, 52), _green),
+      (Offset(64, 52), _purple),
+    ];
+    for (final (o, _) in balloons) {
+      final bottom = o + const Offset(0, 15);
+      final string = Path()
+        ..moveTo(bottom.dx, bottom.dy)
+        ..quadraticBezierTo(
+          (bottom.dx + knot.dx) / 2 + (bottom.dx < knot.dx ? 4 : -4),
+          (bottom.dy + knot.dy) / 2,
+          knot.dx,
+          knot.dy,
+        );
+      c.drawPath(string, _line(1.4));
+    }
+    for (final (o, color) in balloons) {
+      final body = Rect.fromCenter(center: o, width: 26, height: 30);
+      c.drawOval(body, _fill(color));
+      c.drawOval(body, _ol);
+      final tie = Path()
+        ..moveTo(o.dx, o.dy + 14)
+        ..lineTo(o.dx + 3.5, o.dy + 19)
+        ..lineTo(o.dx - 3.5, o.dy + 19)
+        ..close();
+      c.drawPath(tie, _fill(color));
+      c.drawPath(tie, _line(1.6));
+      c.drawOval(
+        Rect.fromCenter(center: o + const Offset(-5, -6), width: 6, height: 9),
+        _fill(Colors.white.withValues(alpha: .75)),
+      );
+    }
+    // 매듭 리본
+    for (final dx in [-1.0, 1.0]) {
+      final bow = Path()
+        ..moveTo(knot.dx, knot.dy)
+        ..lineTo(knot.dx + 8 * dx, knot.dy - 4)
+        ..lineTo(knot.dx + 8 * dx, knot.dy + 4)
+        ..close();
+      c.drawPath(bow, _fill(Palette.pink));
+      c.drawPath(bow, _line(1.6));
+    }
+    c.drawLine(knot, knot + const Offset(-3, 8), _line(1.4));
+    c.drawLine(knot, knot + const Offset(3, 8), _line(1.4));
+  }
+
+  /// 모양: 네모 위에 세모, 옆에 동그라미와 별 블록
+  void _blocks(Canvas c) {
+    const sq = Rect.fromLTRB(4, 60, 36, 92);
+    c.drawRect(sq, _fill(_blue));
+    c.drawRect(sq, _ol);
+    final tri = Path()
+      ..moveTo(4, 60)
+      ..lineTo(36, 60)
+      ..lineTo(20, 32)
       ..close();
-    c.drawPath(outer, _fill(const Color(0xFFD9A066)));
-    c.drawPath(outer, _ol);
-    final sand = Path()
-      ..moveTo(21, 60)
-      ..lineTo(79, 60)
-      ..lineTo(88, 86)
-      ..lineTo(12, 86)
-      ..close();
-    c.drawPath(sand, _fill(Palette.sand));
-    // 모래성: 네모 + 세모 + 동그라미 깃발
-    final castle = Rect.fromLTWH(30, 52, 22, 22);
-    c.drawRect(castle, _fill(const Color(0xFFF5D58C)));
-    c.drawRect(castle, _ol);
-    final roof = Path()
-      ..moveTo(28, 52)
-      ..lineTo(41, 36)
-      ..lineTo(54, 52)
-      ..close();
-    c.drawPath(roof, _fill(const Color(0xFFF0B85A)));
-    c.drawPath(roof, _ol);
-    c.drawLine(const Offset(41, 36), const Offset(41, 24), _line(2));
-    final flag = Path()
-      ..moveTo(41, 24)
-      ..lineTo(51, 27)
-      ..lineTo(41, 31)
-      ..close();
-    c.drawPath(flag, _fill(const Color(0xFFF26B5E)));
-    c.drawRect(
-      const Rect.fromLTWH(38, 63, 6, 11),
-      _fill(const Color(0xFFC98A1E)),
-    );
-    // 양동이와 삽
-    final bucket = Path()
-      ..moveTo(60, 62)
-      ..lineTo(76, 62)
-      ..lineTo(73, 80)
-      ..lineTo(63, 80)
-      ..close();
-    c.drawPath(bucket, _fill(const Color(0xFF6FB7E8)));
-    c.drawPath(bucket, _ol);
-    c.drawArc(const Rect.fromLTWH(60, 52, 16, 18), pi, pi, false, _line(1.8));
-    c.drawLine(const Offset(20, 82), const Offset(30, 66), _line(2.6));
-    c.drawOval(
-      const Rect.fromLTWH(14, 78, 10, 8),
-      _fill(const Color(0xFF8ED6B5)),
-    );
-    // 별 모양 모래틀
+    c.drawPath(tri, _fill(_red));
+    c.drawPath(tri, _ol);
+    const ring = Offset(55, 78);
+    c.drawCircle(ring, 14, _fill(_yellow));
+    c.drawCircle(ring, 14, _ol);
     final star = Path();
     for (var i = 0; i < 10; i++) {
       final a = -pi / 2 + i * pi / 5;
-      final r = i.isEven ? 6.0 : 3.0;
-      final p = Offset(80 + cos(a) * r, 80 + sin(a) * r);
+      final r = i.isEven ? 15.0 : 7.0;
+      final p = Offset(84 + cos(a) * r, 78 + sin(a) * r);
       i == 0 ? star.moveTo(p.dx, p.dy) : star.lineTo(p.dx, p.dy);
     }
     star.close();
-    c.drawPath(star, _fill(const Color(0xFFFFCF4D)));
-    c.drawPath(star, _line(1.6));
+    c.drawPath(star, _fill(_green));
+    c.drawPath(star, _ol);
   }
 
-  void _seesaw(Canvas c) {
-    // 받침
-    final base = Path()
-      ..moveTo(50, 62)
-      ..lineTo(62, 92)
-      ..lineTo(38, 92)
-      ..close();
-    c.drawPath(base, _fill(const Color(0xFF8ED6B5)));
-    c.drawPath(base, _ol);
-    // 기울어진 판
+  /// 크기: 같은 무늬의 큰 공과 작은 공
+  void _balls(Canvas c) {
+    _ball(c, const Offset(36, 62), 29);
+    _ball(c, const Offset(84, 82), 10);
+  }
+
+  static void _ball(Canvas c, Offset o, double r) {
+    final circle = Rect.fromCircle(center: o, radius: r);
     c.save();
-    c.translate(50, 62);
-    c.rotate(-.2);
-    final plank = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(-46, -4, 92, 8),
-      const Radius.circular(4),
+    c.clipPath(Path()..addOval(circle));
+    c.drawOval(circle, _fill(_red));
+    c.drawOval(
+      Rect.fromCenter(center: o, width: r * 1.15, height: r * 2.2),
+      _fill(_yellow),
     );
-    c.drawRRect(plank, _fill(const Color(0xFFF26B5E)));
-    c.drawRRect(plank, _ol);
-    // 손잡이
-    for (final x in [-34.0, 34.0]) {
-      c.drawLine(Offset(x, -4), Offset(x, -14), _line(3));
-      c.drawLine(Offset(x - 4, -14), Offset(x + 4, -14), _line(3));
-    }
-    // 큰 공 (내려간 쪽) / 작은 공 (올라간 쪽)
-    c.drawCircle(const Offset(-42, -16), 12, _fill(const Color(0xFFFFCF4D)));
-    c.drawCircle(const Offset(-42, -16), 12, _ol);
-    c.drawCircle(const Offset(44, -10), 6, _fill(const Color(0xFF6FB7E8)));
-    c.drawCircle(const Offset(44, -10), 6, _ol);
+    c.drawOval(
+      Rect.fromCenter(center: o, width: r * .45, height: r * 2.2),
+      _fill(_blue),
+    );
     c.restore();
-    c.drawCircle(const Offset(50, 62), 3.2, _fill(Palette.outline));
+    c.drawOval(circle, _line(r > 15 ? 2.6 : 2));
+    c.drawOval(
+      Rect.fromCenter(
+        center: o + Offset(-r * .45, -r * .45),
+        width: r * .32,
+        height: r * .42,
+      ),
+      _fill(Colors.white.withValues(alpha: .8)),
+    );
   }
 
-  void _carousel(Canvas c) {
-    // 기둥
-    c.drawLine(const Offset(50, 20), const Offset(50, 86), _line(4));
-    // 받침 원판
-    c.drawOval(
-      const Rect.fromLTWH(6, 80, 88, 14),
-      _fill(const Color(0xFFC6B5E8)),
-    );
-    c.drawOval(const Rect.fromLTWH(6, 80, 88, 14), _ol);
-    // 말 두 마리 (기둥에 꽂힌 둥근 말)
-    for (final (x, y, body, flip) in [
-      (24.0, 58.0, const Color(0xFFFFFFFF), false),
-      (76.0, 52.0, const Color(0xFFFFD9E3), true),
-    ]) {
-      c.drawLine(Offset(x, 24), Offset(x, 84), _line(2.2));
+  /// 짝 맞추기: 무늬가 똑같은 양말 두 짝
+  void _socks(Canvas c) {
+    for (final (dx, dy, turn) in [(12.0, 30.0, -.1), (52.0, 32.0, .08)]) {
       c.save();
-      c.translate(x, y);
-      if (flip) c.scale(-1, 1);
-      final b = RRect.fromRectAndRadius(
-        const Rect.fromLTWH(-12, -6, 24, 13),
-        const Radius.circular(6),
-      );
-      c.drawRRect(b, _fill(body));
-      c.drawRRect(b, _line(2));
-      // 목과 머리
-      final head = Path()
-        ..moveTo(6, -4)
-        ..lineTo(12, -15)
-        ..lineTo(19, -12)
-        ..lineTo(14, -2)
-        ..close();
-      c.drawPath(head, _fill(body));
-      c.drawPath(head, _line(2));
-      c.drawCircle(const Offset(14, -11), 1.2, _fill(Palette.outline));
-      // 다리
-      for (final lx in [-8.0, 7.0]) {
-        c.drawLine(Offset(lx, 6), Offset(lx - 2, 13), _line(2));
-      }
-      // 꼬리
-      c.drawLine(const Offset(-12, -2), const Offset(-17, 4), _line(2.4));
+      c.translate(dx, dy);
+      c.rotate(turn);
+      _sock(c);
       c.restore();
     }
-    // 지붕 (줄무늬 고깔 + 물결 테두리)
-    final roof = Path()
-      ..moveTo(50, 2)
-      ..lineTo(94, 24)
-      ..lineTo(6, 24)
+  }
+
+  static void _sock(Canvas c) {
+    final sock = Path()
+      ..moveTo(0, 0)
+      ..lineTo(19, 0)
+      ..lineTo(19, 34)
+      ..lineTo(28, 36)
+      ..arcToPoint(const Offset(28, 56), radius: const Radius.circular(10))
+      ..lineTo(9, 56)
+      ..arcToPoint(const Offset(0, 44), radius: const Radius.circular(11))
       ..close();
-    c.drawPath(roof, _fill(const Color(0xFFF59AB5)));
+    c.drawPath(sock, _fill(_blue));
     c.save();
-    c.clipPath(roof);
-    for (var i = -2; i < 6; i += 2) {
-      final stripe = Path()
-        ..moveTo(50, 2)
-        ..lineTo(6 + i * 11.0 + 11, 24)
-        ..lineTo(6 + i * 11.0 + 22, 24)
-        ..close();
-      c.drawPath(stripe, _fill(Colors.white));
+    c.clipPath(sock);
+    // 입구 고무단 (흰색), 다리 줄무늬 (빨강), 발끝·뒤꿈치 (노랑)
+    c.drawRect(const Rect.fromLTWH(-2, -2, 24, 10), _fill(Colors.white));
+    for (final y in [14.0, 23.0]) {
+      c.drawRect(Rect.fromLTWH(-2, y, 24, 4.5), _fill(_red));
     }
+    c.drawCircle(const Offset(32, 46), 9, _fill(_yellow));
+    c.drawCircle(const Offset(1, 55), 9, _fill(_yellow));
     c.restore();
-    c.drawPath(roof, _ol);
-    for (var i = 0; i < 8; i++) {
-      final r = Rect.fromLTWH(6 + i * 11.0, 19, 11, 10);
-      c.drawArc(r, 0, pi, true, _fill(const Color(0xFFFFCF4D)));
-      c.drawArc(r, 0, pi, false, _line(1.8));
-    }
-    c.drawCircle(const Offset(50, 2), 3, _fill(const Color(0xFFFFCF4D)));
+    c.drawLine(const Offset(0, 8), const Offset(19, 8), _line(1.6));
+    c.drawPath(sock, _ol);
   }
 
   @override
-  bool shouldRepaint(EquipmentPainter old) => old.kind != kind;
+  bool shouldRepaint(PlayItemPainter old) => old.kind != kind;
 }
 
 /// 이름표에 들어가는 작은 그림 (글자를 모르는 아이도 알아보게)

@@ -552,8 +552,8 @@ void main() {
     });
 
     test('저장 형식: 새 항목만 더했고 버전은 그대로', () {
-      // 놀이 트랙은 버전을 올리지 않는다. 버전 번호는 안전·저장 트랙 담당 (v6)
-      expect(SaveData.currentVersion, 6);
+      // 놀이 트랙은 버전을 올리지 않았다 (v6은 안전 트랙, v7은 홈 "또 하기")
+      expect(SaveData.currentVersion, 7);
       final d = SaveData.initial()
         ..shapeStageUnlocked = 3
         ..shapeStageCleared = {1, 2}

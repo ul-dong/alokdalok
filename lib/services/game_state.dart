@@ -131,6 +131,38 @@ class GameState extends ChangeNotifier {
 
   bool owns(String itemId) => _d.owned.contains(itemId);
 
+  // ---------- 또 하기 (홈의 가장 큰 자리) ----------
+
+  /// 마지막으로 시작한 놀이 (아직 없으면 null)
+  GameKind? get lastGame {
+    final name = _d.lastGame;
+    for (final g in GameKind.values) {
+      if (g.name == name) return g;
+    }
+    return null;
+  }
+
+  /// 마지막으로 시작한 단계 (기록 그대로)
+  int get lastStage => _d.lastStage;
+
+  /// "또 하기"로 들어갈 단계: 마지막 단계. 혹시 잠겨 있으면 열린 단계 중 가장 높은 단계.
+  int replayStage(GameKind g) {
+    final open = unlockedStage(g);
+    if (lastGame != g) return open;
+    return _d.lastStage.clamp(1, open);
+  }
+
+  /// 놀이 화면이 열릴 때 부른다: 마지막으로 시작한 놀이와 단계를 기억한다.
+  /// 놀이 화면이 만들어지는 중에 불리므로 화면을 다시 그리라고 알리지는 않는다
+  /// (홈은 돌아올 때 다시 그린다). 같은 값이면 저장도 건너뛴다.
+  Future<void> rememberPlay(GameKind g, int stageId) async {
+    final stage = stageId.clamp(1, g.stageCount);
+    if (_d.lastGame == g.name && _d.lastStage == stage) return;
+    _d.lastGame = g.name;
+    _d.lastStage = stage;
+    await storage.save(_d);
+  }
+
   Future<void> load() async {
     _d = await storage.load();
     _applyAudio();

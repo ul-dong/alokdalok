@@ -79,6 +79,8 @@ class _NumberGameScreenState extends State<NumberGameScreen> {
   @override
   void initState() {
     super.initState();
+    // 홈의 "또 하기" 자리에 띄울 마지막 놀이·단계
+    AppScope.read(context).rememberPlay(GameKind.number, widget.stageId);
     _musicId = _audio.playMusic(season.track);
     round = NumberRound(NumberQuestion.generate(stage, rng));
     WidgetsBinding.instance.addPostFrameCallback((_) => _ask());

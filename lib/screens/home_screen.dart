@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import '../character/character_view.dart';
 import '../character/zodiac.dart';
 import '../core/palette.dart';
+import '../data/game_kinds.dart';
 import '../games/common/scene_game.dart';
+import '../games/game_entry.dart';
 import '../services/game_state.dart';
 import '../shop/shop_screen.dart';
 import '../widgets/common.dart';
@@ -16,12 +18,16 @@ import 'playground_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/poke_character.dart';
 
-/// 메인 화면 (가로). 왼쪽에 내 캐릭터, 오른쪽에 큰 버튼 세 개
-/// (놀이터 가기 · 내 캐릭터 · 꾸미기 상점). 구석의 작은 톱니바퀴는 부모 확인을 거쳐 설정으로.
+/// 메인 화면 (가로). 왼쪽에 내 캐릭터, 오른쪽 맨 위 가장 큰 자리는 "또 하기":
+/// 마지막으로 시작한 놀이를 내 캐릭터와 그 놀이 그림으로 띄우고, 누르면 말 없이 바로 그 단계
+/// 놀이 화면으로 들어간다(길게 누르면 놀이 이름을 말한다). 3세는 하던 놀이를 반복하기 때문이다.
+/// 그 아래 줄에 놀이터 가기 · 내 캐릭터 · 꾸미기 상점. 아직 놀이 기록이 없으면 큰 자리에
+/// 놀이터 가기가 온다. 구석의 작은 톱니바퀴는 부모 확인을 거쳐 설정으로.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   static const playgroundLabel = '놀이터 가기';
+  static const replayLabel = '또 하기';
   static const characterLabel = '내 캐릭터';
   static const shopLabel = '꾸미기 상점';
   static const settingsLabel = '설정';
@@ -49,7 +55,17 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
     }
   }
 
-  void _go(Widget page) => Navigator.of(context).push(softRoute(page));
+  /// 다른 화면으로 갔다가 돌아오면 다시 그린다 (놀이를 시작했으면 "또 하기" 자리가 바뀐다)
+  Future<void> _go(Widget page) async {
+    await Navigator.of(context).push(softRoute(page));
+    if (mounted) setState(() {});
+  }
+
+  /// 또 하기: 단계 고르기 없이 마지막 단계 놀이 화면으로 바로 (말 없이)
+  void _replay(GameKind kind) {
+    final state = AppScope.read(context);
+    _go(gameScreen(kind, state.replayStage(kind)));
+  }
 
   /// 톱니바퀴: 부모 확인을 거쳐 설정으로
   Future<void> _openSettings() async {
@@ -59,6 +75,16 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    final last = state.lastGame;
+    final playground = _MenuTile(
+      label: HomeScreen.playgroundLabel,
+      color: const Color(0xFFD3F1E2),
+      // 아래 줄 작은 칸에서는 그림 두 개만 크게
+      art: _PlaygroundArt(compact: last != null),
+      // 놀이터가 "뭘 하고 놀까요?"로 맞아 주니 버튼 이름은 읽지 않는다
+      speakLabel: false,
+      onTap: () => _go(const PlaygroundScreen()),
+    );
     return PopScope(
       canPop: false, // 뒤로 가기 실수로 앱이 꺼지지 않게
       child: LandscapePage(
@@ -100,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
               ),
             ),
             const SizedBox(width: 14),
-            // 오른쪽: 큰 버튼 세 개 (놀이터 가기 · 내 캐릭터 · 꾸미기 상점)
+            // 오른쪽: 또 하기(큰 자리) + 놀이터 가기 · 내 캐릭터 · 꾸미기 상점
             Expanded(
               flex: 6,
               child: Column(
@@ -122,18 +148,23 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                     ],
                   ),
                   const SizedBox(height: Gaps.lg),
+                  // 가장 큰 자리: 또 하기 (기록이 없으면 놀이터 가기)
                   Expanded(
                     flex: 3,
                     child: SizedBox(
                       width: double.infinity,
-                      child: _MenuTile(
-                        label: HomeScreen.playgroundLabel,
-                        color: const Color(0xFFD3F1E2),
-                        art: const _PlaygroundArt(),
-                        // 놀이터가 "뭘 하고 놀까요?"로 맞아 주니 버튼 이름은 읽지 않는다
-                        speakLabel: false,
-                        onTap: () => _go(const PlaygroundScreen()),
-                      ),
+                      child: last == null
+                          ? playground
+                          : _MenuTile(
+                              label: last.title,
+                              semanticLabel: HomeScreen.replayLabel,
+                              color: last.tint,
+                              art: _ReplayArt(kind: last),
+                              // 누르면 말 없이 바로 들어간다 (놀이가 문제를 읽어 준다)
+                              speakLabel: false,
+                              onTap: () => _replay(last),
+                              onLongPress: () => state.audio.say(last.nameLine),
+                            ),
                     ),
                   ),
                   const SizedBox(height: Gaps.lg),
@@ -141,6 +172,10 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                     flex: 2,
                     child: Row(
                       children: [
+                        if (last != null) ...[
+                          Expanded(child: playground),
+                          const SizedBox(width: Gaps.lg),
+                        ],
                         Expanded(
                           child: _MenuTile(
                             label: HomeScreen.characterLabel,
@@ -252,6 +287,8 @@ class _MenuTile extends StatelessWidget {
     required this.art,
     required this.onTap,
     this.speakLabel = true,
+    this.semanticLabel,
+    this.onLongPress,
   });
 
   final String label;
@@ -259,13 +296,20 @@ class _MenuTile extends StatelessWidget {
   final Widget art;
   final VoidCallback onTap;
 
+  /// 화면 읽기용 이름 (없으면 [label])
+  final String? semanticLabel;
+
+  /// 길게 누르기 (또 하기: 놀이 이름 듣기)
+  final VoidCallback? onLongPress;
+
   /// 누르면 [label]을 말한다 (들어간 화면이 바로 인사하면 끈다)
   final bool speakLabel;
 
   @override
   Widget build(BuildContext context) => Pressable(
     onTap: onTap,
-    semanticLabel: label,
+    onLongPress: onLongPress,
+    semanticLabel: semanticLabel ?? label,
     speak: speakLabel ? label : null,
     child: Container(
       decoration: BoxDecoration(
@@ -309,22 +353,68 @@ class _MenuTile extends StatelessWidget {
   );
 }
 
-/// 놀이터 가기 그림: 미끄럼틀과 그네
+/// 또 하기 그림: 내 캐릭터 + 마지막 놀이의 내용물 그림 + 다시 하기 동그라미 화살표
+class _ReplayArt extends StatelessWidget {
+  const _ReplayArt({required this.kind});
+  final GameKind kind;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 340,
+    height: 150,
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        CharacterView(equipped: AppScope.of(context).equipped, size: 118),
+        const SizedBox(width: 6),
+        Expanded(
+          child: CustomPaint(
+            size: Size.infinite,
+            painter: PlayItemPainter(kind),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Align(
+          alignment: Alignment.center,
+          child: Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: kind.accent, width: 4),
+            ),
+            child: Icon(Icons.replay_rounded, size: 36, color: kind.accent),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// 놀이터 가기 그림: 놀이 그림 세 개 (1·2·3 미끄럼틀, 풍선 다발, 큰 공·작은 공)
 class _PlaygroundArt extends StatelessWidget {
-  const _PlaygroundArt();
+  const _PlaygroundArt({this.compact = false});
+
+  /// 작은 칸: 1·2·3 미끄럼틀과 풍선 다발만
+  final bool compact;
 
   @override
   Widget build(BuildContext context) => SizedBox(
     // 큰 화면에서는 크게, 작은 화면에서는 FitBox가 줄인다
-    width: 480,
-    height: 200,
+    width: compact ? 240 : 480,
+    height: compact ? 130 : 200,
     child: Row(
       children: [
-        for (final k in const [GameKind.number, GameKind.color, GameKind.size])
+        for (final k in [
+          GameKind.number,
+          GameKind.color,
+          if (!compact) GameKind.size,
+        ])
           Expanded(
             child: CustomPaint(
               size: Size.infinite,
-              painter: EquipmentPainter(k),
+              painter: PlayItemPainter(k),
             ),
           ),
       ],

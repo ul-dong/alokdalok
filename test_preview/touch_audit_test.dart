@@ -22,6 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final pages = <String, Widget Function()>{
     'home': () => const SizedBox(),
+    'home_replay': () => const SizedBox(), // 또 하기 자리가 있는 홈
     'stages': () => const StagePicker(game: GameKind.number),
     'number': () => const NumberGameScreen(stageId: 8),
     'color': () => const ColorGameScreen(stageId: 5),
@@ -42,7 +43,8 @@ void main() {
         await s.rewardCorrect(firstTry: true);
       }
       await s.buyVehicle('car');
-      await t.pumpWidget(e.key == 'home' ? AlokdalokApp(state: s) : AppScope(state: s, child: MaterialApp(theme: buildAppTheme(), home: e.value())));
+      if (e.key == 'home_replay') await s.rememberPlay(GameKind.number, 1);
+      await t.pumpWidget(e.key.startsWith('home') ? AlokdalokApp(state: s) : AppScope(state: s, child: MaterialApp(theme: buildAppTheme(), home: e.value())));
       for (var i = 0; i < 10; i++) {
         await t.pump(const Duration(milliseconds: 100));
       }

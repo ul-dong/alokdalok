@@ -62,6 +62,8 @@ class _ColorGameScreenState extends State<ColorGameScreen> {
   @override
   void initState() {
     super.initState();
+    // 홈의 "또 하기" 자리에 띄울 마지막 놀이·단계
+    AppScope.read(context).rememberPlay(GameKind.color, widget.stageId);
     _musicId = _audio.playMusic(season.track);
     round = _newRound();
     WidgetsBinding.instance.addPostFrameCallback((_) => _ask());

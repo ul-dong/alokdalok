@@ -5,12 +5,17 @@ import '../services/game_state.dart';
 /// 놀이터에서 쓰는 놀이 정보: 부르는 말, 이름표 색.
 /// (놀이 이름 `title`·단계 수 `stageCount`는 `services/game_state.dart`의 `GameKindInfo`)
 ///
-/// 놀이터 기구 그림(미끄럼틀=숫자, 그네=색깔, 모래놀이터=모양, 시소=크기, 회전목마=짝 맞추기)은
-/// `screens/playground_art.dart`의 `EquipmentPainter`가 그린다. 아이에게는 기구 이름 대신
+/// 놀이터에서 누르는 그림은 그 놀이의 내용물(1·2·3 계단 미끄럼틀=숫자, 풍선 다발=색깔,
+/// 도형 블록=모양, 큰 공·작은 공=크기, 양말 한 켤레=짝 맞추기)이고,
+/// `screens/playground_art.dart`의 `PlayItemPainter`가 그린다. 아이에게는 그림 이름 대신
 /// 이름표에 적힌 놀이 이름만 들려준다 (보이는 글자와 들리는 말이 같게).
 extension GameKindPlayground on GameKind {
   /// 기구나 이름표를 눌렀을 때 하는 말: 놀이 이름 ("숫자 놀이!", "짝 맞추기!")
   String get invite => '$title!';
+
+  /// 길게 눌렀을 때 들려주는 놀이 이름 ("숫자 놀이야!", "짝 맞추기야!").
+  /// 놀이 이름이 모두 받침 없이 끝나서 "야"를 붙인다.
+  String get nameLine => '$title야!';
 
   /// 이름표·카드 바탕색
   Color get tint => switch (this) {

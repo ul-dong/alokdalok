@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../core/palette.dart';
@@ -30,8 +31,16 @@ Route<T> softRoute<T>(Widget page) => PageRouteBuilder<T>(
   ),
 );
 
+/// 길게 누르기 시간. 3세 손가락 기준으로 기본 길게 누르기(500ms)보다 조금 짧게 시작한다.
+/// 놀이터 그림·홈 "또 하기"를 이만큼 누르고 있으면 들어가지 않고 놀이 이름을 말해 준다.
+abstract final class LongPress {
+  static const sayName = Duration(milliseconds: 400);
+}
+
 /// 누르면 살짝 눌리는 버튼. 탭 효과음 포함. 최소 72dp.
 /// [speak]가 있으면 누를 때 그 이름을 말한다 (녹음이 없는 말은 기기 음성으로).
+/// [onLongPress]가 있으면 [LongPress.sayName]만큼 누르고 있을 때 그것을 부르고, 짧은 누르기
+/// ([onTap])는 일어나지 않는다.
 class Pressable extends StatefulWidget {
   const Pressable({
     super.key,
@@ -41,10 +50,14 @@ class Pressable extends StatefulWidget {
     this.semanticLabel,
     this.enabled = true,
     this.speak,
+    this.onLongPress,
   });
 
   final Widget child;
   final VoidCallback? onTap;
+
+  /// 길게 누르기 ([LongPress.sayName]). 효과음 없이 이것만 부른다.
+  final VoidCallback? onLongPress;
   final Sfx? sound;
   final String? semanticLabel;
   final bool enabled;
@@ -59,8 +72,7 @@ class Pressable extends StatefulWidget {
 class _PressableState extends State<Pressable> {
   bool _down = false;
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _button(BuildContext context) {
     final active = widget.enabled && widget.onTap != null;
     return Semantics(
       button: true,
@@ -81,6 +93,25 @@ class _PressableState extends State<Pressable> {
             : null,
         child: PressDown(down: _down, child: widget.child),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final button = _button(context);
+    final long = widget.onLongPress;
+    if (long == null || !widget.enabled) return button;
+    // 길게 누르기가 이기면 짧은 누르기는 취소된다 (onTapCancel → 눌림 풀림)
+    return RawGestureDetector(
+      behavior: HitTestBehavior.opaque,
+      gestures: {
+        LongPressGestureRecognizer:
+            GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
+              () => LongPressGestureRecognizer(duration: LongPress.sayName),
+              (r) => r.onLongPress = long,
+            ),
+      },
+      child: button,
     );
   }
 }

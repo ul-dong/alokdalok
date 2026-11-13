@@ -53,11 +53,13 @@ class SaveData {
     Set<int>? shapeStageCleared,
     Set<int>? sizeStageCleared,
     Set<int>? matchStageCleared,
+    this.lastGame,
+    this.lastStage = 1,
   }) : shapeStageCleared = shapeStageCleared ?? {},
        sizeStageCleared = sizeStageCleared ?? {},
        matchStageCleared = matchStageCleared ?? {};
 
-  static const int currentVersion = 6;
+  static const int currentVersion = 7;
 
   String nickname;
 
@@ -82,6 +84,22 @@ class SaveData {
   Set<int> sizeStageCleared;
   Set<int> matchStageCleared;
   int sessionsPlayed;
+
+  /// 마지막으로 시작한 놀이 (`GameKind.name`, 예: 'number'). 홈의 "또 하기" 자리. v7부터.
+  /// 아직 놀이를 시작한 적이 없으면 null.
+  String? lastGame;
+
+  /// 마지막으로 시작한 단계 (v7부터, [lastGame]이 없으면 1)
+  int lastStage;
+
+  /// 놀이 종류 이름 → 단계 수 (저장값 확인용. `GameKind`는 services/game_state.dart)
+  static Map<String, int> get gameStageCounts => {
+    'number': Stages.number.length,
+    'color': Stages.color.length,
+    'shape': Stages.shape.length,
+    'size': Stages.size.length,
+    'match': Stages.match.length,
+  };
   int stars;
   bool voiceOn;
   bool sfxOn;
@@ -180,6 +198,8 @@ class SaveData {
     'sizeStageCleared': sizeStageCleared.toList()..sort(),
     'matchStageCleared': matchStageCleared.toList()..sort(),
     'sessionsPlayed': sessionsPlayed,
+    if (lastGame != null) 'lastGame': lastGame,
+    if (lastGame != null) 'lastStage': lastStage,
     'stars': stars,
     'voiceOn': voiceOn,
     'sfxOn': sfxOn,
@@ -246,6 +266,7 @@ class SaveData {
     _v3to4,
     _v4to5,
     _v5to6,
+    _v6to7,
   ];
 
   /// 매번 도는 정리 단계 (버전과 무관, 멱등)
@@ -300,6 +321,12 @@ class SaveData {
     'eyeBreakMin': SafetyRules.defaultBreak,
     'parentGateOn': true,
   };
+
+  // 버전 6: 홈에 "또 하기"가 생겨 마지막으로 시작한 놀이·단계를 저장한다.
+  // 예전 저장값에는 그 기록이 없으므로 비워 둔다(홈 큰 자리에는 놀이터 가기가 온다).
+  static SaveJson _v6to7(SaveJson json) => {...json}
+    ..remove('lastGame')
+    ..remove('lastStage');
 
   /// 없어진 탈것을 [Vehicles.retired]의 새 탈것으로 옮긴다: 가진 탈것, 타는 탈것,
   /// 붙인 스티커(새 탈것에 이미 있으면 합침), 칠한 색, 그 탈것용으로 산 색('paint_x@bicycle').
@@ -481,6 +508,12 @@ class SaveData {
     d.sizeStageCleared = _intSet(json['sizeStageCleared'], 1, maxSize);
     d.matchStageCleared = _intSet(json['matchStageCleared'], 1, maxMatch);
     d.sessionsPlayed = _int(json['sessionsPlayed'], 0, 0, 1 << 30);
+    final last = json['lastGame'];
+    final lastMax = last is String ? gameStageCounts[last] : null;
+    if (lastMax != null) {
+      d.lastGame = last as String;
+      d.lastStage = _int(json['lastStage'], 1, 1, lastMax);
+    }
     d.stars = _int(json['stars'], 0, 0, 1 << 30);
     d.voiceOn = json['voiceOn'] is bool ? json['voiceOn'] as bool : true;
     d.sfxOn = json['sfxOn'] is bool ? json['sfxOn'] as bool : true;
