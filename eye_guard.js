@@ -1,20 +1,17 @@
 // 눈 지킴이 (웹): 앞카메라 + MediaPipe 얼굴 랜드마크로 거리·고개 각도를 잰다.
 // 영상은 이 기기 안에서만 처리하고 저장하거나 어디로도 보내지 않는다.
 // 발열을 줄이려고 낮은 해상도(320x240)·낮은 프레임(초당 5~10)으로 받고,
-// 평소 1.5초, 기준에 가까우면 0.5초에 한 번만 살펴본다 (간격은 앱이 setInterval로 정한다).
+// 카메라를 계속 돌리지 않는다: 앱이 창을 열 때(open) video.play(), 2~3장을 detect()로 보고
+// 창을 닫을 때(pause) video.pause(). 창 주기(넉넉 10초, 기준 가까이 3초, 경고 중 1.5초)는 앱이 정한다.
 (function () {
   // MediaPipe(구글, Apache 2.0) 파일을 앱과 같은 곳(mediapipe/)에 두고 쓴다 (외부 CDN에 기대지 않게)
   const CDN = new URL('mediapipe', document.baseURI).href;
   const MODEL = CDN + '/face_landmarker.task';
-  let interval = 1500;
-
   let landmarker = null;
   let stream = null;
   let video = null;
-  let timer = null;
-  let running = false;
-  let tick = null;
-  let lastRun = 0;
+  // 창이 열려 있는지 (열려 있을 때만 영상을 돌린다)
+  let opened = false;
   // 켜고 끌 때마다 늘어난다: 카메라를 여는 사이에 꺼졌으면 연 카메라를 바로 닫는다
   let gen = 0;
 
@@ -56,91 +53,90 @@
     return { size: iris / w, yaw, pitch, roll };
   }
 
+  function release() {
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+    if (video) {
+      video.pause();
+      video.srcObject = null;
+    }
+    video = null;
+  }
+
   window.alokEyeGuard = {
-    // onFace(size, yaw, pitch, roll) / onNoFace() / onError(message)
-    start: async function (onFace, onNoFace, onError) {
-      if (running) return;
-      running = true;
-      const my = ++gen;
+    // 창을 연다: 처음이면 카메라를 켜고 얼굴 인식기를 만든다, 아니면 멈춰 둔 영상을 다시 돌린다.
+    // 잘 열리면 null, 실패하면 사람이 읽을 수 있는 메시지(문자열)로 resolve 한다.
+    open: async function () {
+      const my = gen;
       const stale = () => my !== gen;
+      opened = true;
       try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error('이 브라우저는 카메라를 쓸 수 없어요');
+        if (!stream) {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('이 브라우저는 카메라를 쓸 수 없어요');
+          }
+          const s = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: 'user',
+              width: { ideal: 320 },
+              height: { ideal: 240 },
+              frameRate: { ideal: 5, max: 10 },
+            },
+            audio: false,
+          });
+          if (stale()) {
+            s.getTracks().forEach((t) => t.stop());
+            return null;
+          }
+          stream = s;
+          video = document.createElement('video');
+          video.setAttribute('playsinline', '');
+          video.muted = true;
+          video.srcObject = stream;
         }
-        const s = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'user',
-            width: { ideal: 320 },
-            height: { ideal: 240 },
-            frameRate: { ideal: 5, max: 10 },
-          },
-          audio: false,
-        });
-        if (stale()) {
-          s.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        stream = s;
-        video = document.createElement('video');
-        video.setAttribute('playsinline', '');
-        video.muted = true;
-        video.srcObject = stream;
         await video.play();
-        if (stale()) return;
+        if (stale()) return null;
         if (!landmarker) landmarker = await makeLandmarker();
-        if (stale()) return;
-        tick = () => {
-          if (!running) return;
-          lastRun = performance.now();
-          try {
-            if (video.readyState >= 2) {
-              const r = measure(
-                landmarker.detectForVideo(video, performance.now()),
-                video.videoWidth,
-                video.videoHeight,
-              );
-              if (r) onFace(r.size, r.yaw, r.pitch, r.roll);
-              else onNoFace();
-            }
-          } catch (e) {}
-          timer = setTimeout(tick, interval);
-        };
-        tick();
+        return null;
       } catch (e) {
-        if (stale()) return;
-        running = false;
-        const msg = e && e.name === 'NotAllowedError'
+        if (stale()) return null;
+        opened = false;
+        release();
+        return e && e.name === 'NotAllowedError'
           ? '카메라 사용을 허용해 주세요'
           : String((e && e.message) || e);
-        onError(msg);
-        this.stop();
       }
     },
-    // 살펴보는 간격(ms). 다음 검사부터 적용된다.
-    setInterval: function (ms) {
-      interval = Math.max(200, Number(ms) || 1500);
-      // 이미 잡아 둔 다음 검사를 새 간격에 맞춰 다시 잡는다
-      if (running && timer && tick) {
-        clearTimeout(timer);
-        timer = setTimeout(tick, Math.max(0, lastRun + interval - performance.now()));
+    // 지금 프레임 한 장을 본다: [size, yaw, pitch, roll] / 얼굴 없음 [] / 아직 볼 수 없음 null
+    detect: function () {
+      if (!opened || !video || !landmarker || video.readyState < 2) return null;
+      try {
+        const r = measure(
+          landmarker.detectForVideo(video, performance.now()),
+          video.videoWidth,
+          video.videoHeight,
+        );
+        return r ? [r.size, r.yaw, r.pitch, r.roll] : [];
+      } catch (e) {
+        return null;
       }
     },
+    // 창을 닫는다: 영상을 멈춰 둔다 (카메라 스트림은 살려 두어 다음 창이 빨리 열린다)
+    pause: function () {
+      opened = false;
+      if (video) video.pause();
+    },
+    // 카메라를 완전히 끈다 (놀이 화면을 벗어남, 또는 창마다 끄는 방식)
     stop: function () {
       gen++;
-      running = false;
-      if (timer) clearTimeout(timer);
-      timer = null;
-      tick = null;
-      if (stream) stream.getTracks().forEach((t) => t.stop());
-      stream = null;
-      if (video) video.srcObject = null;
-      video = null;
+      opened = false;
+      release();
     },
   };
 
-  // 다른 탭으로 가면 카메라를 잠시 쉬게 한다 (배터리·발열)
+  // 다른 탭으로 가면 카메라를 잠시 쉬게 한다 (배터리·발열). 돌아와도 창이 열려 있을 때만 다시 돌린다.
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && video) video.pause();
-    else if (!document.hidden && video) video.play().catch(() => {});
+    else if (!document.hidden && video && opened) video.play().catch(() => {});
   });
 })();
