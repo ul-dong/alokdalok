@@ -168,6 +168,9 @@ class SceneGame extends FlameGame {
   set frozen(bool on) {
     if (_frozen == on) return;
     _frozen = on;
+    // Flame 기본 루프는 늘 멈춰(paused) 두고 공용 시계로만 한 장씩 그린다.
+    // 멈추면(덮개·멈춤 화면) 그 시계에서도 빠져서 한 장도 그리지 않는다.
+    if (on) paused = true;
     _listenSlow(_attached && !on);
   }
 

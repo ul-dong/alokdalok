@@ -23,23 +23,44 @@ class SlowClock extends ChangeNotifier {
   /// 시작 후 흐른 시간 (초)
   double get seconds => _watch.elapsedMicroseconds / 1e6;
 
+  /// 지금 시계가 돌고 있는지 (듣는 위젯이 있고 [held]가 아닐 때). 테스트 확인용.
+  @visibleForTesting
+  bool get ticking => _timer != null;
+
+  bool _held = false;
+
+  /// 덮개(눈 지킴이 경고·눈 쉬기·쉬어 가기·오늘은 여기까지)가 화면을 가리는 동안 시계를 멈춘다.
+  /// 듣는 위젯이 있어도 움직이지 않고, 풀리면 멈춘 자리에서 이어 간다.
+  bool get held => _held;
+  set held(bool on) {
+    if (on == _held) return;
+    _held = on;
+    _apply();
+  }
+
+  void _apply() {
+    final run = _listeners > 0 && !_held;
+    if (run == (_timer != null)) return;
+    if (run) {
+      _watch.start();
+      _timer = Timer.periodic(interval, (_) => notifyListeners());
+    } else {
+      _timer?.cancel();
+      _timer = null;
+      _watch.stop();
+    }
+  }
+
   @override
   void addListener(VoidCallback listener) {
     super.addListener(listener);
-    if (_listeners++ == 0) {
-      _watch.start();
-      _timer = Timer.periodic(interval, (_) => notifyListeners());
-    }
+    if (_listeners++ == 0) _apply();
   }
 
   @override
   void removeListener(VoidCallback listener) {
     super.removeListener(listener);
-    if (--_listeners == 0) {
-      _timer?.cancel();
-      _timer = null;
-      _watch.stop();
-    }
+    if (--_listeners == 0) _apply();
   }
 
   @override

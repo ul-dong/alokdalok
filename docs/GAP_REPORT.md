@@ -107,9 +107,12 @@
 | iOS ML Kit | 빌드됨, 카메라는 실기기 확인 필요 | `eye_sensor_io.dart`가 `Platform.isIOS` 지원 (bgra8888, 회전 처리) |
 | 부모님 거리 맞추기(보정) | 있음 | `calibrateNow` + 경고 거리 선택(`EyeGuard.tooCloseCm`, 풀림 = +4cm), 설정 `_EyeGuardCard` |
 | 덮개 "조금 더 멀리서 봐요" | 있음 | `widgets/eye_guard_overlay.dart` |
-| 눈 보호 카메라 발열 줄이기 (사양 원칙 8) | 있음 | 카메라는 놀이 화면(GameFrame)이 보일 때만 켜고, 홈·놀이터·상점·내 캐릭터·설정·단계 고르기, 멈춤 화면, "오늘은 여기까지!"·눈 쉬기 덮개, 백그라운드에서는 끈다(짧은 전환 1초 지연, 경고 덮개 중엔 계속 켬): `EyeGuard.wanted`. 네이티브 낮은 해상도 + fps 요청(안드로이드 10, iOS 5) + 미리보기 멈춤, 검사 간격 평소 1.5초·기준 가까이(36cm 이하, 각도 80% 이상)·경고 중 0.5초. ML Kit은 얼굴 상자·고개 각도만. 웹 320×240, 초당 5(최대 10). 덮개·멈춤 화면 뒤 장면은 TickerMode로 멈춤. `test/eye_camera_test.dart`. 실기기 측정 전 |
+| 눈 보호 카메라 발열 줄이기 (사양 원칙 8) | 있음 | 카메라는 놀이 화면(GameFrame)이 보일 때만 켜고, 홈·놀이터·상점·내 캐릭터·설정·단계 고르기, 멈춤 화면, "오늘은 여기까지!"·눈 쉬기 덮개, 백그라운드, 쉬어 가기 중에는 끈다(짧은 전환 1초 지연, 경고 덮개 중엔 켜 두되 끝이 있음): `EyeGuard.wanted`. 네이티브 낮은 해상도 + fps 요청(안드로이드 10, iOS 5) + 미리보기 멈춤, 검사 간격 평소 1.5초·기준 가까이(36cm 이하, 각도 80% 이상) 0.5초·경고 중 1초(20초 뒤 1.5초). ML Kit은 얼굴 상자·고개 각도만. 웹 320×240, 초당 5(최대 10). 덮개·멈춤 화면 뒤 장면은 TickerMode로 멈춤. `test/eye_camera_test.dart`. 실기기 측정 전 |
 | 하루 놀이 시간 (제한 없음·10·15·20·30·45·60분), "오늘은 여기까지!", 부모 확인 후 +15분, 다음 날 리셋 | 있음 | 순수 로직 `services/play_clock.dart` `PlayClock`(시계 주입), 덮개 `widgets/play_guard_overlay.dart`(`app.dart`에서 전체 화면 위). 논 시간은 저장(30초마다·백그라운드 갈 때) |
-| 눈 쉬기 10/20분(기본 10) → 20초 "창밖 먼 곳을 봐요", 산 그림 + 줄어드는 고리, 5분 이상 안 보면 쉰 것으로 | 있음 | `PlayClock` + `EyeBreakCard`(`WindowViewPainter`, `ShrinkingRingPainter`, 공용 20fps 시계). 백그라운드 5분 이상이면 쉰 것. "오늘은 여기까지"가 20초 넘게 떠 있어도 쉰 것 |
+| 눈 지킴이 경고는 끝이 있다 → "쉬어 가기" | 있음 | 경고 중 얼굴 10초 안 보임(`EyeRules.noFaceGiveUp`) 또는 경고 75초(`alertGiveUp`)면 카메라를 끄고 `PlayBlock.eyeRest` (`EyeGuard.resting`). 화면은 `EyeBreakCard(onWake:)` 재사용, 한 번 누르면 복귀·카메라 다시 켬(막 뜬 1초 터치는 무시). 경고 음성 8초 간격 최대 3번(`EyeGuardOverlay.maxSpeaks`). `test/safety_logic_test.dart`, `test/eye_camera_test.dart` |
+| 덮개가 떠 있으면 밑단 멈춤 | 있음 | 경고·눈 쉬기·쉬어 가기·오늘은 여기까지: 뒤 화면 TickerMode 끔(Flame `SceneGame.frozen`, paused), `SlowClock.held`, `AudioService.musicHeld`. 경고 덮개 완전 불투명 `0xFFFFF6E5`. 눈 쉬기 고리는 공용 시계 대신 1초 타이머 |
+| 눈 지킴이 실측 진단 | 있음 | `EyeStats` (최근 1분: 실제 초당 프레임, 검사 횟수, 카메라 켜짐 비율). 설정 '부모님께' 안내를 길게 누르면 열림 (`EyeDiagnosticsPanel`, release에서도). 실기기 측정 전 |
+| 눈 쉬기 10/20분(기본 10) → 20초 "창밖 먼 곳을 봐요", 산 그림 + 줄어드는 고리, 5분 이상 안 보면 쉰 것으로 | 있음 | `PlayClock` + `EyeBreakCard`(`WindowViewPainter`, `ShrinkingRingPainter`, 1초마다 고리 갱신). 백그라운드 5분 이상이면 쉰 것. "오늘은 여기까지"가 20초 넘게 떠 있어도 쉰 것 |
 
 ## 8. 저장과 백업
 
@@ -155,7 +158,7 @@
 | 안드로이드 `install_and_build.command`, arm 전용(armeabi-v7a, arm64-v8a) | 있음 | 저장소 루트 스크립트(caffeinate). `abiFilters` + `disable-abi-filtering=true`. release 키는 `android/key.properties`(git 제외) + 비밀번호 직접 입력, 없으면 debug 키 |
 | ML Kit Play 서비스 버전(용량 줄이기) | 있음 | `com.google.mlkit:face-detection` 제외 → `play-services-mlkit-face-detection:17.1.0`, 매니페스트 `com.google.mlkit.vision.DEPENDENCIES=face`. APK 89.6MB → 42.0MB. 2026-10-22 arm 전용 release APK(debug 키 서명) **43.3MB** 빌드 성공 (armeabi-v7a, arm64-v8a) |
 | 음성 `gen_voice.command` | 있음 | `tool/gen_voice.command` (목록 내보내기 → 없는 문장만 `assets/voice`에 녹음, manifest 합치기). 2026-10-22 `~/alokdev/melo-venv`로 135문장 녹음(69초) |
-| 테스트 142개 | 있음 | 440개 (2026-10-22 match5 기준, 트랙 A `screens_test`, B `games_*_test`, C `safety_*_test`, D `vehicle_test`, 통합 `polish_test` 18개 등) |
+| 테스트 142개 | 있음 | 465개 (2026-11-13 발열 1단계 기준, 트랙 A `screens_test`, B `games_*_test`, C `safety_*_test`, D `vehicle_test`, 통합 `polish_test` 18개 등) |
 
 ## 12. iOS 준비 상태
 

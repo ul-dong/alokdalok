@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 
 import '../character/character_view.dart';
 import '../core/palette.dart';
-import '../core/slow_clock.dart';
 import '../services/game_state.dart';
 import '../services/play_clock.dart';
 import 'common.dart';
@@ -16,6 +15,8 @@ import 'parental_gate.dart';
 /// - 1초마다 [GameState.tickPlay]로 논 시간을 세고, 앱이 뒤로 가면 멈춘다.
 /// - 이어서 오래 놀면 20초 동안 "창밖 먼 곳을 봐요" (창밖 산 + 줄어드는 고리), 끝나면 저절로 사라진다.
 /// - 하루 놀이 시간이 다 되면 "오늘은 여기까지!". 부모 확인을 통과하면 15분 더.
+/// - 눈 지킴이 경고가 끝나지 않으면(아이가 떠남·너무 오래) 카메라를 끄고 "쉬어 가기":
+///   눈 쉬기 화면을 그대로 쓰고, 화면을 한 번 누르면 돌아온다 (부모 확인 없음).
 class PlayGuardOverlay extends StatefulWidget {
   const PlayGuardOverlay({super.key});
 
@@ -87,9 +88,12 @@ class _PlayGuardOverlayState extends State<PlayGuardOverlay>
       case PlayBlock.limit:
         state.audio.say('오늘은 여기까지! 내일 또 만나요.');
       case PlayBlock.eyeBreak:
-        state.audio.say('창밖 먼 곳을 봐요.');
+      case PlayBlock.eyeRest:
+        if (was != PlayBlock.eyeBreak && was != PlayBlock.eyeRest) {
+          state.audio.say('창밖 먼 곳을 봐요.');
+        }
       case PlayBlock.none:
-        if (was == PlayBlock.eyeBreak) {
+        if (was == PlayBlock.eyeBreak || was == PlayBlock.eyeRest) {
           state.audio.say('잘 쉬었어요! 다시 놀아요.');
         } else if (was == PlayBlock.limit) {
           state.audio.say('15분 더 놀 수 있어요.');
@@ -108,6 +112,7 @@ class _PlayGuardOverlayState extends State<PlayGuardOverlay>
         child: switch (b) {
           PlayBlock.none => const SizedBox.expand(),
           PlayBlock.eyeBreak => EyeBreakCard(play: _state!.play),
+          PlayBlock.eyeRest => EyeBreakCard(onWake: _state!.wakeFromEyeRest),
           PlayBlock.limit =>
             _gate
                 ? Material(
@@ -227,12 +232,65 @@ class PlayLimitCard extends StatelessWidget {
 }
 
 /// "창밖 먼 곳을 봐요" 덮개: 창밖 산 그림 + 줄어드는 고리. 20초 뒤 저절로 사라진다.
-class EyeBreakCard extends StatelessWidget {
-  const EyeBreakCard({super.key, required this.play});
-  final PlayClock play;
+///
+/// [onWake]를 주면 "쉬어 가기" (눈 지킴이 경고가 끝나지 않아 카메라를 끈 때): 고리 대신
+/// 누르는 손 그림을 보여 주고, 화면 어디든 한 번 누르면 [onWake]. 막 뜬 순간(1초)의 터치는 무시한다
+/// (경고 화면을 두드리던 손가락에 바로 닫히지 않게).
+class EyeBreakCard extends StatefulWidget {
+  const EyeBreakCard({super.key, this.play, this.onWake})
+    : assert((play == null) != (onWake == null));
+  final PlayClock? play;
+  final VoidCallback? onWake;
+
+  /// 쉬어 가기 화면이 뜬 뒤 이만큼은 터치를 받지 않는다
+  static const wakeDelay = Duration(seconds: 1);
+
+  @override
+  State<EyeBreakCard> createState() => _EyeBreakCardState();
+}
+
+class _EyeBreakCardState extends State<EyeBreakCard> {
+  // 남은 시간 고리는 1초에 한 번만 다시 그린다 (덮개가 떠 있는 동안 공용 시계는 멈춰 있다)
+  Timer? _tick, _ready;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.onWake != null) {
+      _ready = Timer(EyeBreakCard.wakeDelay, () => _ready = null);
+    }
+    if (widget.play != null) {
+      _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    _ready?.cancel();
+    super.dispose();
+  }
+
+  void _tap() {
+    if (_ready != null) return; // 막 떴다
+    widget.onWake?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final card = _card();
+    if (widget.onWake == null) return card;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _tap,
+      child: Semantics(button: true, label: '눌러서 다시 놀기', child: card),
+    );
+  }
+
+  Widget _card() {
+    final play = widget.play;
     return Material(
       color: Palette.skyBottom,
       child: SafeArea(
@@ -262,43 +320,44 @@ class EyeBreakCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    Flexible(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          maxWidth: 170,
-                          maxHeight: 170,
-                        ),
-                        child: AspectRatio(
-                          aspectRatio: 1,
-                          // 공용 20fps 시계에 맞춰 고리를 줄인다
-                          child: ListenableBuilder(
-                            listenable: SlowClock.instance,
-                            builder: (context, _) {
-                              final left = play.breakLeft ?? Duration.zero;
-                              final f =
-                                  left.inMilliseconds /
-                                  SafetyRules.breakLength.inMilliseconds;
-                              return CustomPaint(
-                                painter: ShrinkingRingPainter(
-                                  f.clamp(0.0, 1.0),
-                                ),
-                                child: Center(
-                                  child: FitBox(
-                                    child: Text(
-                                      '${(left.inMilliseconds / 1000).ceil()}',
-                                      style: const TextStyle(
-                                        fontSize: 44,
-                                        color: Palette.textSoft,
+                    if (play == null) ...[
+                      const Flexible(child: _TapToPlay()),
+                    ] else
+                      Flexible(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: 170,
+                            maxHeight: 170,
+                          ),
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: Builder(
+                              builder: (context) {
+                                final left = play.breakLeft ?? Duration.zero;
+                                final f =
+                                    left.inMilliseconds /
+                                    SafetyRules.breakLength.inMilliseconds;
+                                return CustomPaint(
+                                  painter: ShrinkingRingPainter(
+                                    f.clamp(0.0, 1.0),
+                                  ),
+                                  child: Center(
+                                    child: FitBox(
+                                      child: Text(
+                                        '${(left.inMilliseconds / 1000).ceil()}',
+                                        style: const TextStyle(
+                                          fontSize: 44,
+                                          color: Palette.textSoft,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              );
-                            },
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -308,6 +367,46 @@ class EyeBreakCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 쉬어 가기: "다 쉬었으면 눌러요" (누르는 손)
+class _TapToPlay extends StatelessWidget {
+  const _TapToPlay();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Flexible(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 130, maxHeight: 130),
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                color: Palette.mint,
+                shape: BoxShape.circle,
+              ),
+              child: LayoutBuilder(
+                builder: (context, c) => Icon(
+                  Icons.touch_app_rounded,
+                  size: c.maxWidth * .6,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 10),
+      const FitBox(
+        child: Text(
+          '다 쉬었으면 화면을 눌러요',
+          style: TextStyle(fontSize: 24, color: Palette.textSoft),
+        ),
+      ),
+    ],
+  );
 }
 
 /// 남은 시간만큼 남는 고리 (12시 방향부터 시계 방향)

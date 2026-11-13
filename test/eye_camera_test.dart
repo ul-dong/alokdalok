@@ -6,6 +6,7 @@ import 'package:alokdalok/games/common/game_frame.dart';
 import 'package:alokdalok/games/game_entry.dart';
 import 'package:alokdalok/core/slow_clock.dart';
 import 'package:alokdalok/screens/home_screen.dart';
+import 'package:alokdalok/screens/settings_screen.dart';
 import 'package:alokdalok/services/audio_service.dart';
 import 'package:alokdalok/services/eye_guard.dart';
 import 'package:alokdalok/services/eye_sensor_io.dart';
@@ -13,6 +14,8 @@ import 'package:alokdalok/services/game_state.dart';
 import 'package:alokdalok/services/play_clock.dart';
 import 'package:alokdalok/services/storage_service.dart';
 import 'package:alokdalok/widgets/common.dart';
+import 'package:alokdalok/widgets/eye_guard_overlay.dart';
+import 'package:alokdalok/widgets/play_guard_overlay.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -237,20 +240,56 @@ void main() {
       ], reason: '바뀔 때만 센서에 알린다');
     });
 
-    test('경고 중에는 (얼굴이 잠깐 안 보여도) 0.5초를 유지한다', () {
+    test('경고 중 간격은 1초 (얼굴이 잠깐 안 보여도), 경고가 20초 넘으면 1.5초', () {
       for (var i = 0; i < 8; i++) {
         step(at(25));
       }
       expect(g.alert, EyeAlert.tooClose);
-      expect(g.checkInterval, const Duration(milliseconds: 500));
+      expect(g.checkInterval, const Duration(seconds: 1));
       step(at(33)); // 경계 (30~34cm)
-      expect(g.checkInterval, const Duration(milliseconds: 500));
+      expect(g.checkInterval, const Duration(seconds: 1));
       step(null);
-      expect(g.checkInterval, const Duration(milliseconds: 500));
+      expect(g.checkInterval, const Duration(seconds: 1));
+      // 경고가 뜬 뒤 20초 동안은 1초
+      while (g.checkInterval == const Duration(seconds: 1)) {
+        step(at(25));
+        expect(g.alert, EyeAlert.tooClose);
+      }
+      expect(g.checkInterval, const Duration(milliseconds: 1500));
+      step(null);
+      expect(
+        g.checkInterval,
+        const Duration(milliseconds: 1500),
+        reason: '얼굴이 잠깐 안 보여도 늦춘 간격 그대로',
+      );
       for (var i = 0; i < 3; i++) {
         step(at(60));
       }
       expect(g.alert, EyeAlert.none);
+      expect(g.checkInterval, const Duration(milliseconds: 1500));
+      while (g.alert == EyeAlert.none) {
+        step(at(25));
+      }
+      expect(
+        g.checkInterval,
+        const Duration(seconds: 1),
+        reason: '새 경고는 다시 1초부터',
+      );
+    });
+
+    test('경고가 정확히 20초 이어진 때부터 1.5초', () {
+      final t0 = now;
+      while (g.alert == EyeAlert.none) {
+        step(at(20));
+      }
+      final alertAt = now;
+      // 1.5초에 처음 가까이 봄 → 0.5초 간격 → 2초 뒤 경고
+      expect(alertAt.difference(t0), const Duration(milliseconds: 3500));
+      while (now.difference(alertAt) < EyeRules.alertSlowAfter) {
+        expect(g.checkInterval, EyeRules.alertInterval);
+        step(at(20));
+      }
+      expect(now.difference(alertAt), EyeRules.alertSlowAfter);
       expect(g.checkInterval, const Duration(milliseconds: 1500));
     });
 
@@ -539,6 +578,395 @@ void main() {
       await t.pump(const Duration(milliseconds: 1100));
       expect(sensor.on, isFalse);
       await finish(t);
+    });
+  });
+
+  group('경고는 끝이 있다 (발열 줄이기)', () {
+    late DateTime now;
+    late FakeSensor sensor;
+    late EyeGuard g;
+    final owner = Object();
+
+    Future<void> setUpGuard(WidgetTester t) async {
+      now = DateTime(2026);
+      sensor = FakeSensor();
+      g = EyeGuard(sensor: sensor, now: () => now)..enabled = true;
+      g.showPlay(owner);
+      await t.pump();
+      expect(g.running, isTrue);
+    }
+
+    /// 검사 간격대로 [r]을 본다
+    void step(FaceReading? r) {
+      now = now.add(g.checkInterval);
+      g.feed(r);
+    }
+
+    void alertNow() {
+      while (g.alert == EyeAlert.none) {
+        step(at(20));
+      }
+    }
+
+    testWidgets('경고 중 얼굴이 10초 안 보이면 카메라를 끄고 쉬어 가기, 누르면 다시 켠다', (t) async {
+      await setUpGuard(t);
+      alertNow();
+      final seen = now; // 마지막으로 얼굴을 본 때
+      while (g.running) {
+        step(null);
+        await t.pump();
+      }
+      expect(now.difference(seen), EyeRules.noFaceGiveUp);
+      expect(sensor.on, isFalse);
+      expect(g.resting, isTrue);
+      expect(g.alert, EyeAlert.none);
+      expect(g.wanted, isFalse, reason: '놀이 화면이어도 쉬는 동안은 켜지 않는다');
+      await t.pump(const Duration(seconds: 5));
+      expect(sensor.on, isFalse);
+      g.wake();
+      await t.pump();
+      expect(g.resting, isFalse);
+      expect(sensor.on, isTrue, reason: '돌아오면 다시 켠다');
+      expect(sensor.starts, 2);
+      g.hidePlay(owner);
+      await t.pump(const Duration(milliseconds: 1100));
+    });
+
+    testWidgets('얼굴이 잠깐(10초 안) 안 보였다 다시 보이면 경고 그대로', (t) async {
+      await setUpGuard(t);
+      alertNow();
+      for (var i = 0; i < 8; i++) {
+        step(null);
+      }
+      step(at(20));
+      for (var i = 0; i < 8; i++) {
+        step(null);
+      }
+      await t.pump();
+      expect(g.running, isTrue);
+      expect(g.alert, EyeAlert.tooClose);
+      expect(g.resting, isFalse);
+      g.hidePlay(owner);
+      await t.pump(const Duration(milliseconds: 1100));
+      g.stop();
+    });
+
+    testWidgets('경고가 75초 이어지면 카메라를 끄고 쉬어 가기', (t) async {
+      await setUpGuard(t);
+      alertNow();
+      final alertAt = now;
+      var checks = 0;
+      while (g.running) {
+        step(at(20, yaw: checks.isEven ? 0 : 50)); // 가까움·고개 돌림이 섞여도 한 번의 경고
+        checks++;
+        await t.pump();
+      }
+      expect(
+        now.difference(alertAt),
+        const Duration(seconds: 75, milliseconds: 500),
+        reason: '75초를 넘긴 첫 검사 (1.5초 간격)',
+      );
+      expect(sensor.on, isFalse);
+      expect(g.resting, isTrue);
+      // 20초 동안 1초 간격(20번) + 55초 동안 1.5초 간격(약 37번)
+      expect(checks, inInclusiveRange(55, 58));
+      g.hidePlay(owner);
+      await t.pump(const Duration(milliseconds: 1100));
+    });
+  });
+
+  group('덮개가 떠 있으면 밑단을 멈춘다 (앱)', () {
+    Future<(GameState, FakeSensor, RecordingAudio)> app(
+      WidgetTester t,
+      DateTime Function() clock,
+    ) async {
+      t.view.physicalSize = const Size(1280, 800);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      final sensor = FakeSensor();
+      final audio = RecordingAudio();
+      final s = GameState(
+        storage: MemoryStorage(),
+        audio: audio,
+        eyeGuard: EyeGuard(sensor: sensor, now: clock),
+        now: clock,
+      );
+      await s.load();
+      await s.setNickname('별이');
+      await s.setPlayLimit(0);
+      await t.pumpWidget(AlokdalokApp(state: s));
+      await t.pump(const Duration(seconds: 1));
+      Navigator.of(t.element(find.byType(HomeScreen)))
+          .push(softRoute(gameScreen(GameKind.shape, 1)));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 400));
+      return (s, sensor, audio);
+    }
+
+    Future<void> finish(WidgetTester t) async {
+      await t.pumpWidget(const SizedBox());
+      await t.pump(const Duration(seconds: 7));
+    }
+
+    const close = '화면이 너무 가까워요. 조금 뒤로 가 볼까요?';
+
+    testWidgets('경고 음성은 8초마다 최대 3번, 그 뒤로는 조용히', (t) async {
+      var now = DateTime(2026, 10, 21, 9);
+      final (s, _, audio) = await app(t, () => now);
+      for (var i = 0; i < 6; i++) {
+        now = now.add(const Duration(milliseconds: 500));
+        s.eye.feed(at(20));
+      }
+      await t.pump();
+      expect(s.eye.alert, EyeAlert.tooClose);
+      int said() => audio.spoken.where((e) => e == close).length;
+      expect(said(), 1);
+      // 1분 동안 1초마다 계속 가까이 본다 (75초 전이라 경고는 그대로)
+      for (var i = 0; i < 60; i++) {
+        now = now.add(const Duration(seconds: 1));
+        s.eye.feed(at(20));
+        await t.pump(const Duration(seconds: 1));
+      }
+      expect(s.eye.alert, EyeAlert.tooClose);
+      expect(said(), EyeGuardOverlay.maxSpeaks);
+      expect(said(), 3);
+      // 풀렸다가 다시 경고가 뜨면 처음부터 다시 3번까지
+      for (var i = 0; i < 4; i++) {
+        now = now.add(const Duration(milliseconds: 500));
+        s.eye.feed(at(60));
+      }
+      await t.pump();
+      expect(s.eye.alert, EyeAlert.none);
+      for (var i = 0; i < 6; i++) {
+        now = now.add(const Duration(milliseconds: 500));
+        s.eye.feed(at(20));
+      }
+      await t.pump();
+      expect(said(), 4);
+      for (var i = 0; i < 6; i++) {
+        now = now.add(const Duration(milliseconds: 500));
+        s.eye.feed(at(60));
+      }
+      await t.pump();
+      await finish(t);
+    });
+
+    testWidgets('경고·쉬어 가기 동안 공용 시계·배경 음악·장면을 멈추고, 돌아오면 되돌린다', (t) async {
+      var now = DateTime(2026, 10, 21, 9);
+      final (s, sensor, audio) = await app(t, () => now);
+      expect(SlowClock.instance.ticking, isTrue);
+      expect(audio.music, isNotNull, reason: '놀이 화면 음악');
+      final track = audio.music;
+      for (var i = 0; i < 6; i++) {
+        now = now.add(const Duration(milliseconds: 500));
+        s.eye.feed(at(20));
+      }
+      await t.pump();
+      expect(s.eye.alert, EyeAlert.tooClose);
+      expect(SlowClock.instance.held, isTrue);
+      expect(SlowClock.instance.ticking, isFalse);
+      expect(audio.musicHeld, isTrue);
+      expect(audio.music, isNull);
+      final card = t.widget<Material>(
+        find
+            .descendant(
+              of: find.byType(EyeGuardOverlay),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+      expect(card.color, const Color(0xFFFFF6E5), reason: '완전히 불투명');
+      // 아이가 떠난다: 10초 넘게 얼굴이 안 보임 → 쉬어 가기
+      for (var i = 0; i < 12 && s.eye.running; i++) {
+        now = now.add(const Duration(seconds: 1));
+        s.eye.feed(null);
+        await t.pump(const Duration(seconds: 1));
+      }
+      await t.pump(const Duration(milliseconds: 400));
+      expect(sensor.on, isFalse);
+      expect(s.playBlock, PlayBlock.eyeRest);
+      expect(find.text('창밖 먼 곳을 봐요'), findsOneWidget);
+      expect(find.text('다 쉬었으면 화면을 눌러요'), findsOneWidget);
+      expect(audio.spoken.last, '창밖 먼 곳을 봐요.');
+      expect(
+        audio.spoken.contains('잘했어요! 다시 놀아요.'),
+        isFalse,
+        reason: '바르게 앉아서 풀린 게 아니다',
+      );
+      expect(SlowClock.instance.ticking, isFalse);
+      expect(audio.music, isNull);
+      // 한참 뒤에도 그대로 (카메라 꺼짐)
+      await t.pump(const Duration(seconds: 30));
+      expect(sensor.on, isFalse);
+      expect(s.playBlock, PlayBlock.eyeRest);
+      // 화면을 한 번 누르면 돌아온다 (부모 확인 없음)
+      await t.tap(find.text('창밖 먼 곳을 봐요'));
+      await t.pump();
+      expect(s.playBlock, PlayBlock.none);
+      expect(sensor.on, isTrue, reason: '카메라를 다시 켠다');
+      expect(audio.spoken.last, '잘 쉬었어요! 다시 놀아요.');
+      expect(SlowClock.instance.held, isFalse);
+      expect(SlowClock.instance.ticking, isTrue);
+      expect(audio.music, track);
+      await finish(t);
+    });
+
+    testWidgets('쉬어 가기가 막 뜬 순간(1초 안)의 터치는 무시한다', (t) async {
+      var now = DateTime(2026, 10, 21, 9);
+      final (s, _, _) = await app(t, () => now);
+      for (var i = 0; i < 6; i++) {
+        now = now.add(const Duration(milliseconds: 500));
+        s.eye.feed(at(20));
+      }
+      for (var i = 0; i < 12 && s.eye.running; i++) {
+        now = now.add(const Duration(seconds: 1));
+        s.eye.feed(null);
+      }
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 300));
+      expect(s.playBlock, PlayBlock.eyeRest);
+      await t.tap(find.text('창밖 먼 곳을 봐요'));
+      await t.pump();
+      expect(s.playBlock, PlayBlock.eyeRest);
+      await t.pump(const Duration(seconds: 1));
+      await t.tap(find.text('창밖 먼 곳을 봐요'));
+      await t.pump();
+      expect(s.playBlock, PlayBlock.none);
+      await finish(t);
+    });
+
+    testWidgets('눈 쉬기·오늘은 여기까지 덮개도 시계와 음악을 멈춘다', (t) async {
+      var now = DateTime(2026, 10, 21, 9);
+      final (s, _, audio) = await app(t, () => now);
+      for (var i = 0; i < 10 * 12 && s.playBlock == PlayBlock.none; i++) {
+        now = now.add(const Duration(seconds: 5));
+        await t.pump(const Duration(seconds: 5));
+      }
+      expect(s.playBlock, PlayBlock.eyeBreak);
+      expect(SlowClock.instance.ticking, isFalse);
+      expect(audio.music, isNull);
+      // 고리는 1초에 한 번씩 줄어든다 (공용 시계 없이)
+      String left() => t
+          .widgetList<Text>(
+            find.descendant(
+              of: find.byType(EyeBreakCard),
+              matching: find.byType(Text),
+            ),
+          )
+          .map((e) => e.data)
+          .firstWhere((d) => int.tryParse(d ?? '') != null)!;
+      final a = left();
+      now = now.add(const Duration(seconds: 2));
+      await t.pump(const Duration(seconds: 2));
+      expect(int.parse(left()), int.parse(a) - 2);
+      for (var i = 0; i < 25 && s.playBlock != PlayBlock.none; i++) {
+        now = now.add(const Duration(seconds: 1));
+        await t.pump(const Duration(seconds: 1));
+      }
+      expect(s.playBlock, PlayBlock.none);
+      expect(SlowClock.instance.ticking, isTrue);
+      expect(audio.music, isNotNull);
+      await s.setPlayLimit(10);
+      await t.pump(const Duration(seconds: 1));
+      expect(s.playBlock, PlayBlock.limit);
+      expect(SlowClock.instance.ticking, isFalse);
+      expect(audio.music, isNull);
+      await finish(t);
+      expect(SlowClock.instance.held, isFalse, reason: '앱이 사라지면 풀어 둔다');
+    });
+  });
+
+  group('실측 진단 (EyeStats)', () {
+    test('최근 1분의 실제 초당 프레임·검사 횟수·카메라 켜짐 비율', () {
+      var now = DateTime(2026);
+      final st = EyeStats(now: () => now);
+      expect(st.summary().fps, isNull);
+      now = now.add(const Duration(seconds: 30)); // 30초 꺼져 있음
+      st.cameraOn(true);
+      // 30초 동안 초당 30장 (요청이 안 먹힌 기기), 1.5초마다 검사
+      for (var i = 0; i < 30 * 30; i++) {
+        now = now.add(const Duration(microseconds: 1000000 ~/ 30));
+        st.frame();
+        if (i % 45 == 0) st.check();
+      }
+      var sum = st.summary();
+      expect(sum.window.inSeconds, closeTo(60, 1));
+      expect(sum.fps, closeTo(30, .5));
+      expect(sum.checks, 20);
+      expect(sum.onRatio, closeTo(.5, .01));
+      // 카메라를 끄고 1분이 지나면 기록이 비워진다
+      st.cameraOn(false);
+      now = now.add(const Duration(seconds: 61));
+      sum = st.summary();
+      expect(sum.frames, 0);
+      expect(sum.checks, 0);
+      expect(sum.onRatio, 0);
+      expect(sum.fps, isNull);
+    });
+
+    test('앱을 켠 지 1분이 안 됐으면 켠 뒤부터 잰다, 켜져 있는 구간이 1분을 넘으면 1분만', () {
+      var now = DateTime(2026);
+      final st = EyeStats(now: () => now)..cameraOn(true);
+      for (var i = 0; i < 100; i++) {
+        now = now.add(const Duration(milliseconds: 100));
+        st.frame();
+      }
+      var sum = st.summary();
+      expect(sum.window, const Duration(seconds: 10));
+      expect(sum.onRatio, 1);
+      expect(sum.fps, closeTo(10, .01));
+      for (var i = 0; i < 1200; i++) {
+        now = now.add(const Duration(milliseconds: 100));
+        st.frame();
+      }
+      sum = st.summary();
+      expect(sum.window, EyeStats.window);
+      expect(sum.cameraOn, EyeStats.window);
+      expect(sum.frames, inInclusiveRange(600, 601));
+    });
+
+    test('눈 지킴이가 켜고 끄고 검사한 것을 기록한다', () async {
+      var now = DateTime(2026);
+      final st = EyeStats(now: () => now);
+      final g = EyeGuard(sensor: FakeSensor(), now: () => now, stats: st);
+      await g.start();
+      now = now.add(const Duration(seconds: 3));
+      g.feed(at(60));
+      g.feed(null);
+      now = now.add(const Duration(seconds: 3));
+      await g.stop();
+      now = now.add(const Duration(seconds: 6));
+      final sum = st.summary();
+      expect(sum.checks, 2);
+      expect(sum.cameraOn, const Duration(seconds: 6));
+      expect(sum.onRatio, closeTo(.5, .001));
+    });
+
+    testWidgets('설정의 \'부모님께\'를 길게 누르면 진단 칸이 열린다', (t) async {
+      t.view.physicalSize = const Size(844, 2400);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      final s = GameState(storage: MemoryStorage(), audio: RecordingAudio());
+      await s.load();
+      await t.pumpWidget(
+        AppScope(
+          state: s,
+          child: const MaterialApp(home: SettingsScreen()),
+        ),
+      );
+      expect(find.byType(EyeDiagnosticsPanel), findsNothing);
+      await t.longPress(find.textContaining('회원가입'));
+      await t.pump();
+      expect(find.byType(EyeDiagnosticsPanel), findsOneWidget);
+      expect(find.text('눈 지킴이 진단 (최근 1분)'), findsOneWidget);
+      expect(find.text('실제 초당 프레임'), findsOneWidget);
+      expect(find.text('검사 횟수'), findsOneWidget);
+      expect(find.text('카메라 켜짐'), findsOneWidget);
+      await t.pump(const Duration(seconds: 2));
+      expect(t.takeException(), isNull);
+      await t.longPress(find.textContaining('회원가입'));
+      await t.pump();
+      expect(find.byType(EyeDiagnosticsPanel), findsNothing);
     });
   });
 }

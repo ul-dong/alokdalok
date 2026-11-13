@@ -28,8 +28,10 @@ class SafetyRules {
   static const maxTickGap = Duration(seconds: 30);
 }
 
-/// 지금 놀이를 막고 있는 것
-enum PlayBlock { none, eyeBreak, limit }
+/// 지금 놀이를 막고 있는 것.
+/// [eyeRest]는 [PlayClock]이 아니라 눈 지킴이가 정한다: 경고가 끝나지 않아 카메라를 끄고
+/// 쉬어 가는 중 (`EyeGuard.resting`). 눈 쉬기 화면을 그대로 쓰고, 화면을 한 번 누르면 돌아온다.
+enum PlayBlock { none, eyeBreak, limit, eyeRest }
 
 /// 하루 놀이 시간과 눈 쉬기를 세는 순수 로직. 시계([now])를 주입해 테스트한다.
 ///

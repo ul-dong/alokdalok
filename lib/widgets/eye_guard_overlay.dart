@@ -14,6 +14,12 @@ import 'common.dart';
 class EyeGuardOverlay extends StatefulWidget {
   const EyeGuardOverlay({super.key});
 
+  /// 음성 안내를 다시 들려주는 간격
+  static const repeatEvery = Duration(seconds: 8);
+
+  /// 한 번의 경고에서 음성 안내를 들려주는 최대 횟수 (처음 1번 + 다시 2번). 그 뒤로는 화면만 조용히.
+  static const maxSpeaks = 3;
+
   @override
   State<EyeGuardOverlay> createState() => _EyeGuardOverlayState();
 }
@@ -27,6 +33,9 @@ class _EyeGuardOverlayState extends State<EyeGuardOverlay>
   GameState? _state;
   EyeAlert _shown = EyeAlert.none;
   Timer? _repeat;
+
+  /// 이번 경고에서 음성 안내를 들려준 횟수 (경고가 풀리면 0)
+  int _spoken = 0;
 
   @override
   void initState() {
@@ -92,17 +101,34 @@ class _EyeGuardOverlayState extends State<EyeGuardOverlay>
     final was = _shown;
     setState(() => _shown = a);
     _repeat?.cancel();
+    _repeat = null;
     if (a == EyeAlert.none) {
-      if (was != EyeAlert.none) state.audio.say('잘했어요! 다시 놀아요.');
+      _spoken = 0;
+      // 쉬어 가기로 넘어간 것이면 그쪽 덮개가 안내한다
+      if (was != EyeAlert.none && !_eye!.resting) {
+        state.audio.say('잘했어요! 다시 놀아요.');
+      }
       return;
     }
-    void speak() => state.audio.say(
-      a == EyeAlert.tooClose
-          ? '화면이 너무 가까워요. 조금 뒤로 가 볼까요?'
-          : '바르게 앉아서 봐요. 화면을 똑바로 봐 주세요.',
-    );
-    speak();
-    _repeat = Timer.periodic(const Duration(seconds: 8), (_) => speak());
+    // 8초마다 다시 들려주되, 한 번의 경고에서 최대 3번까지만 (그 뒤로는 화면만)
+    bool speak() {
+      if (_spoken >= EyeGuardOverlay.maxSpeaks) return false;
+      _spoken++;
+      state.audio.say(
+        a == EyeAlert.tooClose
+            ? '화면이 너무 가까워요. 조금 뒤로 가 볼까요?'
+            : '바르게 앉아서 봐요. 화면을 똑바로 봐 주세요.',
+      );
+      return _spoken < EyeGuardOverlay.maxSpeaks;
+    }
+
+    if (!speak()) return;
+    _repeat = Timer.periodic(EyeGuardOverlay.repeatEvery, (t) {
+      if (!speak()) {
+        t.cancel();
+        if (identical(_repeat, t)) _repeat = null;
+      }
+    });
   }
 
   @override
@@ -121,7 +147,8 @@ class _EyeGuardOverlayState extends State<EyeGuardOverlay>
   Widget _card(EyeAlert a) {
     final close = a == EyeAlert.tooClose;
     return Material(
-      color: const Color(0xFAFFF6E5),
+      // 완전히 가린다 (아래 놀이 화면은 멈춰 있다)
+      color: const Color(0xFFFFF6E5),
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),

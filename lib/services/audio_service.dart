@@ -60,8 +60,20 @@ abstract class AudioService {
     if (v == _musicOn) return;
     _musicOn = v;
     final t = currentTrack;
-    if (t == null) return;
+    if (t == null || _musicHeld) return;
     v ? startMusic(t) : endMusic();
+  }
+
+  /// 덮개(눈 지킴이 경고·눈 쉬기·쉬어 가기·오늘은 여기까지)가 화면을 가리는 동안 배경 음악을 멈춘다.
+  /// 풀리면 지금 화면의 곡을 다시 튼다. 음성 안내와 효과음은 그대로 나온다.
+  bool _musicHeld = false;
+  bool get musicHeld => _musicHeld;
+  set musicHeld(bool v) {
+    if (v == _musicHeld) return;
+    _musicHeld = v;
+    final t = currentTrack;
+    if (t == null || !musicOn) return;
+    v ? endMusic() : startMusic(t);
   }
 
   /// 화면마다 원하는 곡을 쌓아 둔다. 맨 위 화면의 곡이 나오고, 그 화면이 닫히면 아래 화면 곡으로 돌아간다.
@@ -87,7 +99,8 @@ abstract class AudioService {
   int playMusic(String track) {
     final id = ++_musicOwner;
     _musicStack.add((id, track));
-    if (musicOn) startMusic(track); // 이미 같은 곡이 나오고 있으면 그대로 둔다
+    // 이미 같은 곡이 나오고 있으면 그대로 둔다
+    if (musicOn && !_musicHeld) startMusic(track);
     return id;
   }
 
@@ -100,7 +113,7 @@ abstract class AudioService {
     final t = currentTrack;
     if (t == null) {
       endMusic();
-    } else if (musicOn) {
+    } else if (musicOn && !_musicHeld) {
       startMusic(t);
     }
   }

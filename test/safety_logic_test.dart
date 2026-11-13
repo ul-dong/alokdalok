@@ -6,6 +6,7 @@ import 'package:alokdalok/data/item_catalog.dart';
 import 'package:alokdalok/data/vehicles.dart';
 import 'package:alokdalok/services/audio_service.dart';
 import 'package:alokdalok/services/backup_code.dart';
+import 'package:alokdalok/services/eye_guard.dart';
 import 'package:alokdalok/services/game_state.dart';
 import 'package:alokdalok/services/play_clock.dart';
 import 'package:alokdalok/services/save_data.dart';
@@ -13,6 +14,8 @@ import 'package:alokdalok/services/storage_service.dart';
 import 'package:alokdalok/services/voice_lines.dart';
 import 'package:alokdalok/widgets/parental_gate.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'eye_guard_test.dart' show FakeSensor, at;
 
 /// 가짜 시계: [advance]로만 시간이 흐른다
 class FakeClock {
@@ -664,6 +667,117 @@ void main() {
       }
       expect(seen, {6, 7, 8, 9});
       expect(ParentalGate.answerOf('7 + 8'), 15);
+    });
+  });
+
+  group('눈 지킴이 경고는 끝이 있다 → 쉬어 가기', () {
+    Future<(GameState, FakeSensor, FakeClock)> make() async {
+      final c = FakeClock();
+      final sensor = FakeSensor();
+      final s = GameState(
+        storage: MemoryStorage(),
+        audio: RecordingAudio(),
+        eyeGuard: EyeGuard(sensor: sensor, now: c.call),
+        now: c.call,
+      );
+      await s.load();
+      await s.setPlayLimit(0);
+      s.eye.showPlay(Object());
+      await Future<void>.delayed(Duration.zero);
+      expect(s.eye.running, isTrue);
+      return (s, sensor, c);
+    }
+
+    /// 검사 간격대로 [r]을 본다
+    void step(GameState s, FakeClock c, FaceReading? r) {
+      c.now = c.now.add(s.eye.checkInterval);
+      s.eye.feed(r);
+    }
+
+    void alertNow(GameState s, FakeClock c) {
+      while (s.eye.alert == EyeAlert.none) {
+        step(s, c, at(20));
+      }
+    }
+
+    test('기준값: 얼굴 없음 10초, 경고 75초, 경고 중 1초 → 20초 뒤 1.5초', () {
+      expect(EyeRules.noFaceGiveUp, const Duration(seconds: 10));
+      expect(EyeRules.alertGiveUp, const Duration(seconds: 75));
+      expect(EyeRules.alertInterval, const Duration(seconds: 1));
+      expect(EyeRules.alertSlowAfter, const Duration(seconds: 20));
+      expect(EyeRules.slowInterval, const Duration(milliseconds: 1500));
+    });
+
+    test('경고 중 얼굴이 10초 안 보이면 카메라를 끄고 쉬어 가기, 누르면 돌아온다', () async {
+      final (s, sensor, c) = await make();
+      alertNow(s, c);
+      expect(s.playBlock, PlayBlock.none, reason: '경고는 쉬어 가기가 아니다');
+      expect(s.eye.checkInterval, const Duration(seconds: 1));
+      // 마지막으로 얼굴을 본 때부터 1초마다 안 보임
+      for (var i = 0; i < 9; i++) {
+        step(s, c, null);
+      }
+      expect(s.eye.running, isTrue, reason: '9초는 아직');
+      expect(s.eye.alert, EyeAlert.tooClose);
+      step(s, c, null); // 10초
+      expect(s.eye.running, isFalse);
+      expect(sensor.on, isFalse);
+      expect(s.eye.alert, EyeAlert.none);
+      expect(s.playBlock, PlayBlock.eyeRest);
+      s.wakeFromEyeRest();
+      expect(s.playBlock, PlayBlock.none);
+      await Future<void>.delayed(Duration.zero);
+      expect(s.eye.running, isTrue, reason: '돌아오면 카메라를 다시 켠다');
+      expect(sensor.on, isTrue);
+    });
+
+    test('경고가 75초 이어지면 카메라를 끄고 쉬어 가기', () async {
+      final (s, sensor, c) = await make();
+      alertNow(s, c);
+      final since = c.now;
+      while (s.eye.running) {
+        expect(c.now.difference(since), lessThan(EyeRules.alertGiveUp));
+        step(s, c, at(20));
+      }
+      // 75초를 넘긴 첫 검사에서 끈다 (1.5초 간격이라 75.5초)
+      expect(
+        c.now.difference(since),
+        const Duration(seconds: 75, milliseconds: 500),
+      );
+      expect(sensor.on, isFalse);
+      expect(s.playBlock, PlayBlock.eyeRest);
+    });
+
+    test('경고 중 간격은 1초, 20초 뒤 1.5초', () async {
+      final (s, _, c) = await make();
+      alertNow(s, c);
+      final since = c.now;
+      final seen = <Duration>[];
+      while (c.now.difference(since) < const Duration(seconds: 30)) {
+        seen.add(s.eye.checkInterval);
+        step(s, c, at(20));
+      }
+      expect(seen.take(20), everyElement(const Duration(seconds: 1)));
+      expect(seen.skip(20), everyElement(const Duration(milliseconds: 1500)));
+    });
+
+    test('"오늘은 여기까지!"·눈 쉬기가 쉬어 가기보다 먼저', () async {
+      final (s, _, c) = await make();
+      alertNow(s, c);
+      for (var i = 0; i < 10; i++) {
+        step(s, c, null);
+      }
+      expect(s.playBlock, PlayBlock.eyeRest);
+      await s.setPlayLimit(10);
+      playFor(s.play, c, const Duration(minutes: 11));
+      expect(s.playBlock, PlayBlock.limit);
+      await s.setPlayLimit(0);
+      await s.setEyeBreak(10);
+      s.play.endBreak();
+      playFor(s.play, c, const Duration(minutes: 10, seconds: 5));
+      expect(s.playBlock, PlayBlock.eyeBreak);
+      playFor(s.play, c, const Duration(seconds: 30));
+      expect(s.playBlock, PlayBlock.eyeRest, reason: '눈 쉬기가 끝나도 누를 때까지 쉬어 가기');
     });
   });
 

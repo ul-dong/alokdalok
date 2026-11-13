@@ -46,7 +46,7 @@ CameraController eyeCameraController(
 /// 발열 줄이기:
 /// - 가장 낮은 해상도, 초당 5~10장만 찍게 요청한다 (기본 30장).
 /// - 화면 미리보기는 쓰지 않으므로 멈춰 둔다 (안드로이드는 Preview를 떼어 내서 GPU로 안 보낸다).
-/// - 프레임 중에서 [EyeGuard]가 정한 간격(평소 1.5초, 가까우면 0.5초)마다 하나만 검사한다.
+/// - 프레임 중에서 [EyeGuard]가 정한 간격(평소 1.5초, 가까우면 0.5초, 경고 중 1초)마다 하나만 검사한다.
 class _MlKitEyeSensor implements EyeSensor {
   CameraController? _cam;
   CameraDescription? _desc;
@@ -58,7 +58,8 @@ class _MlKitEyeSensor implements EyeSensor {
   /// 켤 때마다 늘어난다. 카메라를 여는 사이에 꺼지면 연 것을 바로 닫는다.
   int _gen = 0;
 
-  // 디버그 실행에서 1분마다 실제 받은 프레임 수와 검사 횟수를 알려 준다 (기기에서 확인용)
+  // 디버그 실행에서 1분마다 실제 받은 프레임 수와 검사 횟수를 로그로 알려 준다 (기기에서 확인용).
+  // release 빌드에서도 설정의 숨은 진단 칸([EyeStats])으로 볼 수 있다.
   int _frames = 0, _checks = 0;
   DateTime _countFrom = DateTime.now();
 
@@ -119,7 +120,10 @@ class _MlKitEyeSensor implements EyeSensor {
     }
   }
 
+  /// 받은 프레임을 진단 기록([EyeStats], 설정 '부모님께' 아래 숨은 칸)에 남기고,
+  /// 디버그 실행에서는 1분마다 로그로도 알려 준다.
   void _countFrame(bool checked) {
+    EyeStats.instance.frame();
     if (!kDebugMode) return;
     _frames++;
     if (checked) _checks++;

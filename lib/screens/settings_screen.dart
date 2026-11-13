@@ -170,18 +170,7 @@ class SettingsScreen extends StatelessWidget {
                   ],
                 ),
                 const _Section('부모님께'),
-                const _Panel(
-                  padding: EdgeInsets.fromLTRB(18, 14, 18, 14),
-                  children: [
-                    _Bullets([
-                      '회원가입, 서버, 광고, 추적, 현금 결제가 없습니다.',
-                      '닉네임과 진행 기록은 이 기기 안에만 저장됩니다.',
-                      '코인은 놀이로만 모으고, 꾸미기 아이템에만 씁니다.',
-                      '한 판은 5문제(약 1~2분)입니다.',
-                      '눈 지킴이를 켜면 앞카메라 영상을 이 기기 안에서만 살펴보고, 저장하거나 보내지 않습니다.',
-                    ]),
-                  ],
-                ),
+                const _ParentNotes(),
                 const SizedBox(height: Gaps.xl),
                 const _HoldToReset(),
                 const SizedBox(height: Gaps.md),
@@ -1136,4 +1125,142 @@ class _BackupRestoreDialogState extends State<BackupRestoreDialog> {
       ),
     ],
   );
+}
+
+/// '부모님께' 안내. 길게 누르면 아래에 눈 지킴이 진단 칸이 열린다 (숨은 칸, 다시 길게 누르면 닫힘).
+class _ParentNotes extends StatefulWidget {
+  const _ParentNotes();
+
+  @override
+  State<_ParentNotes> createState() => _ParentNotesState();
+}
+
+class _ParentNotesState extends State<_ParentNotes> {
+  bool _diag = false;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      GestureDetector(
+        onLongPress: () => setState(() => _diag = !_diag),
+        child: const _Panel(
+          padding: EdgeInsets.fromLTRB(18, 14, 18, 14),
+          children: [
+            _Bullets([
+              '회원가입, 서버, 광고, 추적, 현금 결제가 없습니다.',
+              '닉네임과 진행 기록은 이 기기 안에만 저장됩니다.',
+              '코인은 놀이로만 모으고, 꾸미기 아이템에만 씁니다.',
+              '한 판은 5문제(약 1~2분)입니다.',
+              '눈 지킴이를 켜면 앞카메라 영상을 이 기기 안에서만 살펴보고, 저장하거나 보내지 않습니다.',
+            ]),
+          ],
+        ),
+      ),
+      if (_diag) ...[
+        const SizedBox(height: Gaps.md),
+        const EyeDiagnosticsPanel(),
+      ],
+    ],
+  );
+}
+
+/// 눈 지킴이 실측 진단: 최근 1분의 실제 초당 프레임 수, 검사 횟수, 카메라가 켜져 있던 시간 비율.
+/// 카메라에 요청한 초당 프레임(안드로이드 10, iOS 5)이 기기에서 실제로 먹히는지 확인한다.
+/// 1초마다 새로 읽는다. (release 빌드에서도 보인다)
+class EyeDiagnosticsPanel extends StatefulWidget {
+  const EyeDiagnosticsPanel({super.key, this.stats});
+
+  /// 없으면 앱 전체 기록([EyeStats.instance])
+  final EyeStats? stats;
+
+  @override
+  State<EyeDiagnosticsPanel> createState() => _EyeDiagnosticsPanelState();
+}
+
+class _EyeDiagnosticsPanelState extends State<EyeDiagnosticsPanel> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eye = AppScope.of(context).eye;
+    final sum = (widget.stats ?? EyeStats.instance).summary();
+    final fps = sum.fps;
+    final sec = sum.window.inMilliseconds / 1000;
+    final on = sum.cameraOn.inMilliseconds / 1000;
+    final ios = Theme.of(context).platform == TargetPlatform.iOS;
+    final asked = ios ? EyeRules.iosFps : EyeRules.androidFps;
+    String ms(Duration d) => '${(d.inMilliseconds / 1000).toStringAsFixed(1)}초';
+    final rows = <(String, String)>[
+      (
+        '실제 초당 프레임',
+        fps == null
+            ? '카메라가 켜진 적 없음'
+            : '${fps.toStringAsFixed(1)}장 (요청 $asked장)',
+      ),
+      ('검사 횟수', '${sum.checks}번'),
+      (
+        '카메라 켜짐',
+        '${(sum.onRatio * 100).round()}% (${on.toStringAsFixed(0)}초 / ${sec.toStringAsFixed(0)}초)',
+      ),
+      ('받은 프레임', '${sum.frames}장'),
+      ('지금', '${eye.running ? '켜짐' : '꺼짐'}, 검사 간격 ${ms(eye.checkInterval)}'),
+    ];
+    return _Panel(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              '눈 지킴이 진단 (최근 1분)',
+              style: TextStyle(fontSize: TextSizes.body, color: Palette.text),
+            ),
+            for (final (k, v) in rows)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        k,
+                        style: const TextStyle(
+                          fontSize: TextSizes.caption,
+                          color: Palette.textSoft,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      v,
+                      key: ValueKey('diag:$k'),
+                      style: const TextStyle(
+                        fontSize: TextSizes.caption,
+                        color: Palette.text,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const _Note(
+              '실제 초당 프레임이 30 가까이면 카메라가 요청을 따르지 않는 것입니다 (발열 원인). 숫자는 저장하거나 보내지 않습니다.',
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }

@@ -67,7 +67,17 @@ class GameState extends ChangeNotifier {
     EyeGuard? eyeGuard,
     DateTime Function()? now,
   }) : eye = eyeGuard ?? EyeGuard(),
-       play = PlayClock(now: now);
+       play = PlayClock(now: now) {
+    // 눈 지킴이가 "쉬어 가기"로 넘어가거나 돌아오면 덮개([playBlock])가 바뀐다
+    eye.addListener(_eyeChanged);
+  }
+
+  bool _eyeResting = false;
+  void _eyeChanged() {
+    if (eye.resting == _eyeResting) return;
+    _eyeResting = eye.resting;
+    notifyListeners();
+  }
 
   final StorageService storage;
   final AudioService audio;
@@ -446,8 +456,15 @@ class GameState extends ChangeNotifier {
     await _commit();
   }
 
-  /// 지금 놀이를 막고 있는 것 (놀이 시간 끝 / 눈 쉬기)
-  PlayBlock get playBlock => play.block;
+  /// 지금 놀이를 막고 있는 것 (놀이 시간 끝 / 눈 쉬기 / 눈 지킴이 쉬어 가기)
+  PlayBlock get playBlock {
+    final b = play.block;
+    if (b != PlayBlock.none) return b;
+    return eye.resting ? PlayBlock.eyeRest : PlayBlock.none;
+  }
+
+  /// "쉬어 가기" 화면을 눌렀다: 다시 놀고 카메라를 다시 켠다
+  void wakeFromEyeRest() => eye.wake();
 
   int _savedPlaySeconds = 0;
 

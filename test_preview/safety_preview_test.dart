@@ -142,5 +142,30 @@ void main() {
       );
       await t.pumpWidget(const SizedBox());
     });
+
+    testWidgets('settings eye diagnostics $w', (t) async {
+      // '부모님께'를 길게 누르면 열리는 눈 지킴이 진단 칸 (아래쪽만)
+      t.view.physicalSize = Size(size.width, 2400);
+      t.view.devicePixelRatio = 1;
+      final (s, _, _) = await make();
+      await t.pumpWidget(
+        AppScope(
+          state: s,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: buildAppTheme(),
+            home: const SettingsScreen(),
+          ),
+        ),
+      );
+      await t.pump(const Duration(milliseconds: 500));
+      await t.longPress(find.textContaining('회원가입'));
+      await t.pump(const Duration(milliseconds: 500));
+      await expectLater(
+        find.byType(EyeDiagnosticsPanel),
+        matchesGoldenFile('shots/settings_eye_diag_$w.png'),
+      );
+      await t.pumpWidget(const SizedBox());
+    });
   }
 }

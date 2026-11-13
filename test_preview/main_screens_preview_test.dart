@@ -100,6 +100,34 @@ void main() {
       await t.pumpWidget(const SizedBox());
       await t.pump(const Duration(seconds: 9));
     });
+
+    testWidgets('eye rest $w', (t) async {
+      // 경고 중 아이가 떠나서(얼굴 10초 안 보임) 카메라를 끄고 "쉬어 가기"
+      t.view.physicalSize = size;
+      t.view.devicePixelRatio = 1;
+      var now = DateTime(2026, 10, 22, 9);
+      final eye = EyeGuard(now: () => now);
+      final s = await rich(eye: eye);
+      await t.pumpWidget(AlokdalokApp(state: s));
+      await _pump(t);
+      for (var i = 0; i < 5; i++) {
+        eye.feed(const FaceReading(size: .9, yaw: 0, pitch: 0, roll: 0));
+        now = now.add(const Duration(seconds: 1));
+      }
+      expect(eye.alert, EyeAlert.tooClose);
+      for (var i = 0; i < 11 && !eye.resting; i++) {
+        now = now.add(const Duration(seconds: 1));
+        eye.feed(null);
+      }
+      expect(eye.resting, isTrue);
+      await _pump(t, 6);
+      await expectLater(
+        find.byType(MaterialApp).first,
+        matchesGoldenFile('shots/main_eye_rest_$w.png'),
+      );
+      await t.pumpWidget(const SizedBox());
+      await t.pump(const Duration(seconds: 9));
+    });
   }
 
   // 결과 화면: 아이폰 가로(932×430, 노치·홈 막대 안전 영역 포함)까지 네 크기
