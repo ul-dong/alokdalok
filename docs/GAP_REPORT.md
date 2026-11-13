@@ -170,8 +170,9 @@
 | 최소 iOS 버전 | 있음 | `platform :ios, '15.5'`, pbxproj·모든 Pod 15.5 (ML Kit 요구) |
 | 눈 보호 센서 | 코드 준비됨 | `eye_sensor_io.dart`는 `google_mlkit_face_detection` + `camera` (Android 전용 API 아님, iOS 분기 있음). 실기기 검증 필요 |
 | Podfile | 있음 | iOS 27 시뮬레이터는 x86_64를 못 돌려서 arm64 제외 대신 `tool/ios/mlkit_sim_slices.py`로 arm64 시뮬레이터 사본(`Pods/MLKitSim`)을 만들어 시뮬레이터 빌드에서만 사용. `flutter build ios --simulator` 성공, iPhone 17e(iOS 27) 실행 확인. 2026-10-22 다시 빌드·설치: 친구 고르기 → 이름 짓기(비워 두고 좋아요) → 홈까지 확인 |
-| 서명·번들 ID | 사용자 몫 | 번들 ID `com.alokdalok.alokdalok`. Team(Apple 개발자 계정)·서명은 Xcode에서 사용자가 설정. `Podfile.lock` 커밋 |
-| 표시 이름 | 있음 | `CFBundleDisplayName = 알록달록 놀이터` |
+| 서명·번들 ID | 사용자 몫 | 번들 ID `io.github.uldong.alokdalok`. Team(Apple 개발자 계정)·서명은 Xcode에서 사용자가 설정. `Podfile.lock` 커밋 |
+| 표시 이름 | 있음 | `CFBundleDisplayName = 알록달록 꼬마 놀이터`. Android `@string/app_name` (영어 `values-en`: Balloon Playground) |
+| 앱 아이콘 | 일부 | 풍선 3개 묶음 `lib/branding/app_icon_painter.dart` → `tool/gen_icons_test.dart`로 웹·Android(레거시 + 어댑티브 전경, 단색 배경) PNG 생성. iOS `AppIcon.appiconset`은 아직 Flutter 기본 그림 |
 | 노치·홈 인디케이터 | 있음 | `SafeArea` 사용, Info.plist `UIStatusBarHidden`, `UIRequiresFullScreen` |
 
 ## 13. 남은 차이와 사용자 결정

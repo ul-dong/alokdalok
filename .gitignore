@@ -66,3 +66,4 @@ app.*.map.json
 
 # Kotlin 컴파일러 캐시
 /android/.kotlin/
+/tool/out/

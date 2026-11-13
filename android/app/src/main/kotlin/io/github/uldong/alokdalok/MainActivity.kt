@@ -1,4 +1,4 @@
-package com.alokdalok.alokdalok
+package io.github.uldong.alokdalok
 
 import android.content.BroadcastReceiver
 import android.content.Context

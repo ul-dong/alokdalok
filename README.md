@@ -31,6 +31,30 @@ flutter build ios --simulator  # iOS 시뮬레이터 (Xcode + CocoaPods, 먼저 
   `tool/ios/mlkit_sim_slices.py`가 시뮬레이터용 사본(`ios/Pods/MLKitSim`)을 만들고 시뮬레이터 빌드에서만 쓴다.
   실기기 서명(Team, 번들 ID)은 Xcode에서 직접 설정한다.
 
+## 앱 아이콘·이름
+
+- **이름:** 한국어 "알록달록 꼬마 놀이터", 영어 "Balloon Playground" (Android `res/values*/strings.xml`의 `app_name`,
+  iOS `CFBundleDisplayName`, 웹 `manifest.json`). 패키지명·번들 ID는 `io.github.uldong.alokdalok` (Play 출시 뒤에는 못 바꾼다).
+- **아이콘:** 풍선 3개 묶음. 이미지 원본 없이 `lib/branding/app_icon_painter.dart`(CustomPainter)로 그리고,
+  PNG는 아래 명령 한 번으로 모두 다시 만든다.
+
+```bash
+flutter test tool/gen_icons_test.dart
+```
+
+| 결과 | 크기 | 배율·배경 |
+|---|---|---|
+| `web/icons/Icon-192.png`, `Icon-512.png`, `web/favicon.png`(32) | 192, 512, 32 | 1.0, 배경 있음 |
+| `web/icons/Icon-maskable-192.png`, `Icon-maskable-512.png` | 192, 512 | 0.7, 배경 있음 |
+| `android/.../mipmap-*/ic_launcher.png` (레거시) | 48·72·96·144·192 | 1.0, 배경 있음 |
+| `android/.../mipmap-*/ic_launcher_foreground.png` (어댑티브 전경) | 108dp: 108·162·216·324·432 | 0.7, 투명 |
+| `tool/out/store_icon.png` (Play 스토어, git 제외) | 512 | 1.0, 알파 없음 |
+| `tool/out/adaptive_safe_zone.png`, `adaptive_masks.png` (확인용, git 제외) | | 66dp 안전 원, 런처 마스크 미리보기 |
+
+어댑티브 아이콘(`mipmap-anydpi-v26/ic_launcher.xml`, `ic_launcher_round.xml`)의 배경은 그라데이션 없이
+단색 `#BFE3FA`(`values/ic_launcher_background.xml`)로 둔다. 런처가 패럴랙스로 움직이기 때문이다.
+iOS 앱 아이콘(`ios/Runner/Assets.xcassets/AppIcon.appiconset`)은 아직 Flutter 기본 그림이다.
+
 ## 테스트
 
 ```bash

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 어댑티브 아이콘: 배경은 단색(패럴랙스로 움직여도 어색하지 않게), 전경은 풍선 3개(0.7배, 66dp 안전 원 안).
+     전경 PNG 는 tool/gen_icons_test.dart 로 만든다. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+</adaptive-icon>

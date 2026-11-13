@@ -18,7 +18,7 @@ val keyPw: String? = System.getenv("ALOK_KEY_PASSWORD")?.takeIf { it.isNotEmpty(
 val hasReleaseKey = keyProps.getProperty("storeFile") != null && storePw != null
 
 android {
-    namespace = "com.alokdalok.alokdalok"
+    namespace = "io.github.uldong.alokdalok"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -28,7 +28,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.alokdalok.alokdalok"
+        applicationId = "io.github.uldong.alokdalok"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
