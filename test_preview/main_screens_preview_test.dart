@@ -17,6 +17,26 @@ import 'package:alokdalok/core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// 정한 얼굴을 바로 돌려주는 미리보기용 카메라 (실제 창 주기로 돈다)
+class _SceneSensor implements EyeSensor {
+  _SceneSensor(this.face);
+  FaceReading? face;
+  @override
+  bool keepCamera = true;
+  @override
+  String get mode => '미리보기';
+  @override
+  bool get supported => true;
+  @override
+  Future<FaceReading?> sampleOnce({
+    Duration budget = EyeRules.windowBudget,
+  }) async => face;
+  @override
+  Future<void> stop() async {}
+  @override
+  double defaultDistanceCm(double size) => 1 / size;
+}
+
 Future<GameState> rich({EyeGuard? eye}) async {
   final storage = MemoryStorage();
   final d = SaveData.decode(null)
@@ -97,6 +117,36 @@ void main() {
         find.byType(MaterialApp).first,
         matchesGoldenFile('shots/main_eye_guard_$w.png'),
       );
+      await t.pumpWidget(const SizedBox());
+      await t.pump(const Duration(seconds: 9));
+    });
+
+    testWidgets('home eye guard $w', (t) async {
+      // 놀이 중이 아닐 때 홈에서 가까이 본다 → 창 주기대로 보고 경고 덮개
+      t.view.physicalSize = size;
+      t.view.devicePixelRatio = 1;
+      var now = DateTime(2026, 10, 22, 9);
+      final sensor = _SceneSensor(
+        const FaceReading(size: 1 / 60, yaw: 0, pitch: 0, roll: 0),
+      );
+      final eye = EyeGuard(sensor: sensor, now: () => now);
+      final s = await rich(eye: eye);
+      await t.pumpWidget(AlokdalokApp(state: s));
+      await _pump(t);
+      expect(eye.running, isTrue, reason: '홈에서도 켜진다');
+      sensor.face = const FaceReading(size: 1 / 20, yaw: 0, pitch: 0, roll: 0);
+      for (var i = 0; i < 200 && eye.alert == EyeAlert.none; i++) {
+        now = now.add(const Duration(milliseconds: 100));
+        await t.pump(const Duration(milliseconds: 100));
+      }
+      expect(eye.alert, EyeAlert.tooClose);
+      await _pump(t, 6);
+      await expectLater(
+        find.byType(MaterialApp).first,
+        matchesGoldenFile('shots/main_home_eye_guard_$w.png'),
+      );
+      await eye.stop();
+      eye.enabled = false;
       await t.pumpWidget(const SizedBox());
       await t.pump(const Duration(seconds: 9));
     });

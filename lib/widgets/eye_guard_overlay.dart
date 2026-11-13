@@ -273,3 +273,46 @@ class _ParentContinueState extends State<_ParentContinue>
     ),
   );
 }
+
+/// 눈 지킴이에게 "이 화면이 보인다"고 알려 준다 ([EyeGuard.showScreen]).
+///
+/// - [EyeScreen.child]: 아이 화면. 앱 맨 아래(홈·첫 실행 화면)에 하나 두면, 그 위에 올라오는
+///   놀이터·단계 고르기·내 캐릭터·상점·꾸미기·놀이·결과 화면이 모두 아이 화면이 된다.
+/// - [EyeScreen.parent]: 설정·부모 확인. 떠 있는 동안은 카메라를 끈다 (1초 기다렸다가).
+class EyeWatch extends StatefulWidget {
+  const EyeWatch({super.key, required this.kind, required this.child});
+
+  final EyeScreen kind;
+  final Widget child;
+
+  @override
+  State<EyeWatch> createState() => _EyeWatchState();
+}
+
+class _EyeWatchState extends State<EyeWatch> {
+  EyeGuard? _eye;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final eye = AppScope.maybeRead(context)?.eye;
+    if (identical(eye, _eye)) return;
+    _eye?.hideScreen(this);
+    _eye = eye?..showScreen(this, widget.kind);
+  }
+
+  @override
+  void didUpdateWidget(EyeWatch old) {
+    super.didUpdateWidget(old);
+    if (old.kind != widget.kind) _eye?.showScreen(this, widget.kind);
+  }
+
+  @override
+  void dispose() {
+    _eye?.hideScreen(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}

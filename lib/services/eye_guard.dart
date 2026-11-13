@@ -57,7 +57,60 @@ abstract class EyeSensor {
   static EyeSensor create() => createEyeSensor();
 }
 
+/// 카메라를 아예 쓸 수 없을 때 [EyeSensor.sampleOnce]가 던진다 (권한 거부, 앞카메라 없음 등).
+/// 이때만 눈 지킴이를 멈추고 이유를 보여 준다. 그 밖의 오류(카메라가 잠깐 바쁨, 스트림 실패)는
+/// 다음 창에서 다시 해 본다 ([EyeGuard]가 카메라를 새로 연다).
+class EyeSensorDenied implements Exception {
+  const EyeSensorDenied(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 enum EyeAlert { none, tooClose, badAngle }
+
+/// 카메라 창 하나의 결과 (진단 칸)
+enum EyeWindowOutcome {
+  /// 얼굴을 봤다
+  face,
+
+  /// 얼굴이 안 보였다
+  noFace,
+
+  /// 창을 못 열었다 (다음 창에서 다시)
+  failed,
+}
+
+/// 카메라 창 하나의 결과와 시각 (진단 칸에서 멈췄는지 바로 보이게)
+class EyeWindowResult {
+  const EyeWindowResult({
+    required this.at,
+    required this.outcome,
+    this.cm,
+    this.message,
+  });
+  final DateTime at;
+  final EyeWindowOutcome outcome;
+
+  /// 얼굴을 봤으면 거리 (cm)
+  final double? cm;
+
+  /// 실패 이유
+  final String? message;
+}
+
+/// 지금 보이는 화면의 종류 ([EyeGuard.showScreen])
+enum EyeScreen {
+  /// 아이가 보는 화면 (홈·놀이터·단계 고르기·내 캐릭터·상점·꾸미기·첫 실행·놀이·결과): 카메라를 켠다
+  child,
+
+  /// 멈춤 화면: 끈다
+  paused,
+
+  /// 부모님 화면 (설정, 부모 확인): 끈다
+  parent,
+}
 
 /// 다음 창까지 얼마나 기다릴지 정하는 상태
 enum EyeZone {
@@ -145,8 +198,15 @@ class EyeRules {
   /// 경고가 이만큼 이어지면 카메라를 끄고 쉬게 한다 → 쉬어 가기
   static const alertGiveUp = Duration(seconds: 75);
 
-  /// 놀이 화면을 벗어나도 이만큼은 카메라를 그대로 둔다 (짧은 화면 전환마다 껐다 켜지 않게)
+  /// 아이 화면을 벗어나도 이만큼은 카메라를 그대로 둔다 (짧은 화면 전환마다 껐다 켜지 않게)
   static const offDelay = Duration(seconds: 1);
+
+  /// 창을 못 열면(카메라가 잠깐 바쁨 등) 이만큼 뒤 다시 연다. 처음 [quickRetries]번은 3초,
+  /// 그 뒤로는 넉넉 주기(10초, 백오프 적용). 실패해도 눈 지킴이를 멈추지 않는다.
+  static const quickRetries = 2;
+
+  /// 진단 칸에 남기는 최근 창 수
+  static const recentWindows = 5;
 
   /// 카메라 초당 프레임 (안드로이드 CameraX / iOS AVFoundation에 요청하는 값)
   static const androidFps = 10;
@@ -209,7 +269,8 @@ class EyeWindow<T> {
             _valid++;
             final best = _best;
             if (r != null && (best == null || r.size > best.size)) _best = r;
-            if (_valid >= frames || (_best != null && _valid >= framesWithFace)) {
+            if (_valid >= frames ||
+                (_best != null && _valid >= framesWithFace)) {
               _finish();
             }
           },
@@ -236,7 +297,7 @@ class EyeWindow<T> {
 /// 카메라 결과를 받아 "너무 가까움 / 자세가 비뚤어짐"을 판단한다.
 ///
 /// 발열을 줄이려고 카메라는 꼭 필요할 때만 켠다 ([wanted]):
-/// 눈 지킴이가 켜져 있고, 앱이 앞에 있고, 놀이 화면이 보이고(멈춤 화면 아님),
+/// 눈 지킴이가 켜져 있고, 앱이 앞에 있고, 아이 화면이 보이고(설정·부모 확인·멈춤 화면 아님, [watching]),
 /// "오늘은 여기까지!"·눈 쉬기·쉬어 가기 덮개가 없고, 기기가 뜨겁지 않을 때([heatOff]).
 /// 경고 덮개가 떠 있는 동안은 풀림을 봐야 하니 켜 두되,
 /// 얼굴이 [EyeRules.noFaceGiveUp] 넘게 안 보이거나 경고가 [EyeRules.alertGiveUp] 넘게 이어지면
@@ -356,8 +417,8 @@ class EyeGuard extends ChangeNotifier {
   bool _blocked = false;
   int _measuring = 0;
 
-  /// 보이는 놀이 화면 → 멈춤 화면이 열려 있는지
-  final Map<Object, bool> _plays = {};
+  /// 지금 떠 있는 화면들과 그 종류 (아이 화면 / 멈춤 / 부모님 화면)
+  final Map<Object, EyeScreen> _screens = {};
   Timer? _offTimer;
 
   /// 설정의 눈 지킴이 켜짐/꺼짐
@@ -370,8 +431,10 @@ class EyeGuard extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 놀이 화면이 보이고 멈춤 화면이 열려 있지 않은지
-  bool get playing => _plays.values.any((paused) => !paused);
+  /// 아이 화면이 보이고, 멈춤 화면·부모님 화면(설정, 부모 확인)이 떠 있지 않은지
+  bool get watching =>
+      _screens.values.contains(EyeScreen.child) &&
+      _screens.values.every((k) => k == EyeScreen.child);
 
   /// 지금 카메라가 켜져 있어야 하는지
   bool get wanted =>
@@ -382,20 +445,28 @@ class EyeGuard extends ChangeNotifier {
       !_blocked &&
       !_resting &&
       !_heatOff &&
-      (_measuring > 0 || _alert != EyeAlert.none || playing);
+      (_measuring > 0 || _alert != EyeAlert.none || watching);
+
+  /// 화면([owner])이 보인다. 아이 화면이면 켜고, 멈춤·부모님 화면이 하나라도 떠 있으면 끈다.
+  /// 끌 때는 [EyeRules.offDelay]만큼 기다린다 (짧은 화면 전환마다 껐다 켜지 않게).
+  void showScreen(Object owner, EyeScreen kind) {
+    if (_screens[owner] == kind) return;
+    _screens[owner] = kind;
+    _sync();
+  }
+
+  /// 화면([owner])이 사라졌다
+  void hideScreen(Object owner) {
+    if (_screens.remove(owner) == null) return;
+    _sync();
+  }
 
   /// 놀이 화면([owner])이 보인다. [paused]면 멈춤 화면이 열려 있다.
-  void showPlay(Object owner, {bool paused = false}) {
-    if (_plays[owner] == paused) return;
-    _plays[owner] = paused;
-    _sync();
-  }
+  void showPlay(Object owner, {bool paused = false}) =>
+      showScreen(owner, paused ? EyeScreen.paused : EyeScreen.child);
 
   /// 놀이 화면([owner])이 사라졌다
-  void hidePlay(Object owner) {
-    if (_plays.remove(owner) == null) return;
-    _sync();
-  }
+  void hidePlay(Object owner) => hideScreen(owner);
 
   /// 앱이 앞에 있는지. 뒤로 가면(paused·hidden) 기다리지 않고 바로 끈다.
   void setForeground(bool on, {bool immediate = false}) {
@@ -492,20 +563,43 @@ class EyeGuard extends ChangeNotifier {
     _windowOpen = false;
     _stats.cameraOn(false);
     _stats.windowClosed(_now().difference(began));
-    if (err != null) {
-      error = '$err';
+    if (err is EyeSensorDenied) {
+      // 카메라를 아예 쓸 수 없다 (권한 거부 등): 멈추고 이유를 보여 준다
+      error = err.message;
+      _remember(EyeWindowOutcome.failed, message: err.message);
       unawaited(stop());
       return;
     }
+    if (err != null) {
+      // 카메라가 잠깐 바빴다 (막 끈 카메라를 OS가 아직 놓는 중, 스트림 실패 등):
+      // 눈 지킴이를 멈추지 않고 잠시 뒤 다시 연다. 센서는 실패한 카메라를 놓아 두어 새로 연다.
+      _failures++;
+      _remember(EyeWindowOutcome.failed, message: '$err');
+      notifyListeners();
+      _schedule(gen, began, retry: true);
+      return;
+    }
+    _failures = 0;
+    _remember(
+      r == null ? EyeWindowOutcome.noFace : EyeWindowOutcome.face,
+      cm: r == null ? null : distanceOf(r.size),
+    );
     feed(r);
     if (gen != _gen || !_running) return; // 쉬어 가기로 넘어갔다
     _schedule(gen, began);
   }
 
-  /// 창을 연 때([from])부터 [checkInterval] 뒤에 다음 창을 잡는다
-  void _schedule(int gen, DateTime from) {
+  /// 창을 연 때([from])부터 [checkInterval] 뒤에 다음 창을 잡는다.
+  /// [retry]면 실패한 창의 다시 열기: 처음 몇 번은 3초, 그 뒤는 넉넉 주기.
+  void _schedule(int gen, DateTime from, {bool retry = false}) {
     _windowTimer?.cancel();
-    final at = from.add(checkInterval);
+    final every = !retry
+        ? checkInterval
+        : (_failures <= EyeRules.quickRetries
+                  ? EyeRules.cautionInterval
+                  : EyeRules.safeInterval) *
+              _heat.backoff;
+    final at = from.add(every);
     _windowAt = at;
     var wait = at.difference(_now());
     if (wait.isNegative) wait = Duration.zero;
@@ -521,8 +615,61 @@ class EyeGuard extends ChangeNotifier {
   }
 
   /// 다음 창 예정 시각 (테스트·진단용)
-  @visibleForTesting
   DateTime? get nextWindowAt => _windowAt;
+
+  /// 다음 창까지 남은 시간 (창이 열려 있거나 꺼져 있으면 null)
+  Duration? get nextWindowIn {
+    final at = _windowAt;
+    if (at == null) return null;
+    final d = at.difference(_now());
+    return d.isNegative ? Duration.zero : d;
+  }
+
+  /// 이어서 실패한 창 수 (성공하면 0)
+  int get failures => _failures;
+  int _failures = 0;
+
+  final _recent = ListQueue<EyeWindowResult>();
+
+  /// 최근 창 결과 (오래된 것부터, 최대 [EyeRules.recentWindows]개). 꺼도 남는다.
+  List<EyeWindowResult> get recentWindows => List.unmodifiable(_recent);
+
+  /// 마지막 창 결과 (없으면 null)
+  EyeWindowResult? get lastWindow => _recent.isEmpty ? null : _recent.last;
+
+  void _remember(EyeWindowOutcome o, {double? cm, String? message}) {
+    _recent.add(
+      EyeWindowResult(at: _now(), outcome: o, cm: cm, message: message),
+    );
+    while (_recent.length > EyeRules.recentWindows) {
+      _recent.removeFirst();
+    }
+  }
+
+  /// 부모님 "계속하기"로 경고를 쉬는 남은 시간 (없으면 null)
+  Duration? get snoozeLeft {
+    final u = _snoozeUntil;
+    if (u == null) return null;
+    final d = u.difference(_now());
+    return d > Duration.zero ? d : null;
+  }
+
+  /// 지금 카메라가 꺼져 있는 이유 (진단 칸). 켜져 있으면 null.
+  String? get offReason {
+    if (_running) return null;
+    if (!supported) return '이 기기에서 쓸 수 없음';
+    if (_heatOff) return '기기가 뜨거움';
+    if (!_enabled) return '설정에서 꺼짐';
+    if (error != null) return '오류: $error';
+    if (!_foreground) return '앱이 뒤에 있음';
+    if (_resting) return '쉬어 가기 중';
+    if (_blocked) return '눈 쉬기, 오늘은 여기까지 덮개';
+    final kinds = _screens.values;
+    if (kinds.contains(EyeScreen.parent)) return '부모님 화면 (설정, 부모 확인)';
+    if (kinds.contains(EyeScreen.paused)) return '멈춤 화면';
+    if (!kinds.contains(EyeScreen.child)) return '아이 화면이 없음';
+    return '켜는 중';
+  }
 
   /// 경고가 끝나지 않는다: 경고를 풀고 카메라를 끈 뒤 "쉬어 가기"로 넘어간다
   void _rest() {
@@ -555,6 +702,7 @@ class EyeGuard extends ChangeNotifier {
     _alertSince = _faceSeenAt = null;
     _alert = EyeAlert.none;
     _zone = EyeZone.safe;
+    _failures = 0;
     notifyListeners();
     if (!wasRunning) return;
     final before = _stopping;
@@ -721,7 +869,6 @@ class EyeGuard extends ChangeNotifier {
     super.dispose();
   }
 }
-
 
 /// 얼굴 크기 비율 → 거리(cm): 핀홀 카메라 모델
 /// 거리 = 실제크기 / (2 · 비율 · tan(가로화각/2))

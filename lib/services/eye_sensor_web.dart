@@ -9,7 +9,7 @@ EyeSensor createEyeSensor() => _WebEyeSensor();
 external _Guard? get _guard;
 
 extension type _Guard(JSObject _) implements JSObject {
-  /// 잘 열리면 null, 안 되면 메시지
+  /// 잘 열리면 null, 안 되면 메시지 ('!'로 시작하면 카메라를 아예 쓸 수 없음: 권한 거부 등)
   external JSPromise<JSString?> open();
 
   /// [size, yaw, pitch, roll] / 얼굴 없음 [] / 아직 볼 수 없음 null
@@ -28,12 +28,16 @@ class _WebEyeSensor implements EyeSensor {
   EyeWindow<int>? _window;
   int _gen = 0;
 
+  /// 이어서 쓸 만한 프레임을 한 장도 못 본 창 수. 영상이 멈춘 것 같으면(카메라 트랙이 끝남 등)
+  /// 카메라 스트림을 놓아서 다음 창에서 새로 연다.
+  int _emptyWindows = 0;
+  static const _maxEmptyWindows = 2;
+
   @override
   bool keepCamera = EyeRules.keepCameraDefault;
 
   @override
-  String get mode =>
-      keepCamera ? '영상 멈춤 (video.pause)' : '창마다 끄기 (스트림 종료)';
+  String get mode => keepCamera ? '영상 멈춤 (video.pause)' : '창마다 끄기 (스트림 종료)';
 
   /// 홍채 지름 약 1.17cm, 태블릿·휴대폰 앞카메라 가로 화각 약 62도로 가정.
   /// 기기마다 다르므로 설정에서 30cm 기준을 맞추면 그 값을 쓴다.
@@ -48,14 +52,16 @@ class _WebEyeSensor implements EyeSensor {
     Duration budget = EyeRules.windowBudget,
   }) async {
     final g = _guard;
-    if (g == null) throw '눈 지킴이를 불러오지 못했어요';
+    if (g == null) throw const EyeSensorDenied('눈 지킴이를 불러오지 못했어요');
     final gen = _gen;
     Timer? ticker;
     final w = _window = EyeWindow<int>(
       budget: budget,
       open: (onFrame) async {
-        final err = await g.open().toDart;
-        if (err != null) throw err.toDart;
+        final err = (await g.open().toDart)?.toDart;
+        if (err != null) {
+          throw err.startsWith('!') ? EyeSensorDenied(err.substring(1)) : err;
+        }
         if (gen != _gen) return;
         var n = 0;
         void tick() {
@@ -92,11 +98,19 @@ class _WebEyeSensor implements EyeSensor {
       return await w.run();
     } finally {
       if (identical(_window, w)) _window = null;
+      if (gen == _gen) {
+        _emptyWindows = w.valid == 0 ? _emptyWindows + 1 : 0;
+        if (_emptyWindows >= _maxEmptyWindows) {
+          _emptyWindows = 0;
+          g.stop(); // 다음 창에서 카메라를 새로 연다
+        }
+      }
     }
   }
 
   @override
   Future<void> stop() async {
+    _emptyWindows = 0;
     _gen++;
     _window?.abort();
     _window = null;

@@ -65,15 +65,19 @@ class RootGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    // 첫 실행 화면이 끝나 홈으로 바뀔 때도 다른 화면 전환처럼 짧은 페이드로 (갑자기 바뀌지 않게)
-    return AnimatedSwitcher(
-      duration: RootGate.fadeDuration,
-      child: state.nicknameChosen
-          ? const HomeScreen(key: ValueKey('home'))
-          : const ZodiacPickerScreen(
-              key: ValueKey('onboarding'),
-              onboarding: true,
-            ),
+    // 눈 지킴이: 홈·첫 실행 화면과 그 위에 올라오는 아이 화면(놀이터·단계 고르기·내 캐릭터·상점·
+    // 꾸미기·놀이·결과)에서 카메라를 켠다. 설정·부모 확인·멈춤 화면이 뜨면 끈다.
+    return EyeWatch(
+      kind: EyeScreen.child,
+      child: AnimatedSwitcher(
+        duration: RootGate.fadeDuration,
+        child: state.nicknameChosen
+            ? const HomeScreen(key: ValueKey('home'))
+            : const ZodiacPickerScreen(
+                key: ValueKey('onboarding'),
+                onboarding: true,
+              ),
+      ),
     );
   }
 }

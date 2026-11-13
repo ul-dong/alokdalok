@@ -18,6 +18,10 @@ class AppScope extends InheritedNotifier<GameState> {
 
   static GameState read(BuildContext context) =>
       context.getInheritedWidgetOfExactType<AppScope>()!.notifier!;
+
+  /// 앱 밖(테스트에서 위젯 하나만 띄운 때 등)이면 null
+  static GameState? maybeRead(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<AppScope>()?.notifier;
 }
 
 /// 부드러운 화면 전환 (짧은 페이드)

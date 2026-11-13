@@ -53,6 +53,11 @@
     return { size: iris / w, yaw, pitch, roll };
   }
 
+  // 카메라 트랙이 끝났는지 (다른 앱이 카메라를 가져감, 브라우저가 뒤에서 끊음 등)
+  function ended() {
+    return !stream || stream.getVideoTracks().every((t) => t.readyState !== 'live');
+  }
+
   function release() {
     if (stream) stream.getTracks().forEach((t) => t.stop());
     stream = null;
@@ -63,6 +68,12 @@
     video = null;
   }
 
+  function fatal(message) {
+    const e = new Error(message);
+    e.fatal = true;
+    return e;
+  }
+
   window.alokEyeGuard = {
     // 창을 연다: 처음이면 카메라를 켜고 얼굴 인식기를 만든다, 아니면 멈춰 둔 영상을 다시 돌린다.
     // 잘 열리면 null, 실패하면 사람이 읽을 수 있는 메시지(문자열)로 resolve 한다.
@@ -71,19 +82,33 @@
       const stale = () => my !== gen;
       opened = true;
       try {
+        // 살려 둔 스트림이 끊겼으면 놓고 새로 연다 (멈춘 영상만 계속 보게 되지 않게)
+        if (stream && ended()) release();
         if (!stream) {
           if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('이 브라우저는 카메라를 쓸 수 없어요');
+            throw fatal('이 브라우저는 카메라를 쓸 수 없어요');
           }
-          const s = await navigator.mediaDevices.getUserMedia({
-            video: {
-              facingMode: 'user',
-              width: { ideal: 320 },
-              height: { ideal: 240 },
-              frameRate: { ideal: 5, max: 10 },
-            },
-            audio: false,
-          });
+          let s;
+          try {
+            s = await navigator.mediaDevices.getUserMedia({
+              video: {
+                facingMode: 'user',
+                width: { ideal: 320 },
+                height: { ideal: 240 },
+                frameRate: { ideal: 5, max: 10 },
+              },
+              audio: false,
+            });
+          } catch (e) {
+            const n = e && e.name;
+            if (n === 'NotAllowedError' || n === 'SecurityError') {
+              throw fatal('카메라 사용을 허용해 주세요');
+            }
+            if (n === 'NotFoundError' || n === 'OverconstrainedError') {
+              throw fatal('앞카메라가 없어요');
+            }
+            throw e; // NotReadableError(다른 앱이 쓰는 중) 등: 다음 창에서 다시
+          }
           if (stale()) {
             s.getTracks().forEach((t) => t.stop());
             return null;
@@ -102,9 +127,9 @@
         if (stale()) return null;
         opened = false;
         release();
-        return e && e.name === 'NotAllowedError'
-          ? '카메라 사용을 허용해 주세요'
-          : String((e && e.message) || e);
+        // '!'로 시작하면 카메라를 아예 쓸 수 없음 (눈 지킴이를 멈춤), 아니면 다음 창에서 다시
+        if (e && e.fatal) return '!' + e.message;
+        return String((e && e.message) || e);
       }
     },
     // 지금 프레임 한 장을 본다: [size, yaw, pitch, roll] / 얼굴 없음 [] / 아직 볼 수 없음 null

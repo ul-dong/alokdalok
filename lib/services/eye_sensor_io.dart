@@ -61,7 +61,8 @@ class _MlKitEyeSensor implements EyeSensor {
   bool keepCamera = EyeRules.keepCameraDefault;
 
   @override
-  String get mode => keepCamera ? '카메라 유지 (stopImageStream)' : '창마다 끄기 (dispose)';
+  String get mode =>
+      keepCamera ? '카메라 유지 (stopImageStream)' : '창마다 끄기 (dispose)';
 
   /// 끌 때마다 늘어난다. 카메라를 여는 사이에 꺼지면 연 것을 바로 닫는다.
   int _gen = 0;
@@ -79,16 +80,47 @@ class _MlKitEyeSensor implements EyeSensor {
   @override
   bool get supported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
+  /// 이어서 프레임을 한 장도 받지 못한 창 수 (카메라가 멈춘 것 같으면 새로 연다)
+  int _emptyWindows = 0;
+
+  /// 카메라가 이만큼 이어서 프레임을 안 주면 놓고 새로 연다
+  static const _maxEmptyWindows = 2;
+
+  /// 카메라를 놓는다 (다음 창에서 새로 연다). 얼굴 인식기는 살려 둔다.
+  Future<void> _drop(CameraController cam) async {
+    if (identical(_cam, cam)) _cam = null;
+    _emptyWindows = 0;
+    try {
+      if (cam.value.isStreamingImages) await cam.stopImageStream();
+    } catch (_) {}
+    try {
+      await cam.dispose();
+    } catch (_) {}
+  }
+
+  /// 권한 문제인지 (그때만 눈 지킴이를 멈춘다)
+  static bool _denied(CameraException e) {
+    final c = e.code.toLowerCase();
+    return c.contains('denied') ||
+        c.contains('restricted') ||
+        c.contains('permission');
+  }
+
   /// 카메라를 연다 (이미 열려 있으면 그대로). 그 사이에 꺼지면 null.
   Future<CameraController?> _camera(int gen) async {
     final open = _cam;
-    if (open != null) return open;
+    if (open != null) {
+      // 살려 둔 카메라가 고장 났으면(오류, 초기화 풀림) 놓고 새로 연다
+      if (open.value.isInitialized && !open.value.hasError) return open;
+      await _drop(open);
+      if (gen != _gen) return null;
+    }
     CameraController? cam;
     try {
       final cams = await availableCameras();
       final front = cams.firstWhere(
         (c) => c.lensDirection == CameraLensDirection.front,
-        orElse: () => throw '앞카메라가 없어요',
+        orElse: () => throw const EyeSensorDenied('앞카메라가 없어요'),
       );
       if (gen != _gen) return null;
       cam = eyeCameraController(front, ios: Platform.isIOS);
@@ -105,13 +137,17 @@ class _MlKitEyeSensor implements EyeSensor {
       _detector ??= FaceDetector(options: eyeFaceDetectorOptions());
       return _cam = cam;
     } catch (e) {
-      if (gen != _gen) {
-        try {
-          await cam?.dispose();
-        } catch (_) {}
-        return null;
+      // 열다 만 카메라는 놓는다 (다음 창에서 새로 연다)
+      try {
+        await cam?.dispose();
+      } catch (_) {}
+      if (gen != _gen) return null;
+      if (e is CameraException) {
+        throw _denied(e)
+            ? const EyeSensorDenied('카메라 사용을 허용해 주세요')
+            : '카메라를 잠깐 쓸 수 없어요 (${e.code})';
       }
-      throw e is CameraException ? '카메라를 쓸 수 없어요' : e;
+      rethrow;
     }
   }
 
@@ -122,14 +158,33 @@ class _MlKitEyeSensor implements EyeSensor {
     final gen = _gen;
     final cam = await _camera(gen);
     if (cam == null || gen != _gen) return null;
+    // 살려 둔 카메라를 다시 쓸 때 실패하면(stopImageStream 뒤 startImageStream 오류,
+    // 멈추기 실패, 프레임이 안 옴) 이 카메라를 놓아서 다음 창은 새로 연다.
+    // 오류는 삼키지 않고 넘긴다: 눈 지킴이가 진단 칸에 남기고 잠시 뒤 다시 연다.
+    var broken = false;
+    var frames = 0;
     final w = _window = EyeWindow<CameraImage>(
       budget: budget,
-      open: (onFrame) => cam.startImageStream((image) {
-        _countFrame();
-        onFrame(image);
-      }),
+      open: (onFrame) async {
+        try {
+          // 앞 창에서 스트림이 덜 닫혔으면 닫고 연다
+          if (cam.value.isStreamingImages) await cam.stopImageStream();
+          await cam.startImageStream((image) {
+            frames++;
+            _countFrame();
+            onFrame(image);
+          });
+        } catch (e) {
+          broken = true;
+          throw e is CameraException ? '카메라 이미지를 받지 못했어요 (${e.code})' : e;
+        }
+      },
       close: () async {
-        if (cam.value.isStreamingImages) await cam.stopImageStream();
+        try {
+          if (cam.value.isStreamingImages) await cam.stopImageStream();
+        } catch (_) {
+          broken = true;
+        }
       },
       analyze: _analyze,
     );
@@ -138,12 +193,12 @@ class _MlKitEyeSensor implements EyeSensor {
     } finally {
       if (identical(_window, w)) _window = null;
       _countWindow();
-      // 창마다 끄는 방식: 카메라를 놓는다 (얼굴 인식기는 살려 둔다)
-      if (!keepCamera && gen == _gen && identical(_cam, cam)) {
-        _cam = null;
-        try {
-          await cam.dispose();
-        } catch (_) {}
+      if (gen == _gen && identical(_cam, cam)) {
+        _emptyWindows = frames == 0 ? _emptyWindows + 1 : 0;
+        // 창마다 끄는 방식이거나 카메라가 고장 났으면 놓는다 (얼굴 인식기는 살려 둔다)
+        if (!keepCamera || broken || _emptyWindows >= _maxEmptyWindows) {
+          await _drop(cam);
+        }
       }
     }
   }
@@ -232,6 +287,7 @@ class _MlKitEyeSensor implements EyeSensor {
     _gen++;
     _window?.abort();
     _window = null;
+    _emptyWindows = 0;
     final cam = _cam;
     _cam = null;
     try {

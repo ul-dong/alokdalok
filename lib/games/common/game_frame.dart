@@ -75,7 +75,7 @@ class SessionSummary {
 class _GameFrameState extends State<GameFrame> {
   bool _paused = false;
 
-  /// 눈 지킴이: 놀이 화면이 보이는 동안만 카메라를 켜고, 멈춤 화면에서는 끈다
+  /// 눈 지킴이: 놀이 화면은 아이 화면(카메라 켬), 멈춤 화면이 열리면 끈다
   EyeGuard? _eye;
 
   @override

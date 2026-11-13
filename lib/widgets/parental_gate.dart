@@ -3,7 +3,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../core/palette.dart';
+import '../services/eye_guard.dart';
 import 'common.dart';
+import 'eye_guard_overlay.dart';
 
 /// 부모 확인을 연다. 덧셈 문제(각 6~9)를 숫자 패드로 맞히면 true,
 /// 닫으면 false. 설정에서 부모 확인을 꺼 두었으면 바로 true.
@@ -103,33 +105,37 @@ class _ParentalGateState extends State<ParentalGate> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760, maxHeight: 420),
-            child: CreamCard(
-              padding: const EdgeInsets.all(14),
-              child: LayoutBuilder(
-                builder: (context, c) {
-                  const gap = 6.0;
-                  final key = ((c.maxHeight - gap * 3) / 4).clamp(44.0, 72.0);
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Expanded(child: _question(key)),
-                      const SizedBox(width: 16),
-                      _Keypad(
-                        size: key,
-                        gap: gap,
-                        onDigit: _press,
-                        onErase: _erase,
-                        onOk: _check,
-                      ),
-                    ],
-                  );
-                },
+    // 부모 확인이 떠 있는 동안은 눈 지킴이 카메라를 끈다 (부모님 화면)
+    return EyeWatch(
+      kind: EyeScreen.parent,
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760, maxHeight: 420),
+              child: CreamCard(
+                padding: const EdgeInsets.all(14),
+                child: LayoutBuilder(
+                  builder: (context, c) {
+                    const gap = 6.0;
+                    final key = ((c.maxHeight - gap * 3) / 4).clamp(44.0, 72.0);
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Expanded(child: _question(key)),
+                        const SizedBox(width: 16),
+                        _Keypad(
+                          size: key,
+                          gap: gap,
+                          onDigit: _press,
+                          onErase: _erase,
+                          onOk: _check,
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ),

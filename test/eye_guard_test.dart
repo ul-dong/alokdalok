@@ -194,10 +194,14 @@ void main() {
     await t.pump(const Duration(milliseconds: 400));
     expect(find.text('화면이 너무 가까워요!'), findsNothing);
     expect(audio.spoken.last, '잘했어요! 다시 놀아요.');
-    // 홈 화면이라 경고가 풀리면 1초 뒤 카메라를 끈다
+    // 홈도 아이 화면이라 경고가 풀려도 카메라(창 주기)는 그대로
     expect(sensor.on, isTrue);
     await t.pump(const Duration(milliseconds: 1100));
-    expect(sensor.on, isFalse);
+    expect(sensor.on, isTrue);
+    expect(s.eye.running, isTrue);
+    await s.eye.stop();
+    s.eye.enabled = false;
     await t.pumpWidget(const SizedBox());
+    await t.pump(const Duration(seconds: 2));
   });
 }

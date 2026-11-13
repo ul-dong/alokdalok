@@ -34,7 +34,7 @@ class _DeniedSensor extends FakeSensor {
   @override
   Future<FaceReading?> sampleOnce({
     Duration budget = EyeRules.windowBudget,
-  }) async => throw '카메라 사용을 허용해 주세요';
+  }) async => throw const EyeSensorDenied('카메라 사용을 허용해 주세요');
 }
 
 void main() {
@@ -801,12 +801,15 @@ void main() {
       await t.pump(const Duration(seconds: 7));
     }
 
-    testWidgets('홈에서는 꺼져 있고, 놀이 화면에서 켜지고, 멈춤·집으로 가면 꺼진다', (t) async {
+    testWidgets('홈에서도 켜지고, 홈 → 놀이 → 홈은 껐다 켜지 않고, 멈춤 화면에서는 꺼진다', (t) async {
       final (s, sensor) = await app(t);
       expect(s.eyeGuardOn, isTrue, reason: '기본 켜짐');
-      expect(sensor.on, isFalse, reason: '홈 화면');
+      expect(sensor.on, isTrue, reason: '홈도 아이 화면');
+      expect(sensor.starts, 1);
       await openGame(t);
       expect(sensor.on, isTrue, reason: '놀이 화면');
+      expect(sensor.starts, 1, reason: '홈 → 놀이에 껐다 켜지 않는다');
+      expect(sensor.stops, 0);
       await t.tap(find.byIcon(Icons.pause_rounded));
       await t.pump(const Duration(milliseconds: 1100));
       expect(sensor.on, isFalse, reason: '멈춤 화면');
@@ -819,9 +822,10 @@ void main() {
       await t.pump(const Duration(milliseconds: 300)); // 페이드 끝
       await t.pump(); // 놀이 화면이 사라진다
       expect(find.byType(GameFrame), findsNothing);
-      expect(sensor.on, isTrue, reason: '나간 직후 1초는 기다린다');
-      await t.pump(const Duration(milliseconds: 1100));
-      expect(sensor.on, isFalse, reason: '홈으로 돌아옴');
+      await t.pump(const Duration(milliseconds: 1500));
+      expect(sensor.on, isTrue, reason: '홈으로 돌아와도 그대로');
+      expect(sensor.starts, 2, reason: '놀이 → 홈에 껐다 켜지 않는다');
+      expect(sensor.stops, 1, reason: '멈춤 화면 때 한 번만');
       await finish(t);
     });
 

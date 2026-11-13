@@ -9,6 +9,7 @@ import '../services/backup_code.dart';
 import '../services/eye_guard.dart';
 import '../services/play_clock.dart';
 import '../widgets/common.dart';
+import '../widgets/eye_guard_overlay.dart';
 import 'nickname_screen.dart';
 
 /// 설정 (부모님용): 눈 보호, 놀이 시간, 눈 쉬기 간격, 소리, 부모 확인, 백업,
@@ -19,178 +20,187 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: PhoneWidth(
-          maxWidth: 720,
-          // 항목이 많지 않아 한 번에 그린다 (스크롤로 내려도 다시 만들지 않음)
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              Gaps.lg,
-              Gaps.sm,
-              Gaps.lg,
-              Gaps.xl,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    RoundIconButton(
-                      icon: Icons.home_rounded,
-                      label: '집으로',
-                      size: 60,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                    const SizedBox(width: Gaps.md),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '설정',
-                            style: TextStyle(
-                              fontSize: TextSizes.heading,
-                              color: Palette.text,
-                              height: 1.1,
-                            ),
-                          ),
-                          Text(
-                            '부모님용',
-                            style: TextStyle(
-                              fontSize: TextSizes.caption,
-                              color: Palette.textSoft,
-                            ),
-                          ),
-                        ],
+    // 부모님 화면: 떠 있는 동안 눈 지킴이 카메라를 끈다 (30cm 기준 맞추기만 잠깐 켠다)
+    return EyeWatch(
+      kind: EyeScreen.parent,
+      child: Scaffold(
+        backgroundColor: _bg,
+        body: SafeArea(
+          child: PhoneWidth(
+            maxWidth: 720,
+            // 항목이 많지 않아 한 번에 그린다 (스크롤로 내려도 다시 만들지 않음)
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                Gaps.lg,
+                Gaps.sm,
+                Gaps.lg,
+                Gaps.xl,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      RoundIconButton(
+                        icon: Icons.home_rounded,
+                        label: '집으로',
+                        size: 60,
+                        onTap: () => Navigator.of(context).pop(),
                       ),
-                    ),
-                  ],
-                ),
-                const _Section('눈 보호'),
-                const _EyeGuardCard(),
-                const _Section('놀이 시간'),
-                const _PlayLimitCard(),
-                const _Section('눈 쉬기 간격'),
-                const _EyeBreakCard(),
-                const _Section('소리'),
-                _Panel(
-                  children: [
-                    _ToggleRow(
-                      icon: state.voiceOn
-                          ? Icons.record_voice_over_rounded
-                          : Icons.voice_over_off_rounded,
-                      label: '목소리 안내',
-                      value: state.voiceOn,
-                      onChanged: (v) {
-                        state.setVoice(v);
-                        if (v) state.audio.say('목소리 안내를 켰어요.');
-                      },
-                    ),
-                    _RowTile(
-                      icon: Icons.graphic_eq_rounded,
-                      title: '목소리',
-                      subtitle: '녹음한 목소리 또는 기기 음성',
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (final (style, label) in const [
-                            ('pack', '녹음'),
-                            ('teacher', '기기'),
-                          ]) ...[
-                            const SizedBox(width: Gaps.sm),
-                            _Chip(
-                              label: label,
-                              selected: state.voiceStyle == style,
-                              onTap: () {
-                                state.setVoiceStyle(style);
-                                state.audio.say('안녕! 나랑 같이 놀자!');
-                              },
+                      const SizedBox(width: Gaps.md),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '설정',
+                              style: TextStyle(
+                                fontSize: TextSizes.heading,
+                                color: Palette.text,
+                                height: 1.1,
+                              ),
+                            ),
+                            Text(
+                              '부모님용',
+                              style: TextStyle(
+                                fontSize: TextSizes.caption,
+                                color: Palette.textSoft,
+                              ),
                             ),
                           ],
-                        ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const _Section('눈 보호'),
+                  const _EyeGuardCard(),
+                  const _Section('놀이 시간'),
+                  const _PlayLimitCard(),
+                  const _Section('눈 쉬기 간격'),
+                  const _EyeBreakCard(),
+                  const _Section('소리'),
+                  _Panel(
+                    children: [
+                      _ToggleRow(
+                        icon: state.voiceOn
+                            ? Icons.record_voice_over_rounded
+                            : Icons.voice_over_off_rounded,
+                        label: '목소리 안내',
+                        value: state.voiceOn,
+                        onChanged: (v) {
+                          state.setVoice(v);
+                          if (v) state.audio.say('목소리 안내를 켰어요.');
+                        },
+                      ),
+                      _RowTile(
+                        icon: Icons.graphic_eq_rounded,
+                        title: '목소리',
+                        subtitle: '녹음한 목소리 또는 기기 음성',
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (final (style, label) in const [
+                              ('pack', '녹음'),
+                              ('teacher', '기기'),
+                            ]) ...[
+                              const SizedBox(width: Gaps.sm),
+                              _Chip(
+                                label: label,
+                                selected: state.voiceStyle == style,
+                                onTap: () {
+                                  state.setVoiceStyle(style);
+                                  state.audio.say('안녕! 나랑 같이 놀자!');
+                                },
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      _ToggleRow(
+                        icon: state.sfxOn
+                            ? Icons.music_note_rounded
+                            : Icons.music_off_rounded,
+                        label: '효과음',
+                        value: state.sfxOn,
+                        onChanged: (v) => state.setSfx(v),
+                      ),
+                      _ToggleRow(
+                        icon: state.musicOn
+                            ? Icons.queue_music_rounded
+                            : Icons.music_off_rounded,
+                        label: '배경 음악',
+                        value: state.musicOn,
+                        onChanged: (v) => state.setMusic(v),
+                      ),
+                    ],
+                  ),
+                  if (!state.audio.voiceAvailable)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        Gaps.sm,
+                        Gaps.sm,
+                        Gaps.sm,
+                        0,
+                      ),
+                      child: _Note(
+                        '이 기기에서는 한국어 음성을 찾지 못했어요. 기기 설정에서 한국어 TTS를 설치하면 들을 수 있어요.',
                       ),
                     ),
-                    _ToggleRow(
-                      icon: state.sfxOn
-                          ? Icons.music_note_rounded
-                          : Icons.music_off_rounded,
-                      label: '효과음',
-                      value: state.sfxOn,
-                      onChanged: (v) => state.setSfx(v),
-                    ),
-                    _ToggleRow(
-                      icon: state.musicOn
-                          ? Icons.queue_music_rounded
-                          : Icons.music_off_rounded,
-                      label: '배경 음악',
-                      value: state.musicOn,
-                      onChanged: (v) => state.setMusic(v),
-                    ),
-                  ],
-                ),
-                if (!state.audio.voiceAvailable)
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(Gaps.sm, Gaps.sm, Gaps.sm, 0),
-                    child: _Note(
-                      '이 기기에서는 한국어 음성을 찾지 못했어요. 기기 설정에서 한국어 TTS를 설치하면 들을 수 있어요.',
+                  const _Section('부모 확인'),
+                  _Panel(
+                    children: [
+                      _ToggleRow(
+                        icon: state.parentGateOn
+                            ? Icons.lock_rounded
+                            : Icons.lock_open_rounded,
+                        label: '설정 전에 덧셈 문제',
+                        value: state.parentGateOn,
+                        onChanged: (v) => state.setParentGate(v),
+                      ),
+                    ],
+                  ),
+                  const _Section('기록'),
+                  _Panel(
+                    children: [
+                      _RowTile(
+                        icon: Icons.badge_rounded,
+                        title: state.nickname,
+                        subtitle: '닉네임',
+                        trailing: _SmallButton(
+                          icon: Icons.edit_rounded,
+                          label: '바꾸기',
+                          semanticLabel: '닉네임 바꾸기',
+                          onTap: () =>
+                              Navigator.of(context)
+                                  .push(softRoute(const NicknameScreen())),
+                        ),
+                      ),
+                      const _BackupCard(),
+                    ],
+                  ),
+                  const _Section('부모님께'),
+                  const _ParentNotes(),
+                  const SizedBox(height: Gaps.xl),
+                  const _HoldToReset(),
+                  const SizedBox(height: Gaps.md),
+                  Center(
+                    child: TextButton(
+                      onPressed: () => showLicensePage(
+                        context: context,
+                        applicationName: '알록달록 꼬마 놀이터',
+                        applicationVersion: '0.1.0',
+                      ),
+                      child: const Text(
+                        '오픈소스 라이선스',
+                        style: TextStyle(
+                          fontSize: TextSizes.small,
+                          color: Palette.textSoft,
+                        ),
+                      ),
                     ),
                   ),
-                const _Section('부모 확인'),
-                _Panel(
-                  children: [
-                    _ToggleRow(
-                      icon: state.parentGateOn
-                          ? Icons.lock_rounded
-                          : Icons.lock_open_rounded,
-                      label: '설정 전에 덧셈 문제',
-                      value: state.parentGateOn,
-                      onChanged: (v) => state.setParentGate(v),
-                    ),
-                  ],
-                ),
-                const _Section('기록'),
-                _Panel(
-                  children: [
-                    _RowTile(
-                      icon: Icons.badge_rounded,
-                      title: state.nickname,
-                      subtitle: '닉네임',
-                      trailing: _SmallButton(
-                        icon: Icons.edit_rounded,
-                        label: '바꾸기',
-                        semanticLabel: '닉네임 바꾸기',
-                        onTap: () =>
-                            Navigator.of(context)
-                                .push(softRoute(const NicknameScreen())),
-                      ),
-                    ),
-                    const _BackupCard(),
-                  ],
-                ),
-                const _Section('부모님께'),
-                const _ParentNotes(),
-                const SizedBox(height: Gaps.xl),
-                const _HoldToReset(),
-                const SizedBox(height: Gaps.md),
-                Center(
-                  child: TextButton(
-                    onPressed: () => showLicensePage(
-                      context: context,
-                      applicationName: '알록달록 꼬마 놀이터',
-                      applicationVersion: '0.1.0',
-                    ),
-                    child: const Text(
-                      '오픈소스 라이선스',
-                      style: TextStyle(
-                        fontSize: TextSizes.small,
-                        color: Palette.textSoft,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -626,7 +636,7 @@ class _EyeGuardCard extends StatelessWidget {
         } else if (!on) {
           status = '앞카메라로 화면과의 거리(30cm 이상)와 바른 자세를 살펴봐요';
         } else if (!eye.running) {
-          status = '놀이하는 동안 앞카메라로 거리(30cm 이상)와 바른 자세를 살펴봐요';
+          status = '아이 화면(설정 밖)에서 앞카메라로 거리(30cm 이상)와 바른 자세를 살펴봐요';
         } else if (r == null || d == null) {
           status = '얼굴을 찾는 중이에요…';
         } else {
@@ -1185,6 +1195,29 @@ class EyeDiagnosticsPanel extends StatefulWidget {
 class _EyeDiagnosticsPanelState extends State<EyeDiagnosticsPanel> {
   Timer? _timer;
 
+  String _ago(DateTime at) {
+    final s = DateTime.now().difference(at).inSeconds;
+    return s < 60 ? '$s초 전' : '${s ~/ 60}분 전';
+  }
+
+  /// 마지막 창: "얼굴 32cm (3초 전)" / "얼굴 없음" / "실패 2번: 이유"
+  String _windowText(EyeWindowResult? r, int failures) {
+    if (r == null) return '아직 없음';
+    final what = switch (r.outcome) {
+      EyeWindowOutcome.face => '얼굴 ${r.cm?.round() ?? '-'}cm',
+      EyeWindowOutcome.noFace => '얼굴 없음',
+      EyeWindowOutcome.failed =>
+        '실패${failures > 1 ? ' $failures번' : ''}: ${r.message ?? ''}',
+    };
+    return '$what (${_ago(r.at)})';
+  }
+
+  static String _windowShort(EyeWindowResult r) => switch (r.outcome) {
+    EyeWindowOutcome.face => '${r.cm?.round() ?? '-'}cm',
+    EyeWindowOutcome.noFace => '없음',
+    EyeWindowOutcome.failed => '실패',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -1239,7 +1272,30 @@ class _EyeDiagnosticsPanelState extends State<EyeDiagnosticsPanel> {
         '지금',
         eye.heatOff
             ? '꺼짐 (기기가 뜨거움)'
-            : '${eye.running ? '켜짐' : '꺼짐'}, 창 주기 ${ms(eye.checkInterval)} ($zone)',
+            : eye.running
+            ? '켜짐, 창 주기 ${ms(eye.checkInterval)} ($zone)'
+            : '꺼짐 (${eye.offReason})',
+      ),
+      ('마지막 창 결과', _windowText(eye.lastWindow, eye.failures)),
+      (
+        '최근 창',
+        eye.recentWindows.isEmpty
+            ? '-'
+            : eye.recentWindows.map(_windowShort).join(' / '),
+      ),
+      (
+        '다음 창까지',
+        eye.windowOpen
+            ? '지금 보는 중'
+            : eye.nextWindowIn != null
+            ? ms(eye.nextWindowIn!)
+            : '없음 (${eye.offReason ?? '창을 기다리는 중'})',
+      ),
+      (
+        '부모님 계속하기',
+        eye.snoozeLeft == null
+            ? '아님'
+            : '경고 쉬는 중 (${(eye.snoozeLeft!.inSeconds / 60).ceil()}분 남음)',
       ),
       ('기기 열', heat.bound ? hs.thermal.label : '${hs.thermal.label} (채널 없음)'),
       (
