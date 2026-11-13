@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app.dart';
 import 'services/audio_service.dart';
+import 'services/device_heat.dart';
 import 'services/game_state.dart';
 import 'services/storage_service.dart';
 
@@ -23,6 +26,8 @@ Future<void> main() async {
       DeviceOrientation.landscapeRight,
     ]);
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // 기기 열·절전·배터리 (눈 지킴이 창 주기 백오프). 웹은 열 정보가 없다.
+    unawaited(DeviceHeat.instance.bind());
   }
 
   final audio = DeviceAudio();

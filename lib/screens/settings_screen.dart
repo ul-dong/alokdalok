@@ -619,6 +619,8 @@ class _EyeGuardCard extends StatelessWidget {
         String status;
         if (!eye.supported) {
           status = '이 기기에서는 쓸 수 없어요';
+        } else if (on && eye.heatOff) {
+          status = '기기가 뜨거워서 눈 지킴이를 잠시 껐어요';
         } else if (eye.error != null) {
           status = eye.error!;
         } else if (!on) {
@@ -1165,8 +1167,10 @@ class _ParentNotesState extends State<_ParentNotes> {
   );
 }
 
-/// 눈 지킴이 실측 진단: 최근 1분의 실제 초당 프레임 수, 검사 횟수, 카메라가 켜져 있던 시간 비율.
-/// 카메라에 요청한 초당 프레임(안드로이드 10, iOS 5)이 기기에서 실제로 먹히는지 확인한다.
+/// 눈 지킴이 실측 진단: 최근 1분의 실제 초당 프레임 수, 검사 횟수, 카메라가 켜져 있던 시간 비율,
+/// 창 열기 시간과 방식(카메라 유지 / 창마다 끄기), 기기 열·절전·배터리.
+/// 카메라에 요청한 초당 프레임(안드로이드 10, iOS 5)이 기기에서 실제로 먹히는지,
+/// 두 방식 중 어느 쪽이 창을 짧게 여는지 실기기에서 확인한다 ('방식 바꾸기'를 누르면 기록을 새로 잰다).
 /// 1초마다 새로 읽는다. (release 빌드에서도 보인다)
 class EyeDiagnosticsPanel extends StatefulWidget {
   const EyeDiagnosticsPanel({super.key, this.stats});
@@ -1205,6 +1209,14 @@ class _EyeDiagnosticsPanelState extends State<EyeDiagnosticsPanel> {
     final ios = Theme.of(context).platform == TargetPlatform.iOS;
     final asked = ios ? EyeRules.iosFps : EyeRules.androidFps;
     String ms(Duration d) => '${(d.inMilliseconds / 1000).toStringAsFixed(1)}초';
+    String msOf(Duration? d) => d == null ? '-' : '${d.inMilliseconds}ms';
+    final heat = eye.heat;
+    final hs = heat.status;
+    final zone = switch (eye.zone) {
+      EyeZone.safe => '넉넉',
+      EyeZone.caution => '기준 가까이',
+      EyeZone.alert => '경고 중',
+    };
     final rows = <(String, String)>[
       (
         '실제 초당 프레임',
@@ -1218,7 +1230,24 @@ class _EyeDiagnosticsPanelState extends State<EyeDiagnosticsPanel> {
         '${(sum.onRatio * 100).round()}% (${on.toStringAsFixed(0)}초 / ${sec.toStringAsFixed(0)}초)',
       ),
       ('받은 프레임', '${sum.frames}장'),
-      ('지금', '${eye.running ? '켜짐' : '꺼짐'}, 검사 간격 ${ms(eye.checkInterval)}'),
+      (
+        '창 열기 시간',
+        '평균 ${msOf(sum.windowAverage)}, 마지막 ${msOf(sum.lastWindow)} (${sum.windows}번)',
+      ),
+      ('방식', eye.cameraMode),
+      (
+        '지금',
+        eye.heatOff
+            ? '꺼짐 (기기가 뜨거움)'
+            : '${eye.running ? '켜짐' : '꺼짐'}, 창 주기 ${ms(eye.checkInterval)} ($zone)',
+      ),
+      ('기기 열', heat.bound ? hs.thermal.label : '${hs.thermal.label} (채널 없음)'),
+      (
+        '절전, 배터리',
+        '절전 ${hs.powerSave == null ? '모름' : (hs.powerSave! ? '켜짐' : '꺼짐')}, '
+            '배터리 ${hs.battery == null ? '모름' : '${hs.battery}%'}'
+            '${heat.backoff > 1 ? ' (창 주기 ${heat.backoff}배)' : ''}',
+      ),
     ];
     return _Panel(
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
@@ -1244,19 +1273,37 @@ class _EyeDiagnosticsPanelState extends State<EyeDiagnosticsPanel> {
                         ),
                       ),
                     ),
-                    Text(
-                      v,
-                      key: ValueKey('diag:$k'),
-                      style: const TextStyle(
-                        fontSize: TextSizes.caption,
-                        color: Palette.text,
+                    const SizedBox(width: Gaps.sm),
+                    Flexible(
+                      flex: 2,
+                      child: Text(
+                        v,
+                        key: ValueKey('diag:$k'),
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          fontSize: TextSizes.caption,
+                          color: Palette.text,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
+            const SizedBox(height: Gaps.sm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _SmallButton(
+                icon: Icons.swap_horiz_rounded,
+                label: '방식 바꾸기',
+                onTap: () => setState(() {
+                  eye.keepCamera = !eye.keepCamera;
+                  (widget.stats ?? EyeStats.instance).reset();
+                }),
+              ),
+            ),
+            const SizedBox(height: Gaps.sm),
             const _Note(
-              '실제 초당 프레임이 30 가까이면 카메라가 요청을 따르지 않는 것입니다 (발열 원인). 숫자는 저장하거나 보내지 않습니다.',
+              '실제 초당 프레임이 30 가까이면 카메라가 요청을 따르지 않는 것입니다 (발열 원인). 방식을 바꾸면 기록을 새로 잽니다: 같은 놀이를 1분씩 해 보고 카메라 켜짐·창 열기 시간을 비교해 주세요. 숫자는 저장하거나 보내지 않습니다.',
             ),
           ],
         ),

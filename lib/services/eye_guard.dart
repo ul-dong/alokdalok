@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import 'device_heat.dart';
 import 'eye_sensor_io.dart' if (dart.library.js_interop) 'eye_sensor_web.dart';
 
 /// 카메라가 한 번 본 얼굴 정보.
@@ -27,10 +28,25 @@ class FaceReading {
 }
 
 /// 플랫폼별 카메라 + 얼굴 인식. 사진은 저장하거나 보내지 않고 기기 안에서 숫자만 뽑는다.
+///
+/// 발열을 줄이려고 카메라를 계속 켜 두지 않는다: [EyeGuard]가 정한 때마다 [sampleOnce]로
+/// 짧게 열어서(최대 [EyeRules.windowBudget]) 2~3장만 보고 다시 닫는다.
 abstract class EyeSensor {
-  /// 얼굴이 보이면 [FaceReading], 안 보이면 null을 계속 보낸다.
-  Stream<FaceReading?> start();
+  /// 카메라 창을 한 번 연다: 이미지 받기 시작 → [budget] 안에서 유효 프레임 2~3장 →
+  /// 그중 얼굴이 가장 큰 판독 하나 → 이미지 받기 멈춤 → 돌려준다.
+  /// 얼굴을 못 보면 null. 카메라를 쓸 수 없으면 오류를 던진다.
+  Future<FaceReading?> sampleOnce({Duration budget = EyeRules.windowBudget});
+
+  /// 카메라를 완전히 놓는다 (진행 중인 창도 닫는다: 그 [sampleOnce]는 null).
   Future<void> stop();
+
+  /// 창 사이에 카메라(CameraController·video 스트림)를 살려 둘지.
+  /// true면 다음 창이 빨리 열리고 안드로이드 12+ 카메라 표시등이 덜 깜빡인다.
+  /// false면 창마다 카메라를 새로 열고 닫는다(dispose). 실기기에서 둘을 재 보고 고른다.
+  bool keepCamera = EyeRules.keepCameraDefault;
+
+  /// 진단 칸에 보이는 방식 이름
+  String get mode;
 
   /// 얼굴 크기 비율 → 대략적인 거리(cm). 보정 전 기본값 계산에 쓴다.
   double defaultDistanceCm(double size);
@@ -38,14 +54,22 @@ abstract class EyeSensor {
   /// 이 기기에서 쓸 수 있는지 (카메라·얼굴 인식 지원)
   bool get supported;
 
-  /// 얼굴을 살펴보는 간격. [EyeGuard]가 상황에 맞춰 바꾼다
-  /// (평소 1.5초, 기준 가까이 0.5초, 경고 중 1초 → 20초 뒤 1.5초).
-  void setInterval(Duration interval);
-
   static EyeSensor create() => createEyeSensor();
 }
 
 enum EyeAlert { none, tooClose, badAngle }
+
+/// 다음 창까지 얼마나 기다릴지 정하는 상태
+enum EyeZone {
+  /// 거리 넉넉(경고 거리의 1.4배보다 멂)하고 자세 바름, 또는 얼굴이 안 보임: 10초
+  safe,
+
+  /// 기준 가까이(경고 거리의 1.2배 이하, 또는 고개 각도가 기준의 80% 넘음): 3초
+  caution,
+
+  /// 경고 중: 1.5초
+  alert,
+}
 
 /// 눈 지킴이 기준값.
 ///
@@ -54,10 +78,12 @@ enum EyeAlert { none, tooClose, badAngle }
 ///   경고가 뜬 뒤에는 34cm 넘게 물러나야 풀린다 (경계에서 깜빡이지 않게).
 /// - 각도: 고개를 좌우로 35도 넘게 돌리거나, 위아래로 30도 넘게 숙이거나/젖히거나,
 ///   옆으로 45도 넘게 기울이면(누워서 보기) 경고. 화면을 조금 내려다보는(15~20도) 정도는 괜찮다.
-/// - 잠깐 고개를 돌리는 건 괜찮게: 거리는 2초, 각도는 3초 넘게 이어질 때만 경고.
-///   얼굴이 안 보일 때는 알 수 없으니 막지 않는다.
+/// - 잠깐 고개를 돌리는 건 괜찮게: 처음 본 뒤 다음 창(3초 뒤)에서도 그대로일 때만 경고
+///   (거리 2초, 각도 2.5초 이상 이어짐). 얼굴이 안 보일 때는 알 수 없으니 막지 않는다.
 /// - 경고는 끝이 있다 (발열 줄이기): 경고 중 얼굴이 10초 넘게 안 보이면(아이가 떠남) 또는
 ///   경고가 75초 넘게 이어지면 카메라를 끄고 "쉬어 가기" 화면으로 넘어간다. 화면을 한 번 누르면 돌아온다.
+/// - 카메라는 짧게 열어서 보고 끈다 (발열 2단계): 창 주기 넉넉 10초, 기준 가까이 3초, 경고 중 1.5초.
+///   기기가 따뜻하거나 절전·배터리 20% 이하면 두 배, 뜨거우면 이번 실행 동안 끈다 ([DeviceHeat]).
 class EyeRules {
   EyeRules._();
   static const tooCloseCm = 30.0;
@@ -71,21 +97,47 @@ class EyeRules {
 
   /// 부모님이 맞추는 기준 거리 ("30cm 기준 맞추기")
   static const calibrationCm = 30.0;
+
+  /// 가까움이 이만큼 이어져야 경고 (처음 본 창 → 3초 뒤 다음 창에서 확인)
   static const closeHold = Duration(seconds: 2);
-  static const angleHold = Duration(seconds: 3);
+
+  /// 자세가 이만큼 이어져야 경고 (3초 창 주기에 맞춰 두 번째 창에서 확인되게)
+  static const angleHold = Duration(milliseconds: 2500);
   static const clearHold = Duration(milliseconds: 900);
 
-  /// 평소(거리 넉넉, 자세 바름) 살펴보는 간격
-  static const slowInterval = Duration(milliseconds: 1500);
+  /// 창 주기: 넉넉함(멀고 자세 바름, 또는 얼굴 안 보임)
+  static const safeInterval = Duration(seconds: 10);
 
-  /// 기준에 가까워졌을 때(경고 전) 살펴보는 간격
-  static const fastInterval = Duration(milliseconds: 500);
+  /// 창 주기: 기준 가까이
+  static const cautionInterval = Duration(seconds: 3);
 
-  /// 경고 중 살펴보는 간격
-  static const alertInterval = Duration(seconds: 1);
+  /// 창 주기: 경고 중
+  static const alertInterval = Duration(milliseconds: 1500);
 
-  /// 경고가 이만큼 이어지면 간격을 [slowInterval](1.5초)로 늦춘다
-  static const alertSlowAfter = Duration(seconds: 20);
+  /// 이 거리(경고 거리의 1.4배, 기본 42cm)보다 멀고 자세가 바르면 넉넉함
+  static const safeRatio = 1.4;
+
+  /// 이 거리(경고 거리의 1.2배, 기본 36cm) 안으로 들어오면 기준 가까이
+  static const nearRatio = 1.2;
+
+  /// 고개 각도가 기준의 이만큼(80%)을 넘으면 기준 가까이
+  static const nearAngleRatio = .8;
+
+  /// 창 하나를 열어 둘 수 있는 최대 시간
+  static const windowBudget = Duration(seconds: 1);
+
+  /// 창 하나에서 볼 프레임 수 (얼굴을 2장에서 봤으면 거기서 끝낸다)
+  static const windowFrames = 3;
+  static const windowFramesWithFace = 2;
+
+  /// 웹: 창 안에서 프레임을 보는 간격
+  static const webFrameGap = Duration(milliseconds: 200);
+
+  /// 창 사이에 카메라를 살려 둘지 (false = 창마다 dispose). 진단 칸에서 바꿔 볼 수 있다.
+  static const keepCameraDefault = true;
+
+  /// 기기가 따뜻하거나 절전·배터리 부족일 때 창 주기를 몇 배로
+  static const heatBackoff = 2;
 
   /// 경고 중 얼굴이 이만큼 안 보이면 아이가 떠난 것으로 보고 카메라를 끈다 → 쉬어 가기
   static const noFaceGiveUp = Duration(seconds: 10);
@@ -93,63 +145,147 @@ class EyeRules {
   /// 경고가 이만큼 이어지면 카메라를 끄고 쉬게 한다 → 쉬어 가기
   static const alertGiveUp = Duration(seconds: 75);
 
-  /// 이 거리(경고 거리의 1.2배, 기본 36cm) 안으로 들어오면 촘촘히 본다
-  static const nearRatio = 1.2;
-
-  /// 고개 각도가 기준의 이만큼(80%)을 넘으면 촘촘히 본다
-  static const nearAngleRatio = .8;
-
   /// 놀이 화면을 벗어나도 이만큼은 카메라를 그대로 둔다 (짧은 화면 전환마다 껐다 켜지 않게)
   static const offDelay = Duration(seconds: 1);
 
   /// 카메라 초당 프레임 (안드로이드 CameraX / iOS AVFoundation에 요청하는 값)
   static const androidFps = 10;
   static const iosFps = 5;
+
+  /// 창 주기 (발열·절전 백오프 전)
+  static Duration intervalOf(EyeZone z) => switch (z) {
+    EyeZone.safe => safeInterval,
+    EyeZone.caution => cautionInterval,
+    EyeZone.alert => alertInterval,
+  };
 }
 
-/// 카메라 프레임 중에서 [interval]마다 하나만 검사하도록 고르는 문.
-/// 앱(ML Kit)에서 쓰고, 테스트에서는 1분 동안의 검사 횟수를 계산하는 데 쓴다.
-class EyeCheckGate {
-  EyeCheckGate([this.interval = EyeRules.slowInterval]);
+/// 카메라 창 한 번: 프레임을 받기 시작해서 [budget] 안에 [frames]장(얼굴을 봤으면
+/// [framesWithFace]장)을 살펴보고, 얼굴이 가장 큰 판독을 돌려준 뒤 받기를 멈춘다.
+/// 앱(ML Kit)과 웹(MediaPipe)이 같이 쓴다. 프레임을 살펴보는 중에 온 프레임은 건너뛴다.
+class EyeWindow<T> {
+  EyeWindow({
+    required this.open,
+    required this.close,
+    required this.analyze,
+    this.budget = EyeRules.windowBudget,
+    this.frames = EyeRules.windowFrames,
+    this.framesWithFace = EyeRules.windowFramesWithFace,
+  });
 
-  Duration interval;
-  DateTime? _last;
+  /// 프레임 받기 시작 (받은 프레임은 onFrame으로)
+  final Future<void> Function(void Function(T frame) onFrame) open;
 
-  /// 이 프레임을 검사할지. 검사하기로 하면 시각을 기억한다.
-  bool take(DateTime now) {
-    final last = _last;
-    if (last != null && now.difference(last) < interval) return false;
-    _last = now;
-    return true;
+  /// 프레임 받기 멈춤 (창이 어떻게 끝나든 한 번 부른다)
+  final Future<void> Function() close;
+
+  /// 프레임 하나 → 얼굴(없으면 null). 쓸 수 없는 프레임이면 오류를 던진다(세지 않음).
+  final Future<FaceReading?> Function(T frame) analyze;
+  final Duration budget;
+  final int frames, framesWithFace;
+
+  final _done = Completer<FaceReading?>();
+  FaceReading? _best;
+  bool _busy = false;
+  int _valid = 0;
+
+  /// 살펴본(유효한) 프레임 수
+  int get valid => _valid;
+
+  void _finish() {
+    if (!_done.isCompleted) _done.complete(_best);
   }
 
-  void reset() => _last = null;
+  /// 창을 바로 닫는다 (카메라를 끌 때). 그때까지 본 것 중 가장 큰 얼굴을 돌려준다.
+  void abort() => _finish();
+
+  void _onFrame(T frame) {
+    if (_busy || _done.isCompleted) return;
+    _busy = true;
+    analyze(frame)
+        .then(
+          (r) {
+            if (_done.isCompleted) return;
+            _valid++;
+            final best = _best;
+            if (r != null && (best == null || r.size > best.size)) _best = r;
+            if (_valid >= frames || (_best != null && _valid >= framesWithFace)) {
+              _finish();
+            }
+          },
+          onError: (Object _) {}, // 쓸 수 없는 프레임: 다음 것을 본다
+        )
+        .whenComplete(() => _busy = false);
+  }
+
+  Future<FaceReading?> run() async {
+    final timer = Timer(budget, _finish);
+    try {
+      await open(_onFrame);
+      return await _done.future;
+    } finally {
+      timer.cancel();
+      _finish();
+      try {
+        await close();
+      } catch (_) {}
+    }
+  }
 }
 
 /// 카메라 결과를 받아 "너무 가까움 / 자세가 비뚤어짐"을 판단한다.
 ///
 /// 발열을 줄이려고 카메라는 꼭 필요할 때만 켠다 ([wanted]):
 /// 눈 지킴이가 켜져 있고, 앱이 앞에 있고, 놀이 화면이 보이고(멈춤 화면 아님),
-/// "오늘은 여기까지!"·눈 쉬기·쉬어 가기 덮개가 없을 때. 경고 덮개가 떠 있는 동안은 풀림을 봐야 하니 켜 두되,
+/// "오늘은 여기까지!"·눈 쉬기·쉬어 가기 덮개가 없고, 기기가 뜨겁지 않을 때([heatOff]).
+/// 경고 덮개가 떠 있는 동안은 풀림을 봐야 하니 켜 두되,
 /// 얼굴이 [EyeRules.noFaceGiveUp] 넘게 안 보이거나 경고가 [EyeRules.alertGiveUp] 넘게 이어지면
 /// 카메라를 끄고 [resting](쉬어 가기)으로 넘어간다. 화면을 한 번 누르면([wake]) 다시 켠다.
 /// 조건이 사라져도 [EyeRules.offDelay] 동안은 기다렸다가 끈다 (짧은 화면 전환).
+///
+/// 켜져 있는([running]) 동안에도 카메라는 [checkInterval]마다 한 번 짧게 열 뿐이다 ([EyeSensor.sampleOnce]).
 class EyeGuard extends ChangeNotifier {
-  EyeGuard({EyeSensor? sensor, DateTime Function()? now, EyeStats? stats})
-    : _sensor = sensor ?? EyeSensor.create(),
-      _now = now ?? DateTime.now,
-      _stats = stats ?? EyeStats.instance;
+  EyeGuard({
+    EyeSensor? sensor,
+    DateTime Function()? now,
+    EyeStats? stats,
+    DeviceHeat? heat,
+  }) : _sensor = sensor ?? EyeSensor.create(),
+       _now = now ?? DateTime.now,
+       _stats = stats ?? EyeStats.instance,
+       _heat = heat ?? DeviceHeat.instance {
+    _heat.addListener(_onHeat);
+    _onHeat();
+  }
 
   final EyeSensor _sensor;
   final DateTime Function() _now;
   final EyeStats _stats;
-  StreamSubscription<FaceReading?>? _sub;
+  final DeviceHeat _heat;
 
   bool get supported => _sensor.supported;
   bool _running = false;
 
-  /// 지금 카메라가 켜져 있는지
+  /// 지금 눈 지킴이가 돌고 있는지 (카메라는 그 안에서 창마다 잠깐씩 켜진다)
   bool get running => _running;
+
+  /// 지금 카메라 창이 열려 있는지
+  bool get windowOpen => _windowOpen;
+  bool _windowOpen = false;
+
+  /// 기기 열·절전 상태 (진단 칸)
+  DeviceHeat get heat => _heat;
+
+  /// 창 사이에 카메라를 살려 둘지 (진단 칸에서 바꿔 본다)
+  bool get keepCamera => _sensor.keepCamera;
+  set keepCamera(bool on) {
+    if (_sensor.keepCamera == on) return;
+    _sensor.keepCamera = on;
+    notifyListeners();
+  }
+
+  /// 진단 칸에 보이는 방식 이름
+  String get cameraMode => _sensor.mode;
 
   /// 30cm에서 잰 얼굴 크기 (부모님이 맞춘 값). 없으면 기본 계산을 쓴다.
   double? calibration;
@@ -177,15 +313,35 @@ class EyeGuard extends ChangeNotifier {
   /// 경고가 처음 뜬 시각, 마지막으로 얼굴을 본 시각
   DateTime? _alertSince, _faceSeenAt;
 
-  Duration _interval = EyeRules.slowInterval;
+  EyeZone _zone = EyeZone.safe;
 
-  /// 지금 얼굴을 살펴보는 간격 (평소 1.5초, 기준 가까이 0.5초, 경고 중 1초 → 20초 뒤 1.5초)
-  Duration get checkInterval => _interval;
+  /// 지금 창 주기를 정하는 상태
+  EyeZone get zone => _zone;
+
+  /// 다음 창까지의 주기 (창을 연 때부터 잰다): 넉넉 10초, 기준 가까이 3초, 경고 중 1.5초.
+  /// 기기가 따뜻하거나 절전·배터리 부족이면 두 배. 30cm 기준 맞추는 중에는 바로바로.
+  Duration get checkInterval {
+    if (_measuring > 0) return EyeRules.alertInterval;
+    return EyeRules.intervalOf(_zone) * _heat.backoff;
+  }
 
   bool _resting = false;
 
   /// 경고가 끝나지 않아 카메라를 끄고 쉬는 중 ("쉬어 가기" 화면). 화면을 누르면 [wake].
   bool get resting => _resting;
+
+  bool _heatOff = false;
+
+  /// 기기가 뜨거워서(열 상태 SEVERE 이상) 이번 실행 동안 눈 지킴이를 껐다
+  bool get heatOff => _heatOff;
+
+  void _onHeat() {
+    if (!_heatOff && _heat.tooHot) {
+      _heatOff = true;
+      _sync(now: true);
+    }
+    notifyListeners();
+  }
 
   double distanceOf(double size) {
     final cal = calibration;
@@ -225,6 +381,7 @@ class EyeGuard extends ChangeNotifier {
       error == null &&
       !_blocked &&
       !_resting &&
+      !_heatOff &&
       (_measuring > 0 || _alert != EyeAlert.none || playing);
 
   /// 놀이 화면([owner])이 보인다. [paused]면 멈춤 화면이 열려 있다.
@@ -292,39 +449,80 @@ class EyeGuard extends ChangeNotifier {
     }
   }
 
-  // ---------- 카메라 켜고 끄기 ----------
+  // ---------- 카메라 창 열고 닫기 ----------
 
   /// 켜고 끌 때마다 늘어난다. 기다리는 사이에 다른 명령이 오면 앞의 것은 그만둔다.
   int _gen = 0;
   Future<void>? _stopping;
+
+  /// 다음 창을 여는 타이머
+  Timer? _windowTimer;
+  DateTime? _windowAt;
 
   Future<void> start() async {
     if (_running) return;
     final gen = ++_gen;
     error = null;
     _running = true;
-    _stats.cameraOn(true);
-    _setInterval(EyeRules.slowInterval);
+    _zone = EyeZone.safe;
     notifyListeners();
     // 앞서 끄던 카메라가 다 꺼진 뒤에 켠다
     final pending = _stopping;
     if (pending != null) await pending;
     if (gen != _gen) return;
-    try {
-      _sub = _sensor.start().listen(
-        feed,
-        onError: (Object e) {
-          error = '$e';
-          stop();
-        },
-      );
-    } catch (e) {
-      error = '$e';
-      _running = false;
-      _stats.cameraOn(false);
-      notifyListeners();
-    }
+    unawaited(_openWindow(gen)); // 첫 창은 바로 연다
   }
+
+  /// 창 하나: 카메라를 잠깐 열어 얼굴을 보고 닫은 뒤, [checkInterval] 뒤 다음 창을 잡는다.
+  Future<void> _openWindow(int gen) async {
+    _windowTimer = null;
+    _windowAt = null;
+    if (gen != _gen || !_running) return;
+    final began = _now();
+    _windowOpen = true;
+    _stats.cameraOn(true);
+    FaceReading? r;
+    Object? err;
+    try {
+      r = await _sensor.sampleOnce(budget: EyeRules.windowBudget);
+    } catch (e) {
+      err = e;
+    }
+    if (gen != _gen) return; // 그 사이에 껐다 (stop이 기록을 닫았다)
+    _windowOpen = false;
+    _stats.cameraOn(false);
+    _stats.windowClosed(_now().difference(began));
+    if (err != null) {
+      error = '$err';
+      unawaited(stop());
+      return;
+    }
+    feed(r);
+    if (gen != _gen || !_running) return; // 쉬어 가기로 넘어갔다
+    _schedule(gen, began);
+  }
+
+  /// 창을 연 때([from])부터 [checkInterval] 뒤에 다음 창을 잡는다
+  void _schedule(int gen, DateTime from) {
+    _windowTimer?.cancel();
+    final at = from.add(checkInterval);
+    _windowAt = at;
+    var wait = at.difference(_now());
+    if (wait.isNegative) wait = Duration.zero;
+    _windowTimer = Timer(wait, () => _openWindow(gen));
+  }
+
+  /// 기다리는 창을 지금 바로 연다 (30cm 기준 맞추기)
+  void _openNow() {
+    if (!_running || _windowTimer == null) return;
+    _windowTimer?.cancel();
+    _windowTimer = null;
+    unawaited(_openWindow(_gen));
+  }
+
+  /// 다음 창 예정 시각 (테스트·진단용)
+  @visibleForTesting
+  DateTime? get nextWindowAt => _windowAt;
 
   /// 경고가 끝나지 않는다: 경고를 풀고 카메라를 끈 뒤 "쉬어 가기"로 넘어간다
   void _rest() {
@@ -341,44 +539,31 @@ class EyeGuard extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 경고 중 검사 간격: 1초, 경고가 20초 넘게 이어지면 1.5초
-  Duration _alertCheck(DateTime now) {
-    final since = _alertSince;
-    return since != null && now.difference(since) >= EyeRules.alertSlowAfter
-        ? EyeRules.slowInterval
-        : EyeRules.alertInterval;
-  }
-
   Future<void> stop() async {
     _gen++;
     _offTimer?.cancel();
     _offTimer = null;
-    final sub = _sub;
-    _sub = null;
+    _windowTimer?.cancel();
+    _windowTimer = null;
+    _windowAt = null;
     final wasRunning = _running;
     _running = false;
-    if (wasRunning) _stats.cameraOn(false);
+    _windowOpen = false;
+    _stats.cameraOn(false);
     _last = null;
     _closeSince = _angleSince = _goodSince = null;
     _alertSince = _faceSeenAt = null;
     _alert = EyeAlert.none;
+    _zone = EyeZone.safe;
     notifyListeners();
-    if (!wasRunning && sub == null) return;
+    if (!wasRunning) return;
     final before = _stopping;
     final done = _stopping = () async {
-      // 구독은 바로 끊는다 (취소 완료를 기다릴 필요는 없다)
-      unawaited(sub?.cancel());
       if (before != null) await before;
       await _sensor.stop();
     }();
     await done;
     if (identical(_stopping, done)) _stopping = null;
-  }
-
-  void _setInterval(Duration d) {
-    if (d == _interval) return;
-    _interval = d;
-    _sensor.setInterval(d);
   }
 
   /// 지금 얼굴 크기를 "30cm" 기준으로 저장 (부모님이 30cm 떨어진 곳에서 누른다)
@@ -401,6 +586,7 @@ class EyeGuard extends ChangeNotifier {
     final wait = _nextFace ??= Completer<FaceReading>();
     _measuring++;
     _sync();
+    _openNow(); // 이미 돌고 있으면 다음 창을 기다리지 않는다
     try {
       await wait.future.timeout(timeout);
       return calibrateNow();
@@ -420,7 +606,7 @@ class EyeGuard extends ChangeNotifier {
     _alert = EyeAlert.none;
     _closeSince = _angleSince = null;
     _alertSince = _faceSeenAt = null;
-    _setInterval(EyeRules.slowInterval);
+    _zone = EyeZone.safe;
     _sync();
     notifyListeners();
   }
@@ -435,7 +621,7 @@ class EyeGuard extends ChangeNotifier {
       if (w != null && !w.isCompleted) w.complete(r);
     }
     if (_snoozeUntil != null && now.isBefore(_snoozeUntil!)) {
-      _setInterval(EyeRules.slowInterval);
+      _zone = EyeZone.safe;
       notifyListeners();
       return;
     }
@@ -451,9 +637,7 @@ class EyeGuard extends ChangeNotifier {
           return;
         }
       }
-      _setInterval(
-        _alert == EyeAlert.none ? EyeRules.slowInterval : _alertCheck(now),
-      );
+      _zone = _alert == EyeAlert.none ? EyeZone.safe : EyeZone.alert;
       notifyListeners();
       return;
     }
@@ -466,7 +650,7 @@ class EyeGuard extends ChangeNotifier {
         r.pitch.abs() > EyeRules.maxPitch ||
         r.roll.abs() > EyeRules.maxRoll;
 
-    // 경고까지 걸리는 시간(2초·3초)은 처음 본 시각부터 실제 시각으로 잰다 (검사 간격과 상관없다)
+    // 경고까지 걸리는 시간(2초·2.5초)은 처음 본 시각부터 실제 시각으로 잰다
     _closeSince = close ? (_closeSince ?? now) : null;
     _angleSince = tilted ? (_angleSince ?? now) : null;
 
@@ -506,34 +690,38 @@ class EyeGuard extends ChangeNotifier {
         return;
       }
     }
-    _setInterval(
-      next != EyeAlert.none
-          ? _alertCheck(now)
-          : isNear(r)
-          ? EyeRules.fastInterval
-          : EyeRules.slowInterval,
-    );
+    _zone = next != EyeAlert.none ? EyeZone.alert : zoneOf(r, previous: _zone);
     if (next != was) _sync();
     notifyListeners();
   }
 
-  /// 기준에 가까운지 (36cm 이하, 또는 고개 각도가 기준의 80% 이상)
-  bool isNear(FaceReading r) {
+  /// 경고가 아닐 때의 창 주기 상태.
+  /// 기준 가까이(경고 거리의 1.2배 이하, 또는 고개 각도가 기준의 80% 넘음) → [EyeZone.caution],
+  /// 넉넉함(1.4배보다 멀고 자세 바름) → [EyeZone.safe], 그 사이(1.2~1.4배)는 [previous]를 그대로
+  /// (경고에서 막 풀린 경우는 기준 가까이로 본다).
+  EyeZone zoneOf(FaceReading r, {required EyeZone previous}) {
     const k = EyeRules.nearAngleRatio;
-    return distanceOf(r.size) <= tooCloseCm * EyeRules.nearRatio ||
-        r.yaw.abs() >= EyeRules.maxYaw * k ||
-        r.pitch.abs() >= EyeRules.maxPitch * k ||
-        r.roll.abs() >= EyeRules.maxRoll * k;
+    final d = distanceOf(r.size);
+    final turned =
+        r.yaw.abs() > EyeRules.maxYaw * k ||
+        r.pitch.abs() > EyeRules.maxPitch * k ||
+        r.roll.abs() > EyeRules.maxRoll * k;
+    if (turned || d <= tooCloseCm * EyeRules.nearRatio) return EyeZone.caution;
+    if (d > tooCloseCm * EyeRules.safeRatio) return EyeZone.safe;
+    return previous == EyeZone.alert ? EyeZone.caution : previous;
   }
 
   @override
   void dispose() {
+    _heat.removeListener(_onHeat);
     _offTimer?.cancel();
-    _sub?.cancel();
+    _windowTimer?.cancel();
+    _gen++;
     _sensor.stop();
     super.dispose();
   }
 }
+
 
 /// 얼굴 크기 비율 → 거리(cm): 핀홀 카메라 모델
 /// 거리 = 실제크기 / (2 · 비율 · tan(가로화각/2))
@@ -544,8 +732,10 @@ double pinholeDistanceCm(double ratio, double realCm, double hfovDeg) {
 
 /// 눈 지킴이 실측 진단 (설정 → '부모님께'를 길게 누르면 보인다).
 ///
-/// 최근 1분 동안 카메라에서 실제로 받은 프레임 수, 얼굴 검사 횟수, 카메라가 켜져 있던 시간을 센다.
-/// `CameraController(fps: 10)` 요청이 기기에서 실제로 먹히는지(30fps로 들어오지 않는지) 확인하는 용도.
+/// 최근 1분 동안 카메라에서 실제로 받은 프레임 수, 얼굴 검사 횟수, 카메라가 켜져 있던 시간,
+/// 창(카메라를 잠깐 연 것) 수와 창 하나를 열어 둔 시간을 센다.
+/// `CameraController(fps: 10)` 요청이 기기에서 실제로 먹히는지(30fps로 들어오지 않는지),
+/// 창 사이에 카메라를 살려 두는 방식과 매번 닫는 방식 중 무엇이 창을 짧게 여는지 확인하는 용도.
 /// 숫자만 기기 안에 잠깐 들고 있고 저장하거나 보내지 않는다.
 class EyeStats {
   EyeStats({DateTime Function()? now}) : _now = now ?? DateTime.now {
@@ -561,6 +751,10 @@ class EyeStats {
   late DateTime _since;
   final _frames = ListQueue<DateTime>();
   final _checks = ListQueue<DateTime>();
+
+  /// 창을 닫은 시각과 열어 둔 시간
+  final _windows = ListQueue<(DateTime, Duration)>();
+  Duration? _lastWindow;
 
   /// 카메라가 켜져 있던 구간 (끝이 null이면 지금도 켜져 있다)
   final _spans = ListQueue<(DateTime, DateTime?)>();
@@ -592,8 +786,19 @@ class EyeStats {
     _prune(now);
   }
 
+  /// 카메라 창 하나를 닫았다 ([open] = 연 때부터 닫을 때까지)
+  void windowClosed(Duration open) {
+    final now = _now();
+    _windows.add((now, open));
+    _lastWindow = open;
+    _prune(now);
+  }
+
   void _prune(DateTime now) {
     final from = now.subtract(window);
+    while (_windows.isNotEmpty && _windows.first.$1.isBefore(from)) {
+      _windows.removeFirst();
+    }
     while (_frames.isNotEmpty && _frames.first.isBefore(from)) {
       _frames.removeFirst();
     }
@@ -620,20 +825,32 @@ class EyeStats {
       final e = b ?? now;
       if (e.isAfter(s)) on += e.difference(s);
     }
+    var open = Duration.zero;
+    for (final (_, d) in _windows) {
+      open += d;
+    }
     return EyeStatsSummary(
       window: span,
       cameraOn: on,
       frames: _frames.length,
       checks: _checks.length,
+      windows: _windows.length,
+      windowAverage: _windows.isEmpty ? null : open ~/ _windows.length,
+      lastWindow: _lastWindow,
     );
   }
 
-  @visibleForTesting
+  /// 기록을 비우고 지금부터 다시 잰다 (진단 칸에서 방식을 바꿀 때)
   void reset() {
     _since = _now();
     _frames.clear();
     _checks.clear();
+    _windows.clear();
+    _lastWindow = null;
+    // 지금 켜져 있으면 지금부터 다시 잰다
+    final wasOn = cameraIsOn;
     _spans.clear();
+    if (wasOn) _spans.add((_since, null));
   }
 }
 
@@ -644,6 +861,9 @@ class EyeStatsSummary {
     required this.cameraOn,
     required this.frames,
     required this.checks,
+    this.windows = 0,
+    this.windowAverage,
+    this.lastWindow,
   });
 
   /// 잰 시간 (보통 1분)
@@ -653,6 +873,15 @@ class EyeStatsSummary {
   final Duration cameraOn;
   final int frames;
   final int checks;
+
+  /// 그동안 연 카메라 창 수
+  final int windows;
+
+  /// 창 하나를 열어 둔 평균 시간 (창이 없으면 null)
+  final Duration? windowAverage;
+
+  /// 마지막 창을 열어 둔 시간 (1분이 지나도 남는다)
+  final Duration? lastWindow;
 
   /// 카메라가 켜져 있는 동안 실제로 받은 초당 프레임 수 (켜진 적 없으면 null)
   double? get fps => cameraOn.inMilliseconds < 500

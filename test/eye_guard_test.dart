@@ -8,26 +8,68 @@ import 'package:alokdalok/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// 가짜 카메라. [sampleOnce]는 테스트가 [reply]로 답할 때까지 기다린다 (창이 열린 채).
+/// [scene]을 주면 [windowTime] 뒤에 저절로 답한다 (1분 동안 켜짐 비율 재기).
 class FakeSensor implements EyeSensor {
-  final ctrl = StreamController<FaceReading?>.broadcast();
-  int starts = 0, stops = 0;
-  final intervals = <Duration>[];
+  FakeSensor({this.scene, this.windowTime = Duration.zero});
 
-  /// 지금 카메라가 켜져 있는지 (start 뒤 stop 전)
-  bool get on => starts > stops;
+  /// 저절로 답할 얼굴 (없으면 [reply]를 기다린다)
+  FaceReading? Function()? scene;
+
+  /// 창 하나를 여는 데 걸리는 시간 (저절로 답할 때)
+  Duration windowTime;
+
+  /// 카메라를 연 횟수 (꺼진 상태에서 창을 연 것), 완전히 끈 횟수, 창 수
+  int starts = 0, stops = 0, samples = 0;
+  final budgets = <Duration>[];
+  bool _open = false;
+  Completer<FaceReading?>? _pending;
+
+  @override
+  bool keepCamera = true;
+
+  @override
+  String get mode => keepCamera ? '유지' : '매번';
+
+  /// 지금 카메라가 켜져 있는지 (처음 창을 연 뒤 stop 전)
+  bool get on => _open;
+
+  /// 지금 창이 열려 답을 기다리는지
+  bool get waiting => _pending != null && !_pending!.isCompleted;
 
   @override
   bool get supported => true;
+
   @override
-  Stream<FaceReading?> start() {
-    starts++;
-    return ctrl.stream;
+  Future<FaceReading?> sampleOnce({
+    Duration budget = EyeRules.windowBudget,
+  }) async {
+    if (!_open) starts++;
+    _open = true;
+    samples++;
+    budgets.add(budget);
+    final scene = this.scene;
+    if (scene != null) {
+      await Future<void>.delayed(windowTime);
+      return _open ? scene() : null;
+    }
+    final p = _pending = Completer<FaceReading?>();
+    return p.future;
+  }
+
+  /// 열린 창에 답한다
+  void reply(FaceReading? r) {
+    final p = _pending;
+    _pending = null;
+    if (p != null && !p.isCompleted) p.complete(r);
   }
 
   @override
-  Future<void> stop() async => stops++;
-  @override
-  void setInterval(Duration interval) => intervals.add(interval);
+  Future<void> stop() async {
+    stops++;
+    _open = false;
+    reply(null);
+  }
 
   /// 테스트에서는 size 값을 그대로 "1/거리" 로 쓴다: size = 1/cm
   @override

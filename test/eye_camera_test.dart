@@ -1,4 +1,6 @@
-// 눈 지킴이 카메라 발열 줄이기: 필요할 때만 켜기, 검사 간격, 판정 시간, 카메라·ML Kit 설정, 1분 추정
+// 눈 지킴이 카메라 발열 줄이기: 필요할 때만 켜기, 창 주기(짧게 열어서 보고 끄기), 기기 열 백오프,
+// 경고까지 걸리는 시간, 카메라·ML Kit 설정, 1분 켜짐 비율
+import 'dart:async';
 import 'dart:io';
 
 import 'package:alokdalok/app.dart';
@@ -8,6 +10,7 @@ import 'package:alokdalok/core/slow_clock.dart';
 import 'package:alokdalok/screens/home_screen.dart';
 import 'package:alokdalok/screens/settings_screen.dart';
 import 'package:alokdalok/services/audio_service.dart';
+import 'package:alokdalok/services/device_heat.dart';
 import 'package:alokdalok/services/eye_guard.dart';
 import 'package:alokdalok/services/eye_sensor_io.dart';
 import 'package:alokdalok/services/game_state.dart';
@@ -18,12 +21,21 @@ import 'package:alokdalok/widgets/eye_guard_overlay.dart';
 import 'package:alokdalok/widgets/play_guard_overlay.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import 'eye_guard_test.dart' show FakeSensor, at;
 
 const _ms = Duration(milliseconds: 1);
+
+/// 카메라를 허락하지 않은 기기
+class _DeniedSensor extends FakeSensor {
+  @override
+  Future<FaceReading?> sampleOnce({
+    Duration budget = EyeRules.windowBudget,
+  }) async => throw '카메라 사용을 허용해 주세요';
+}
 
 void main() {
   group('카메라는 필요할 때만 켠다 (가짜 센서·가짜 시계)', () {
@@ -173,7 +185,8 @@ void main() {
       final f = g.measureAndCalibrate();
       await t.pump();
       expect(sensor.on, isTrue);
-      sensor.ctrl.add(const FaceReading(size: .2, yaw: 0, pitch: 0, roll: 0));
+      expect(sensor.waiting, isTrue, reason: '창을 바로 연다');
+      sensor.reply(const FaceReading(size: .2, yaw: 0, pitch: 0, roll: 0));
       await t.pump();
       expect(await f, .2);
       expect(g.distanceOf(.2), closeTo(30, .001));
@@ -196,159 +209,414 @@ void main() {
     });
   });
 
-  group('검사 간격', () {
+  group('창 주기 (카메라를 짧게 열어서 보고 끈다)', () {
     late DateTime now;
     late FakeSensor sensor;
+    late DeviceHeat heat;
     late EyeGuard g;
     setUp(() {
       now = DateTime(2026);
       sensor = FakeSensor();
-      g = EyeGuard(sensor: sensor, now: () => now);
+      heat = DeviceHeat();
+      g = EyeGuard(sensor: sensor, now: () => now, heat: heat);
     });
     void step(FaceReading? r, [Duration? d]) {
       now = now.add(d ?? g.checkInterval);
       g.feed(r);
     }
 
-    test('평소 1.5초, 36cm 이하·각도 80% 이상이면 0.5초, 멀어지면 다시 1.5초', () {
-      expect(g.checkInterval, const Duration(milliseconds: 1500));
+    const s10 = Duration(seconds: 10), s3 = Duration(seconds: 3);
+    const s15 = Duration(milliseconds: 1500);
+
+    test('넉넉(42cm 넘고 자세 바름) 10초, 기준 가까이(36cm 이하·각도 80% 넘음) 3초, 그 사이는 직전 그대로', () {
+      expect(g.checkInterval, s10);
       step(at(50));
-      expect(g.checkInterval, const Duration(milliseconds: 1500));
+      expect((g.zone, g.checkInterval), (EyeZone.safe, s10));
       step(at(36));
-      expect(
-        g.checkInterval,
-        const Duration(milliseconds: 500),
-        reason: '36cm',
-      );
-      step(at(37));
-      expect(g.checkInterval, const Duration(milliseconds: 1500));
-      step(at(50, yaw: 28)); // 35도의 80%
-      expect(g.checkInterval, const Duration(milliseconds: 500));
-      step(at(50, pitch: 24)); // 30도의 80%
-      expect(g.checkInterval, const Duration(milliseconds: 500));
-      step(at(50, roll: 36)); // 45도의 80%
-      expect(g.checkInterval, const Duration(milliseconds: 500));
-      step(at(50, yaw: 20, pitch: 15, roll: 20));
-      expect(g.checkInterval, const Duration(milliseconds: 1500));
+      expect((g.zone, g.checkInterval), (EyeZone.caution, s3), reason: '36cm');
+      step(at(40));
+      expect(g.checkInterval, s3, reason: '36~42cm는 직전(기준 가까이) 그대로');
+      step(at(42));
+      expect(g.checkInterval, s3, reason: '42cm는 아직 넉넉하지 않다');
+      step(at(43));
+      expect(g.checkInterval, s10);
+      step(at(40));
+      expect(g.checkInterval, s10, reason: '36~42cm는 직전(넉넉) 그대로');
+      step(at(50, yaw: 28)); // 35도의 80% (넘지 않음)
+      expect(g.checkInterval, s10);
+      step(at(50, yaw: 29));
+      expect(g.checkInterval, s3);
+      step(at(50, pitch: 25)); // 30도의 80% = 24
+      expect(g.checkInterval, s3);
+      step(at(50));
+      expect(g.checkInterval, s10);
+      step(at(50, roll: 37)); // 45도의 80% = 36
+      expect(g.checkInterval, s3);
       step(null);
-      expect(g.checkInterval, const Duration(milliseconds: 1500));
-      expect(sensor.intervals, [
-        const Duration(milliseconds: 500),
-        const Duration(milliseconds: 1500),
-        const Duration(milliseconds: 500),
-        const Duration(milliseconds: 1500),
-      ], reason: '바뀔 때만 센서에 알린다');
+      expect(g.checkInterval, s10, reason: '얼굴이 안 보이면 넉넉');
     });
 
-    test('경고 중 간격은 1초 (얼굴이 잠깐 안 보여도), 경고가 20초 넘으면 1.5초', () {
-      for (var i = 0; i < 8; i++) {
+    test('경고 중 1.5초 (얼굴이 잠깐 안 보여도), 풀리면 기준 가까이 3초부터', () {
+      while (g.alert == EyeAlert.none) {
         step(at(25));
       }
       expect(g.alert, EyeAlert.tooClose);
-      expect(g.checkInterval, const Duration(seconds: 1));
+      expect((g.zone, g.checkInterval), (EyeZone.alert, s15));
       step(at(33)); // 경계 (30~34cm)
-      expect(g.checkInterval, const Duration(seconds: 1));
+      expect(g.checkInterval, s15);
       step(null);
-      expect(g.checkInterval, const Duration(seconds: 1));
-      // 경고가 뜬 뒤 20초 동안은 1초
-      while (g.checkInterval == const Duration(seconds: 1)) {
+      expect(g.checkInterval, s15);
+      for (var i = 0; i < 20; i++) {
         step(at(25));
-        expect(g.alert, EyeAlert.tooClose);
+        expect(g.checkInterval, s15, reason: '경고 중에는 줄곧 1.5초');
       }
-      expect(g.checkInterval, const Duration(milliseconds: 1500));
-      step(null);
-      expect(
-        g.checkInterval,
-        const Duration(milliseconds: 1500),
-        reason: '얼굴이 잠깐 안 보여도 늦춘 간격 그대로',
-      );
-      for (var i = 0; i < 3; i++) {
-        step(at(60));
-      }
+      step(at(38));
+      step(at(38));
       expect(g.alert, EyeAlert.none);
-      expect(g.checkInterval, const Duration(milliseconds: 1500));
+      expect(g.checkInterval, s3, reason: '막 풀린 36~42cm는 기준 가까이');
+      step(at(50));
+      expect(g.checkInterval, s10);
+    });
+
+    test('기준 거리를 40cm로 바꾸면 48cm 이하 3초, 56cm 넘으면 10초', () {
+      g.tooCloseCm = 40;
+      step(at(57));
+      expect(g.checkInterval, s10);
+      step(at(49));
+      expect(g.checkInterval, s10, reason: '48~56cm는 직전 그대로');
+      step(at(48));
+      expect(g.checkInterval, s3);
+      step(at(56));
+      expect(g.checkInterval, s3);
+      step(at(57));
+      expect(g.checkInterval, s10);
+    });
+
+    test('기기가 따뜻하거나(MODERATE 이상) 절전·배터리 20% 이하면 창 주기 2배', () {
+      HeatStatus st(HeatLevel l, {bool? save, int? battery}) =>
+          HeatStatus(thermal: l, powerSave: save, battery: battery);
+      heat.update(st(HeatLevel.none, save: false, battery: 80));
+      expect(g.checkInterval, s10);
+      heat.update(st(HeatLevel.light));
+      expect(g.checkInterval, s10, reason: 'LIGHT는 그대로');
+      heat.update(st(HeatLevel.moderate));
+      expect(g.checkInterval, s10 * 2);
+      step(at(36));
+      expect(g.checkInterval, s3 * 2);
       while (g.alert == EyeAlert.none) {
         step(at(25));
       }
-      expect(
-        g.checkInterval,
-        const Duration(seconds: 1),
-        reason: '새 경고는 다시 1초부터',
-      );
+      expect(g.checkInterval, s15 * 2);
+      heat.update(st(HeatLevel.none));
+      expect(g.checkInterval, s15);
+      heat.update(st(HeatLevel.none, save: true));
+      expect(g.checkInterval, s15 * 2, reason: '절전 모드');
+      heat.update(st(HeatLevel.unknown, battery: 20));
+      expect(g.checkInterval, s15 * 2, reason: '배터리 20%');
+      heat.update(st(HeatLevel.unknown, battery: 21));
+      expect(g.checkInterval, s15, reason: '열 상태를 모르면(안드로이드 10 미만·웹) 그대로');
+      heat.update(st(HeatLevel.moderate, save: true, battery: 5));
+      expect(g.checkInterval, s15 * 2, reason: '겹쳐도 2배');
+      expect(g.heatOff, isFalse);
     });
 
-    test('경고가 정확히 20초 이어진 때부터 1.5초', () {
-      final t0 = now;
-      while (g.alert == EyeAlert.none) {
-        step(at(20));
-      }
-      final alertAt = now;
-      // 1.5초에 처음 가까이 봄 → 0.5초 간격 → 2초 뒤 경고
-      expect(alertAt.difference(t0), const Duration(milliseconds: 3500));
-      while (now.difference(alertAt) < EyeRules.alertSlowAfter) {
-        expect(g.checkInterval, EyeRules.alertInterval);
-        step(at(20));
-      }
-      expect(now.difference(alertAt), EyeRules.alertSlowAfter);
-      expect(g.checkInterval, const Duration(milliseconds: 1500));
-    });
-
-    test('기준 거리를 40cm로 바꾸면 48cm부터 촘촘히 본다', () {
-      g.tooCloseCm = 40;
-      step(at(49));
-      expect(g.checkInterval, const Duration(milliseconds: 1500));
-      step(at(48));
-      expect(g.checkInterval, const Duration(milliseconds: 500));
+    test('켜자마자 첫 창을 열고, 다음 창은 연 때부터 주기만큼 뒤', () async {
+      final st = EyeStats(now: () => now);
+      final auto = FakeSensor(scene: () => at(60));
+      final g2 = EyeGuard(sensor: auto, now: () => now, stats: st, heat: heat);
+      await g2.start();
+      await Future<void>.delayed(Duration.zero);
+      expect(auto.samples, 1, reason: '켜자마자 첫 창');
+      expect(g2.nextWindowAt, now.add(s10));
+      expect(auto.budgets.single, EyeRules.windowBudget);
+      await g2.stop();
     });
   });
 
-  group('2~3초 판정 시간은 검사 간격과 상관없이 그대로', () {
-    /// 간격을 따라 검사하며 [pose]대로 움직이는 아이를 본다. 경고가 처음 뜬 시각(초)을 돌려준다.
+  group('기기 열·절전 (플랫폼 채널 값)', () {
+    test('안드로이드 THERMAL_STATUS 0~6 / 모름 -1 → 단계, 지도 → 상태', () {
+      expect(HeatLevel.fromRaw(-1), HeatLevel.unknown);
+      expect(HeatLevel.fromRaw(null), HeatLevel.unknown);
+      expect(HeatLevel.fromRaw(0), HeatLevel.none);
+      expect(HeatLevel.fromRaw(2), HeatLevel.moderate);
+      expect(HeatLevel.fromRaw(3), HeatLevel.severe);
+      expect(HeatLevel.fromRaw(6), HeatLevel.shutdown);
+      expect(HeatLevel.fromRaw(7), HeatLevel.unknown);
+      final s = HeatStatus.fromMap({
+        'thermal': 2,
+        'powerSave': true,
+        'battery': 15,
+      });
+      expect(s.thermal, HeatLevel.moderate);
+      expect(s.powerSave, isTrue);
+      expect(s.battery, 15);
+      final none = HeatStatus.fromMap({'thermal': -1, 'battery': -1});
+      expect(none.thermal, HeatLevel.unknown);
+      expect(none.battery, isNull);
+      expect(DeviceHeat(none).backoff, 1);
+    });
+
+    testWidgets('채널이 없으면(테스트·웹) 모름으로 두고 늘리지 않는다', (t) async {
+      final h = DeviceHeat();
+      await t.runAsync(h.bind); // 채널 응답은 진짜 시간으로 온다
+      expect(h.bound, isFalse);
+      expect(h.status.thermal, HeatLevel.unknown);
+      expect(h.backoff, 1);
+    });
+
+    testWidgets('네이티브가 값을 보내면(start·changed) 바로 바뀐다', (t) async {
+      final messenger = t.binding.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(DeviceHeat.channel, (call) async {
+        expect(call.method, 'start');
+        return {'thermal': 0, 'powerSave': false, 'battery': 90};
+      });
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(DeviceHeat.channel, null),
+      );
+      final h = DeviceHeat();
+      await h.bind();
+      expect(h.bound, isTrue);
+      expect(h.status.thermal, HeatLevel.none);
+      expect(h.status.battery, 90);
+      const codec = StandardMethodCodec();
+      await messenger.handlePlatformMessage(
+        DeviceHeat.channel.name,
+        codec.encodeMethodCall(
+          const MethodCall('changed', {'thermal': 3, 'powerSave': false, 'battery': 90}),
+        ),
+        (_) {},
+      );
+      expect(h.tooHot, isTrue);
+    });
+
+    testWidgets('기기가 뜨거우면(SEVERE 이상) 이번 실행 동안 눈 지킴이를 끈다', (t) async {
+      final heat = DeviceHeat();
+      final sensor = FakeSensor();
+      final owner = Object();
+      final g = EyeGuard(sensor: sensor, heat: heat)..enabled = true;
+      g.showPlay(owner);
+      await t.pump();
+      expect(g.running, isTrue);
+      heat.update(const HeatStatus(thermal: HeatLevel.moderate));
+      await t.pump();
+      expect(g.running, isTrue, reason: 'MODERATE는 늦추기만');
+      heat.update(const HeatStatus(thermal: HeatLevel.severe));
+      await t.pump();
+      expect(g.heatOff, isTrue);
+      expect(g.running, isFalse);
+      expect(sensor.on, isFalse);
+      expect(g.wanted, isFalse);
+      expect(g.enabled, isTrue, reason: '설정은 그대로 (이번 실행만)');
+      heat.update(const HeatStatus(thermal: HeatLevel.none));
+      await t.pump(const Duration(seconds: 5));
+      expect(g.heatOff, isTrue, reason: '식어도 앱을 다시 켤 때까지 꺼 둔다');
+      expect(sensor.on, isFalse);
+      g.hidePlay(owner);
+      g.dispose();
+    });
+
+    testWidgets('처음부터 뜨거우면 켜지 않는다', (t) async {
+      final heat = DeviceHeat(const HeatStatus(thermal: HeatLevel.critical));
+      final sensor = FakeSensor();
+      final g = EyeGuard(sensor: sensor, heat: heat)..enabled = true;
+      g.showPlay(Object());
+      await t.pump();
+      expect(g.heatOff, isTrue);
+      expect(sensor.starts, 0);
+      g.dispose();
+    });
+  });
+
+  group('카메라 창 하나 (EyeWindow: sampleOnce의 속)', () {
+    /// [gap]마다 프레임을 보내는 가짜 스트림
+    ({EyeWindow<int> w, List<String> log}) make(
+      Future<FaceReading?> Function(int frame) analyze, {
+      Duration gap = const Duration(milliseconds: 100),
+      bool frames = true,
+    }) {
+      final log = <String>[];
+      Timer? timer;
+      final w = EyeWindow<int>(
+        open: (onFrame) async {
+          log.add('open');
+          var n = 0;
+          if (frames) {
+            timer = Timer.periodic(gap, (_) => onFrame(n++));
+          }
+        },
+        close: () async {
+          timer?.cancel();
+          log.add('close');
+        },
+        analyze: analyze,
+      );
+      return (w: w, log: log);
+    }
+
+    testWidgets('얼굴을 못 보면 3장 본 뒤 null, 스트림을 닫는다', (t) async {
+      final (:w, :log) = make((_) async => null);
+      FaceReading? got = const FaceReading(size: 1, yaw: 0, pitch: 0, roll: 0);
+      var done = false;
+      w.run().then((r) {
+        got = r;
+        done = true;
+      });
+      await t.pump(const Duration(milliseconds: 250));
+      expect(done, isFalse);
+      await t.pump(const Duration(milliseconds: 100));
+      expect(done, isTrue, reason: '3장째(0.3초)에 끝');
+      expect(got, isNull);
+      expect(w.valid, 3);
+      expect(log, ['open', 'close']);
+    });
+
+    testWidgets('budget(1초) 안에 쓸 만한 프레임이 없으면 1초에 null, 스트림을 닫는다', (t) async {
+      final (:w, :log) = make((_) async => throw StateError('dark'));
+      FaceReading? got = const FaceReading(size: 1, yaw: 0, pitch: 0, roll: 0);
+      var done = false;
+      w.run().then((r) {
+        got = r;
+        done = true;
+      });
+      await t.pump(const Duration(milliseconds: 999));
+      expect(done, isFalse);
+      await t.pump(const Duration(milliseconds: 1));
+      expect(done, isTrue);
+      expect(got, isNull);
+      expect(w.valid, 0);
+      expect(log, ['open', 'close']);
+      // 프레임이 아예 안 와도 마찬가지
+      final quiet = make((_) async => null, frames: false);
+      var quietDone = false;
+      quiet.w.run().then((r) => quietDone = r == null);
+      await t.pump(EyeRules.windowBudget);
+      expect(quietDone, isTrue);
+      expect(quiet.log, ['open', 'close']);
+    });
+
+    testWidgets('얼굴을 보면 2장에서 끝내고, 그중 얼굴이 가장 큰(가까운) 것을 고른다', (t) async {
+      final sizes = [1 / 40, 1 / 30, 1 / 20];
+      final (:w, :log) = make(
+        (i) async => FaceReading(size: sizes[i], yaw: 0, pitch: 0, roll: 0),
+      );
+      FaceReading? got;
+      w.run().then((r) => got = r);
+      await t.pump(const Duration(milliseconds: 200));
+      expect(got?.size, 1 / 30);
+      expect(w.valid, 2);
+      expect(log, ['open', 'close']);
+    });
+
+    testWidgets('살펴보는 중에 온 프레임은 건너뛴다, 첫 장이 비어도 다음 장을 본다', (t) async {
+      var calls = 0;
+      final (:w, log: _) = make((i) async {
+        calls++;
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        return i == 0 ? null : at(50);
+      });
+      FaceReading? got;
+      w.run().then((r) => got = r);
+      await t.pump(const Duration(seconds: 1));
+      expect(got, isNotNull);
+      expect(calls, lessThanOrEqualTo(3), reason: '0.1초마다 오지만 0.25초씩 걸린다');
+    });
+
+    testWidgets('카메라를 끄면(abort) 바로 닫는다', (t) async {
+      final (:w, :log) = make((_) async => null, frames: false);
+      var done = false;
+      w.run().then((_) => done = true);
+      await t.pump(const Duration(milliseconds: 100));
+      w.abort();
+      await t.pump();
+      expect(done, isTrue);
+      expect(log, ['open', 'close']);
+    });
+
+    testWidgets('창을 못 열면(카메라 거부) 오류를 넘기고 닫는다, 눈 지킴이는 멈추고 이유를 남긴다', (t) async {
+      final log = <String>[];
+      final w = EyeWindow<int>(
+        open: (_) async => throw '카메라 사용을 허용해 주세요',
+        close: () async => log.add('close'),
+        analyze: (_) async => null,
+      );
+      await expectLater(w.run(), throwsA('카메라 사용을 허용해 주세요'));
+      expect(log, ['close']);
+
+      final sensor = _DeniedSensor();
+      final g = EyeGuard(sensor: sensor, heat: DeviceHeat())..enabled = true;
+      g.showPlay(Object());
+      await t.pump();
+      await t.pump();
+      expect(g.error, '카메라 사용을 허용해 주세요');
+      expect(g.running, isFalse);
+      expect(g.wanted, isFalse);
+      g.dispose();
+    });
+  });
+
+  group('경고까지 걸리는 시간 (처음 본 뒤 다음 창에서 확인: 3~5초)', () {
+    /// 창 주기를 따라 살펴보며 [pose]대로 움직이는 아이를 본다. 경고가 처음 뜬 시각(초)을 돌려준다.
     double? firstAlert(
       FaceReading Function(double sec) pose, {
-      Duration? fixed,
       required double until,
       EyeAlert want = EyeAlert.tooClose,
+      HeatStatus heat = const HeatStatus(),
     }) {
       final t0 = DateTime(2026);
       var now = t0;
-      final g = EyeGuard(sensor: FakeSensor(), now: () => now);
+      final g = EyeGuard(
+        sensor: FakeSensor(),
+        now: () => now,
+        heat: DeviceHeat(heat),
+      );
       while (now.difference(t0).inMilliseconds / 1000 <= until) {
         final sec = now.difference(t0).inMilliseconds / 1000;
         g.feed(pose(sec));
         if (g.alert == want) return sec;
-        now = now.add(fixed ?? g.checkInterval);
+        now = now.add(g.checkInterval);
       }
       return null;
     }
 
-    test('가까워진 뒤 처음 본 때부터 정확히 2초 (가깝게 다가오는 동안 이미 0.5초 간격)', () {
-      // 50cm에서 1초에 5cm씩 다가와 25cm에 멈춤: 36cm를 지나며 0.5초 간격이 된다
-      FaceReading approach(double s) => at((50 - 5 * s).clamp(25, 50));
-      final alertAt = firstAlert(approach, until: 20)!;
-      // 30cm보다 가까워지는 것은 4초 뒤 → 4.5초에 처음 보고 6.5초에 경고
-      expect(alertAt, 6.5);
-      // 예전(0.7초 고정)과 비교: 처음 본 때 + 2초 이상, + 검사 간격 이내
-      final before = firstAlert(approach, fixed: _ms * 700, until: 20)!;
-      expect(before, closeTo(6.3, .001));
+    test('넉넉하다가 갑자기 가까워지면: 처음 본 창 + 3초', () {
+      FaceReading jump(double s) => at(s < 12 ? 60 : 20);
+      // 창 0·10·20초 → 20초에 처음 봄 → 23초 경고
+      expect(firstAlert(jump, until: 60), 23);
     });
 
-    test('갑자기 가까워져도 경고까지 걸리는 시간은 처음 본 때부터 2초', () {
-      // 10초째에 갑자기 20cm로
-      FaceReading jump(double s) => at(s < 10 ? 60 : 20);
-      final alertAt = firstAlert(jump, until: 30)!;
-      // 평소 1.5초 간격: 10.5초에 처음 봄 → 12.5초 경고
-      expect(alertAt, 12.5);
+    test('기준 가까이(33cm)에서 놀다 가까워지면: 처음 본 창 + 3초', () {
+      FaceReading lean(double s) => at(s < 7 ? 33 : 25);
+      // 창 0·3·6·9초 → 9초에 처음 봄 → 12초 경고
+      expect(firstAlert(lean, until: 60), 12);
     });
 
-    test('자세 경고는 처음 본 때부터 3초', () {
+    test('천천히 다가오면: 36cm를 지나며 3초 창이 되고, 가까움을 처음 본 창 + 3초', () {
+      FaceReading approach(double s) => at((60 - 2 * s).clamp(25, 60));
+      // 0초 60cm → 10초 40cm(넉넉 그대로) → 20초 25cm(처음 봄) → 23초 경고
+      expect(firstAlert(approach, until: 60), 23);
+    });
+
+    test('자세 경고도 처음 본 창 + 3초 (2.5초 넘게 이어짐)', () {
       FaceReading turn(double s) => at(60, yaw: s < 6 ? 0 : 50);
-      final alertAt = firstAlert(turn, until: 30, want: EyeAlert.badAngle)!;
-      // 6초에 처음 봄(1.5초 간격 4번째) → 9초 경고
-      expect(alertAt, 9.0);
+      expect(firstAlert(turn, until: 60, want: EyeAlert.badAngle), 13);
+    });
+
+    test('기기가 따뜻하면 처음 본 창 + 6초', () {
+      FaceReading lean(double s) => at(s < 7 ? 33 : 25);
+      final alertAt = firstAlert(
+        lean,
+        until: 60,
+        heat: const HeatStatus(thermal: HeatLevel.moderate),
+      );
+      // 창 0·6·12초 → 12초에 처음 봄 → 18초 경고
+      expect(alertAt, 18);
+    });
+
+    test('창 하나에서만 가까웠다면(스친 것) 경고하지 않는다', () {
+      FaceReading pass(double s) => at(s >= 3 && s < 5 ? 20 : 33);
+      expect(firstAlert(pass, until: 60), isNull);
     });
   });
-
   group('카메라·ML Kit 설정', () {
     test('ML Kit: 빠른 모드, 얼굴 상자와 고개 각도만 (landmarks·contours·classification·tracking 끔)', () {
       final o = eyeFaceDetectorOptions();
@@ -380,50 +648,119 @@ void main() {
       expect(eyeCameraFps(ios: true), 5);
     });
 
-    test('웹: 320x240, 초당 5장(최대 10장)으로 받고 간격은 앱이 정한다', () {
+    test('웹: 320x240, 초당 5장(최대 10장), 창을 열 때 play·닫을 때 pause (창 주기는 앱이 정한다)', () {
       final js = File('web/eye_guard.js').readAsStringSync();
       expect(js, contains('width: { ideal: 320 }'));
       expect(js, contains('height: { ideal: 240 }'));
       expect(js, contains('frameRate: { ideal: 5, max: 10 }'));
-      expect(js, contains('setInterval: function (ms)'));
+      expect(js, contains('open: async function ()'));
+      expect(js, contains('detect: function ()'));
+      expect(js, contains('pause: function ()'));
+      expect(js, contains('await video.play()'));
+      expect(js, contains('if (video) video.pause()'));
+      expect(js, isNot(contains('setTimeout(tick')), reason: '스스로 도는 검사 없음');
       expect(js, isNot(contains('640')));
+      final dart = File('lib/services/eye_sensor_web.dart').readAsStringSync();
+      expect(dart, contains('EyeWindow<int>('));
+      expect(dart, contains('g.pause()'));
+    });
+
+    test('앱: 창마다 이미지 스트림을 열고 닫는다, 컨트롤러는 기본으로 살려 둔다', () {
+      final io = File('lib/services/eye_sensor_io.dart').readAsStringSync();
+      expect(io, contains('EyeWindow<CameraImage>('));
+      expect(io, contains('cam.startImageStream('));
+      expect(io, contains('await cam.stopImageStream()'));
+      expect(EyeRules.keepCameraDefault, isTrue);
+      expect(EyeRules.windowBudget, const Duration(seconds: 1));
     });
   });
 
-  test('1분 추정: 카메라 프레임 수와 검사 횟수 (전/후)', () {
-    /// [fps]로 들어오는 프레임 중에서 [interval]마다 하나를 검사할 때 1분 동안의 수
-    (int frames, int checks) minute(int fps, Duration Function() interval) {
-      final gate = EyeCheckGate();
-      final t0 = DateTime(2026);
-      var frames = 0, checks = 0;
-      for (var i = 0; i < 60 * fps; i++) {
-        frames++;
-        gate.interval = interval();
-        if (gate.take(t0.add(Duration(microseconds: i * 1000000 ~/ fps)))) {
-          checks++;
-        }
-      }
-      return (frames, checks);
+  group('1분 동안 카메라가 켜져 있는 시간 비율 (상태별)', () {
+    /// 놀이 화면에서 [scene]을 계속 보는 1분 동안 카메라 켜짐 비율.
+    /// 창 하나를 여는 데 [window]가 걸린다고 본다 (최악은 budget 1초).
+    Future<(double, int)> minute(
+      WidgetTester t,
+      FaceReading? Function() scene, {
+      required Duration window,
+      HeatStatus heat = const HeatStatus(),
+      Duration warmUp = const Duration(seconds: 5),
+    }) async {
+      DateTime now() => t.binding.clock.now();
+      final st = EyeStats(now: now);
+      final sensor = FakeSensor(scene: scene, windowTime: window);
+      final owner = Object();
+      final g = EyeGuard(
+        sensor: sensor,
+        now: now,
+        stats: st,
+        heat: DeviceHeat(heat),
+      )..enabled = true;
+      g.showPlay(owner);
+      await t.pump();
+      await t.pump(warmUp);
+      st.reset();
+      final before = sensor.samples;
+      await t.pump(const Duration(minutes: 1));
+      final sum = st.summary();
+      expect(sum.window, EyeStats.window);
+      expect(g.resting, isFalse);
+      final windows = sensor.samples - before;
+      g.enabled = false;
+      await t.pump();
+      await t.pump(const Duration(seconds: 2));
+      expect(sensor.on, isFalse);
+      g.dispose();
+      return (sum.onRatio, windows);
     }
 
-    final before = minute(30, () => _ms * 700);
-    final calm = minute(EyeRules.androidFps, () => EyeRules.slowInterval);
-    final near = minute(EyeRules.androidFps, () => EyeRules.fastInterval);
-    final iosCalm = minute(EyeRules.iosFps, () => EyeRules.slowInterval);
-    final iosNear = minute(EyeRules.iosFps, () => EyeRules.fastInterval);
-    debugPrint(
-      '| 경우 | 초당 프레임 | 1분 프레임 | 1분 검사 |\n'
-      '| 전 (30fps, 0.7초) | 30 | ${before.$1} | ${before.$2} |\n'
-      '| 후 안드로이드 평소 | ${EyeRules.androidFps} | ${calm.$1} | ${calm.$2} |\n'
-      '| 후 안드로이드 가까움·경고 | ${EyeRules.androidFps} | ${near.$1} | ${near.$2} |\n'
-      '| 후 iOS 평소 | ${EyeRules.iosFps} | ${iosCalm.$1} | ${iosCalm.$2} |\n'
-      '| 후 iOS 가까움·경고 | ${EyeRules.iosFps} | ${iosNear.$1} | ${iosNear.$2} |',
-    );
-    expect(before, (1800, 86));
-    expect(calm, (600, 40));
-    expect(near, (600, 120));
-    expect(iosCalm, (300, 38), reason: '5fps라 실제 간격 1.6초');
-    expect(iosNear, (300, 100), reason: '5fps라 실제 간격 0.6초');
+    FaceReading safe() => at(60);
+    FaceReading caution() => at(33);
+    FaceReading alert() => at(20);
+    const worst = EyeRules.windowBudget; // 창을 1초 꽉 채워 연다고 볼 때
+    const typical = Duration(milliseconds: 400); // 2~3장 (초당 10장 + ML Kit)
+    const warm = HeatStatus(thermal: HeatLevel.moderate);
+
+    testWidgets('안전 구간은 15% 이하, 기준 가까이·경고 중은 창 주기만큼', (t) async {
+      final rows = <String>[];
+      final got = <String, double>{};
+      Future<void> row(
+        String name,
+        FaceReading Function() scene, {
+        HeatStatus heat = const HeatStatus(),
+      }) async {
+        final (w1, n1) = await minute(t, scene, window: worst, heat: heat);
+        final (w4, _) = await minute(t, scene, window: typical, heat: heat);
+        got[name] = w1;
+        rows.add(
+          '| $name | $n1 | ${(w4 * 100).toStringAsFixed(0)}% | ${(w1 * 100).toStringAsFixed(0)}% |',
+        );
+      }
+
+      await row('안전 (10초)', safe);
+      await row('주의 (3초)', caution);
+      await row('경고 중 (1.5초)', alert);
+      await row('안전, 기기 따뜻함 (20초)', safe, heat: warm);
+      await row('주의, 기기 따뜻함 (6초)', caution, heat: warm);
+      await row('경고 중, 기기 따뜻함 (3초)', alert, heat: warm);
+      debugPrint(
+        '| 상태 | 1분 창 수 | 켜짐 (창 0.4초) | 켜짐 (창 1초, 최악) |\n'
+        '| 전 (스트림 계속) | - | 100% | 100% |\n'
+        '${rows.join('\n')}',
+      );
+      expect(got['안전 (10초)'], lessThanOrEqualTo(.15));
+      expect(got['안전 (10초)'], closeTo(.10, .01));
+      expect(got['주의 (3초)'], closeTo(.33, .02));
+      expect(got['경고 중 (1.5초)'], closeTo(.67, .02));
+      expect(got['안전, 기기 따뜻함 (20초)'], closeTo(.05, .02));
+      expect(got['주의, 기기 따뜻함 (6초)'], closeTo(.17, .02));
+      expect(got['경고 중, 기기 따뜻함 (3초)'], closeTo(.33, .02));
+    });
+
+    testWidgets('얼굴이 안 보이면(아이가 없음) 안전과 같이 10초', (t) async {
+      final (ratio, windows) = await minute(t, () => null, window: worst);
+      expect(windows, 6);
+      expect(ratio, closeTo(.10, .01));
+    });
   });
 
   group('앱 화면에 따라 켜고 끈다', () {
@@ -616,7 +953,8 @@ void main() {
         step(null);
         await t.pump();
       }
-      expect(now.difference(seen), EyeRules.noFaceGiveUp);
+      // 1.5초마다 보므로 10초를 넘긴 첫 창 (10.5초)
+      expect(now.difference(seen), const Duration(milliseconds: 10500));
       expect(sensor.on, isFalse);
       expect(g.resting, isTrue);
       expect(g.alert, EyeAlert.none);
@@ -635,11 +973,11 @@ void main() {
     testWidgets('얼굴이 잠깐(10초 안) 안 보였다 다시 보이면 경고 그대로', (t) async {
       await setUpGuard(t);
       alertNow();
-      for (var i = 0; i < 8; i++) {
-        step(null);
+      for (var i = 0; i < 6; i++) {
+        step(null); // 1.5초씩 9초
       }
       step(at(20));
-      for (var i = 0; i < 8; i++) {
+      for (var i = 0; i < 6; i++) {
         step(null);
       }
       await t.pump();
@@ -663,13 +1001,13 @@ void main() {
       }
       expect(
         now.difference(alertAt),
-        const Duration(seconds: 75, milliseconds: 500),
-        reason: '75초를 넘긴 첫 검사 (1.5초 간격)',
+        EyeRules.alertGiveUp,
+        reason: '1.5초 간격 50번째 창',
       );
       expect(sensor.on, isFalse);
       expect(g.resting, isTrue);
-      // 20초 동안 1초 간격(20번) + 55초 동안 1.5초 간격(약 37번)
-      expect(checks, inInclusiveRange(55, 58));
+      // 75초 동안 1.5초 간격
+      expect(checks, 50);
       g.hidePlay(owner);
       await t.pump(const Duration(milliseconds: 1100));
     });

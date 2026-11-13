@@ -46,21 +46,29 @@ CameraController eyeCameraController(
 /// 발열 줄이기:
 /// - 가장 낮은 해상도, 초당 5~10장만 찍게 요청한다 (기본 30장).
 /// - 화면 미리보기는 쓰지 않으므로 멈춰 둔다 (안드로이드는 Preview를 떼어 내서 GPU로 안 보낸다).
-/// - 프레임 중에서 [EyeGuard]가 정한 간격(평소 1.5초, 가까우면 0.5초, 경고 중 1초)마다 하나만 검사한다.
+/// - 이미지 스트림을 계속 열어 두지 않는다: [sampleOnce]가 부를 때만 스트림을 열어 2~3장을 보고
+///   바로 [CameraController.stopImageStream]으로 닫는다 ([EyeWindow]). 버려지는 프레임이
+///   센서 → CameraX → 플랫폼 채널 → Dart 복사를 거치지 않게 한다.
+/// - 창 사이에 [CameraController]는 살려 둔다([keepCamera], 재시작이 빠르고 표시등이 덜 깜빡인다).
+///   false면 창마다 dispose 한다 (진단 칸에서 바꿔 실기기에서 비교).
 class _MlKitEyeSensor implements EyeSensor {
   CameraController? _cam;
   CameraDescription? _desc;
   FaceDetector? _detector;
-  StreamController<FaceReading?>? _out;
-  bool _busy = false;
-  final _gate = EyeCheckGate();
+  EyeWindow<CameraImage>? _window;
 
-  /// 켤 때마다 늘어난다. 카메라를 여는 사이에 꺼지면 연 것을 바로 닫는다.
+  @override
+  bool keepCamera = EyeRules.keepCameraDefault;
+
+  @override
+  String get mode => keepCamera ? '카메라 유지 (stopImageStream)' : '창마다 끄기 (dispose)';
+
+  /// 끌 때마다 늘어난다. 카메라를 여는 사이에 꺼지면 연 것을 바로 닫는다.
   int _gen = 0;
 
-  // 디버그 실행에서 1분마다 실제 받은 프레임 수와 검사 횟수를 로그로 알려 준다 (기기에서 확인용).
+  // 디버그 실행에서 1분마다 실제 받은 프레임 수와 창 수를 로그로 알려 준다 (기기에서 확인용).
   // release 빌드에서도 설정의 숨은 진단 칸([EyeStats])으로 볼 수 있다.
-  int _frames = 0, _checks = 0;
+  int _frames = 0, _windows = 0;
   DateTime _countFrom = DateTime.now();
 
   /// 3살 아이 얼굴 너비(ML Kit 얼굴 상자 기준) 약 13cm, 앞카메라 가로 화각 약 70도로 가정.
@@ -71,20 +79,10 @@ class _MlKitEyeSensor implements EyeSensor {
   @override
   bool get supported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
-  @override
-  void setInterval(Duration interval) => _gate.interval = interval;
-
-  @override
-  Stream<FaceReading?> start() {
-    final out = _out = StreamController<FaceReading?>();
-    _gate.reset();
-    _frames = _checks = 0;
-    _countFrom = DateTime.now();
-    _open(out, ++_gen);
-    return out.stream;
-  }
-
-  Future<void> _open(StreamController<FaceReading?> out, int gen) async {
+  /// 카메라를 연다 (이미 열려 있으면 그대로). 그 사이에 꺼지면 null.
+  Future<CameraController?> _camera(int gen) async {
+    final open = _cam;
+    if (open != null) return open;
     CameraController? cam;
     try {
       final cams = await availableCameras();
@@ -92,86 +90,101 @@ class _MlKitEyeSensor implements EyeSensor {
         (c) => c.lensDirection == CameraLensDirection.front,
         orElse: () => throw '앞카메라가 없어요',
       );
-      if (gen != _gen) return;
+      if (gen != _gen) return null;
       cam = eyeCameraController(front, ios: Platform.isIOS);
       await cam.initialize();
       if (gen != _gen) {
         await cam.dispose();
-        return;
+        return null;
       }
       // 미리보기 화면은 쓰지 않는다 (안드로이드: Preview 연결을 풀어 프레임을 덜 만든다)
       try {
         await cam.pausePreview();
       } catch (_) {}
       _desc = front;
-      _cam = cam;
       _detector ??= FaceDetector(options: eyeFaceDetectorOptions());
-      await cam.startImageStream(_onFrame);
+      return _cam = cam;
     } catch (e) {
       if (gen != _gen) {
         try {
           await cam?.dispose();
         } catch (_) {}
-        return;
+        return null;
       }
-      if (!out.isClosed) {
-        out.addError(e is CameraException ? '카메라를 쓸 수 없어요' : e);
+      throw e is CameraException ? '카메라를 쓸 수 없어요' : e;
+    }
+  }
+
+  @override
+  Future<FaceReading?> sampleOnce({
+    Duration budget = EyeRules.windowBudget,
+  }) async {
+    final gen = _gen;
+    final cam = await _camera(gen);
+    if (cam == null || gen != _gen) return null;
+    final w = _window = EyeWindow<CameraImage>(
+      budget: budget,
+      open: (onFrame) => cam.startImageStream((image) {
+        _countFrame();
+        onFrame(image);
+      }),
+      close: () async {
+        if (cam.value.isStreamingImages) await cam.stopImageStream();
+      },
+      analyze: _analyze,
+    );
+    try {
+      return await w.run();
+    } finally {
+      if (identical(_window, w)) _window = null;
+      _countWindow();
+      // 창마다 끄는 방식: 카메라를 놓는다 (얼굴 인식기는 살려 둔다)
+      if (!keepCamera && gen == _gen && identical(_cam, cam)) {
+        _cam = null;
+        try {
+          await cam.dispose();
+        } catch (_) {}
       }
     }
   }
 
-  /// 받은 프레임을 진단 기록([EyeStats], 설정 '부모님께' 아래 숨은 칸)에 남기고,
-  /// 디버그 실행에서는 1분마다 로그로도 알려 준다.
-  void _countFrame(bool checked) {
+  /// 받은 프레임을 진단 기록([EyeStats], 설정 '부모님께' 아래 숨은 칸)에 남긴다.
+  void _countFrame() {
     EyeStats.instance.frame();
+    if (kDebugMode) _frames++;
+  }
+
+  /// 디버그 실행에서는 1분마다 로그로도 알려 준다.
+  void _countWindow() {
     if (!kDebugMode) return;
-    _frames++;
-    if (checked) _checks++;
+    _windows++;
     final now = DateTime.now();
     final sec = now.difference(_countFrom).inMilliseconds / 1000;
     if (sec >= 60) {
       debugPrint(
-        '눈 지킴이: ${sec.round()}초 동안 카메라 프레임 $_frames장 '
-        '(초당 ${(_frames / sec).toStringAsFixed(1)}), 검사 $_checks번',
+        '눈 지킴이: ${sec.round()}초 동안 창 $_windows번, 카메라 프레임 $_frames장 ($mode)',
       );
-      _frames = _checks = 0;
+      _frames = _windows = 0;
       _countFrom = now;
     }
   }
 
-  Future<void> _onFrame(CameraImage image) async {
-    final take = !_busy && _gate.take(DateTime.now());
-    _countFrame(take);
-    if (!take) return;
-    _busy = true;
-    try {
-      final made = _toInput(image);
-      if (made == null) return;
-      final (input, frameWidth) = made;
-      final detector = _detector;
-      if (detector == null) return;
-      final faces = await detector.processImage(input);
-      final out = _out;
-      if (out == null || out.isClosed) return;
-      if (faces.isEmpty) {
-        out.add(null);
-        return;
-      }
-      faces.sort((a, b) => b.boundingBox.width.compareTo(a.boundingBox.width));
-      final f = faces.first;
-      out.add(
-        FaceReading(
-          size: f.boundingBox.width / frameWidth,
-          yaw: f.headEulerAngleY ?? 0,
-          pitch: f.headEulerAngleX ?? 0,
-          roll: f.headEulerAngleZ ?? 0,
-        ),
-      );
-    } catch (e) {
-      debugPrint('eye guard: $e');
-    } finally {
-      _busy = false;
-    }
+  /// 프레임 하나 → 가장 큰 얼굴 (없으면 null). 쓸 수 없는 프레임이면 오류.
+  Future<FaceReading?> _analyze(CameraImage image) async {
+    final made = _toInput(image);
+    final detector = _detector;
+    if (made == null || detector == null) throw StateError('frame');
+    final (input, frameWidth) = made;
+    final faces = await detector.processImage(input);
+    if (faces.isEmpty) return null;
+    faces.sort((a, b) => b.boundingBox.width.compareTo(a.boundingBox.width));
+    final f = faces.first;
+    return FaceReading(
+      size: f.boundingBox.width / frameWidth,
+      yaw: f.headEulerAngleY ?? 0,
+      pitch: f.headEulerAngleX ?? 0,
+      roll: f.headEulerAngleZ ?? 0,
+    );
   }
 
   static const _orientations = {
@@ -217,6 +230,8 @@ class _MlKitEyeSensor implements EyeSensor {
   @override
   Future<void> stop() async {
     _gen++;
+    _window?.abort();
+    _window = null;
     final cam = _cam;
     _cam = null;
     try {
@@ -227,7 +242,5 @@ class _MlKitEyeSensor implements EyeSensor {
     } catch (_) {}
     await _detector?.close();
     _detector = null;
-    await _out?.close();
-    _out = null;
   }
 }

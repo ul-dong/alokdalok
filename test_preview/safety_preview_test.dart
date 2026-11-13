@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:alokdalok/app.dart';
 import 'package:alokdalok/screens/settings_screen.dart';
 import 'package:alokdalok/services/audio_service.dart';
+import 'package:alokdalok/services/device_heat.dart';
+import 'package:alokdalok/services/eye_guard.dart';
 import 'package:alokdalok/services/game_state.dart';
 import 'package:alokdalok/services/storage_service.dart';
 import 'package:alokdalok/widgets/common.dart';
@@ -11,15 +14,34 @@ import 'package:alokdalok/core/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// 카메라가 있는 기기처럼 보이게 하는 미리보기용 센서 (창은 열리지 않는다)
+class _PreviewSensor implements EyeSensor {
+  @override
+  bool keepCamera = true;
+  @override
+  String get mode => '카메라 유지 (stopImageStream)';
+  @override
+  bool get supported => true;
+  @override
+  Future<FaceReading?> sampleOnce({
+    Duration budget = EyeRules.windowBudget,
+  }) => Completer<FaceReading?>().future;
+  @override
+  Future<void> stop() async {}
+  @override
+  double defaultDistanceCm(double size) => 1 / size;
+}
+
 /// 놀이 시간·눈 쉬기 덮개, 부모 확인, 설정 화면 미리보기
 void main() {
   Future<(GameState, DateTime Function(), void Function(Duration))>
-  make() async {
+  make({EyeGuard? eye}) async {
     var now = DateTime(2026, 10, 21, 9);
     final s = GameState(
       storage: MemoryStorage(),
       audio: RecordingAudio(),
       now: () => now,
+      eyeGuard: eye,
     );
     await s.load();
     await s.setNickname('별이');
@@ -141,6 +163,80 @@ void main() {
         matchesGoldenFile('shots/settings_full_$w.png'),
       );
       await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('settings eye heat off $w', (t) async {
+      // 기기가 뜨거워(SEVERE) 눈 지킴이를 이번 실행 동안 끔 → 설정 눈 지킴이 칸 안내
+      t.view.physicalSize = size;
+      t.view.devicePixelRatio = 1;
+      final eye = EyeGuard(
+        sensor: _PreviewSensor(),
+        heat: DeviceHeat(const HeatStatus(thermal: HeatLevel.severe)),
+      );
+      final (s, _, _) = await make(eye: eye);
+      expect(eye.heatOff, isTrue);
+      await t.pumpWidget(
+        AppScope(
+          state: s,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: buildAppTheme(),
+            home: const SettingsScreen(),
+          ),
+        ),
+      );
+      await t.pump(const Duration(milliseconds: 500));
+      await t.ensureVisible(find.text('눈 지킴이'));
+      await t.pump(const Duration(milliseconds: 300));
+      expect(find.text('기기가 뜨거워서 눈 지킴이를 잠시 껐어요'), findsOneWidget);
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('shots/settings_eye_heat_off_$w.png'),
+      );
+      await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('settings eye diagnostics duty $w', (t) async {
+      // 진단 칸: 창 열기 시간·방식·기기 열·절전·배터리 (기기 따뜻함 + 배터리 18% → 창 주기 ×2)
+      t.view.physicalSize = Size(size.width, 2400);
+      t.view.devicePixelRatio = 1;
+      final eye = EyeGuard(
+        sensor: _PreviewSensor(),
+        heat: DeviceHeat(
+          const HeatStatus(
+            thermal: HeatLevel.moderate,
+            powerSave: false,
+            battery: 18,
+          ),
+        ),
+      );
+      final (s, _, _) = await make(eye: eye);
+      final st = EyeStats.instance..reset();
+      for (final ms in [420, 380, 510]) {
+        st.windowClosed(Duration(milliseconds: ms));
+        st.check();
+      }
+      await t.pumpWidget(
+        AppScope(
+          state: s,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: buildAppTheme(),
+            home: const SettingsScreen(),
+          ),
+        ),
+      );
+      await t.pump(const Duration(milliseconds: 500));
+      await t.longPress(find.textContaining('회원가입'));
+      await t.pump(const Duration(milliseconds: 500));
+      expect(find.text('창 열기 시간'), findsOneWidget);
+      expect(find.text('방식 바꾸기'), findsOneWidget);
+      await expectLater(
+        find.byType(EyeDiagnosticsPanel),
+        matchesGoldenFile('shots/settings_eye_diag_duty_$w.png'),
+      );
+      await t.pumpWidget(const SizedBox());
+      st.reset();
     });
 
     testWidgets('settings eye diagnostics $w', (t) async {

@@ -700,26 +700,28 @@ void main() {
       }
     }
 
-    test('기준값: 얼굴 없음 10초, 경고 75초, 경고 중 1초 → 20초 뒤 1.5초', () {
+    test('기준값: 얼굴 없음 10초, 경고 75초, 창 주기 10초·3초·경고 중 1.5초', () {
       expect(EyeRules.noFaceGiveUp, const Duration(seconds: 10));
       expect(EyeRules.alertGiveUp, const Duration(seconds: 75));
-      expect(EyeRules.alertInterval, const Duration(seconds: 1));
-      expect(EyeRules.alertSlowAfter, const Duration(seconds: 20));
-      expect(EyeRules.slowInterval, const Duration(milliseconds: 1500));
+      expect(EyeRules.alertInterval, const Duration(milliseconds: 1500));
+      expect(EyeRules.cautionInterval, const Duration(seconds: 3));
+      expect(EyeRules.safeInterval, const Duration(seconds: 10));
+      expect(EyeRules.closeHold, const Duration(seconds: 2));
+      expect(EyeRules.angleHold, const Duration(milliseconds: 2500));
     });
 
     test('경고 중 얼굴이 10초 안 보이면 카메라를 끄고 쉬어 가기, 누르면 돌아온다', () async {
       final (s, sensor, c) = await make();
       alertNow(s, c);
       expect(s.playBlock, PlayBlock.none, reason: '경고는 쉬어 가기가 아니다');
-      expect(s.eye.checkInterval, const Duration(seconds: 1));
-      // 마지막으로 얼굴을 본 때부터 1초마다 안 보임
-      for (var i = 0; i < 9; i++) {
+      expect(s.eye.checkInterval, const Duration(milliseconds: 1500));
+      // 마지막으로 얼굴을 본 때부터 1.5초마다 안 보임
+      for (var i = 0; i < 6; i++) {
         step(s, c, null);
       }
       expect(s.eye.running, isTrue, reason: '9초는 아직');
       expect(s.eye.alert, EyeAlert.tooClose);
-      step(s, c, null); // 10초
+      step(s, c, null); // 10.5초
       expect(s.eye.running, isFalse);
       expect(sensor.on, isFalse);
       expect(s.eye.alert, EyeAlert.none);
@@ -739,16 +741,13 @@ void main() {
         expect(c.now.difference(since), lessThan(EyeRules.alertGiveUp));
         step(s, c, at(20));
       }
-      // 75초를 넘긴 첫 검사에서 끈다 (1.5초 간격이라 75.5초)
-      expect(
-        c.now.difference(since),
-        const Duration(seconds: 75, milliseconds: 500),
-      );
+      // 75초가 된 창에서 끈다 (1.5초 간격 50번째)
+      expect(c.now.difference(since), EyeRules.alertGiveUp);
       expect(sensor.on, isFalse);
       expect(s.playBlock, PlayBlock.eyeRest);
     });
 
-    test('경고 중 간격은 1초, 20초 뒤 1.5초', () async {
+    test('경고 중 창 주기는 처음부터 끝까지 1.5초', () async {
       final (s, _, c) = await make();
       alertNow(s, c);
       final since = c.now;
@@ -757,8 +756,8 @@ void main() {
         seen.add(s.eye.checkInterval);
         step(s, c, at(20));
       }
-      expect(seen.take(20), everyElement(const Duration(seconds: 1)));
-      expect(seen.skip(20), everyElement(const Duration(milliseconds: 1500)));
+      expect(seen, hasLength(20));
+      expect(seen, everyElement(const Duration(milliseconds: 1500)));
     });
 
     test('"오늘은 여기까지!"·눈 쉬기가 쉬어 가기보다 먼저', () async {
