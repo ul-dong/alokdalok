@@ -515,4 +515,57 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get poke_againSay => '또 만져 줘!';
+
+  @override
+  String get shop_vehicles => '탈것';
+
+  @override
+  String shop_tileOwned(Object name) {
+    return '$name, 가지고 있음';
+  }
+
+  @override
+  String shop_tilePrice(Object name, Object price) {
+    return '$name, 코인 $price개';
+  }
+
+  @override
+  String shop_buyAsk(Object price) {
+    return '$price개로 살까요?';
+  }
+
+  @override
+  String get common_no => '아니요';
+
+  @override
+  String get common_yes => '네';
+
+  @override
+  String shop_boughtSay(Object name) {
+    return '$name, 정말 멋져요!';
+  }
+
+  @override
+  String get shop_pickItem => '입어 보고 싶은 걸 눌러요';
+
+  @override
+  String get shop_takeOff => '벗기';
+
+  @override
+  String get shop_putOn => '입기';
+
+  @override
+  String shop_needCoins(Object coins, Object price) {
+    return '놀이하면서 코인을 모아요 ($coins/$price)';
+  }
+
+  @override
+  String shop_buyFor(Object price) {
+    return '코인 $price개로 사기';
+  }
+
+  @override
+  String shop_coins(Object coins) {
+    return '코인 $coins';
+  }
 }

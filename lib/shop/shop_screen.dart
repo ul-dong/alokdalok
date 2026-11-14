@@ -7,6 +7,7 @@ import '../character/item_thumb.dart';
 import '../core/palette.dart';
 import '../data/item_catalog.dart';
 import '../data/vehicles.dart';
+import '../l10n/l10n.dart';
 import '../services/audio_service.dart';
 import '../services/game_state.dart';
 import '../vehicle/garage_screen.dart';
@@ -68,7 +69,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
     if (!yes) return;
     if (await state.purchase(item.id) == PurchaseResult.ok && mounted) {
       state.audio.play(Sfx.buy);
-      state.audio.say('${item.name}, 정말 멋져요!');
+      state.audio.say(L10n.current.shop_boughtSay(item.name));
       setState(() => cheer++);
     }
   }
@@ -90,7 +91,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
     if (await state.buyVehicle(v.id) == PurchaseResult.ok && mounted) {
       state.audio.play(Sfx.buy);
       // 산 다음 "탑승!"을 눌러야 탄다
-      state.audio.say('${v.name}, 정말 멋져요!');
+      state.audio.say(L10n.current.shop_boughtSay(v.name));
       setState(() => cheer++);
     }
   }
@@ -113,7 +114,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                   children: [
                     _FlatRoundButton(
                       icon: Icons.home_rounded,
-                      label: '집으로',
+                      label: context.l10n.common_home,
                       size: 60,
                       onTap: () => Navigator.of(context).pop(),
                     ),
@@ -125,12 +126,12 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                         builder: (context, c) => Row(
                           children: [
                             if (c.maxWidth >= 260)
-                              const Expanded(
+                              Expanded(
                                 child: FitBox(
                                   alignment: Alignment.centerLeft,
                                   child: _FlatChip(
                                     child: Text(
-                                      '꾸미기 상점',
+                                      context.l10n.home_shop,
                                       maxLines: 1,
                                       style: TextStyle(
                                         fontSize: TextSizes.heading,
@@ -262,7 +263,9 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
       final owned = state.ownsVehicle(v.id);
       return Pressable(
         onTap: () => _selectVehicle(v),
-        semanticLabel: '${v.name}${owned ? ', 가지고 있음' : ', 코인 ${v.price}개'}',
+        semanticLabel: owned
+            ? context.l10n.shop_tileOwned(v.name)
+            : context.l10n.shop_tilePrice(v.name, v.price),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           decoration: ShopStyle.tile(selected: selectedVehicle?.id == v.id),
@@ -305,13 +308,13 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
 
   Widget _itemAction(GameState state) {
     final item = selected;
-    if (item == null) return const _Hint(text: '입어 보고 싶은 걸 눌러요');
+    if (item == null) return _Hint(text: context.l10n.shop_pickItem);
     if (state.owns(item.id)) {
       final wearing = state.equipped[item.slot] == item.id;
       return _ToggleButton(
         on: wearing,
-        onLabel: '벗기',
-        offLabel: '입기',
+        onLabel: context.l10n.shop_takeOff,
+        offLabel: context.l10n.shop_putOn,
         onTap: () => state.toggleEquip(item.id),
       );
     }
@@ -324,19 +327,19 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
 
   Widget _vehicleAction(GameState state) {
     final v = selectedVehicle;
-    if (v == null) return const _Hint(text: '타고 싶은 걸 눌러요');
+    if (v == null) return _Hint(text: context.l10n.character_pickRide);
     if (state.ownsVehicle(v.id)) {
       return Row(
         children: [
           Expanded(
             child: _ToggleButton(
               on: state.ride == v.id,
-              onLabel: '내리기',
-              offLabel: '탑승!',
+              onLabel: context.l10n.character_getOff,
+              offLabel: context.l10n.character_rideButton,
               onTap: () {
                 final boarding = state.ride != v.id;
                 state.setRide(boarding ? v.id : null);
-                if (boarding) state.audio.say('출발!');
+                if (boarding) state.audio.say(context.l10n.character_goSay);
                 setState(() => cheer++);
               },
             ),
@@ -348,10 +351,10 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
               onTap: () =>
                   Navigator.of(context)
                       .push(softRoute(GarageScreen(vehicleId: v.id))),
-              semanticLabel: '탈것 꾸미기',
-              child: const FitBox(
+              semanticLabel: context.l10n.character_decorateRide,
+              child: FitBox(
                 child: Text(
-                  '꾸미기',
+                  context.l10n.character_decorate,
                   style: TextStyle(fontSize: 26, color: Palette.text),
                 ),
               ),
@@ -456,7 +459,7 @@ class _PriceButton extends StatelessWidget {
                   FitBox(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      '놀이하면서 코인을 모아요 ($coins/$price)',
+                      context.l10n.shop_needCoins(coins, price),
                       style: const TextStyle(
                         fontSize: TextSizes.body,
                         color: Palette.textSoft,
@@ -483,7 +486,7 @@ class _PriceButton extends StatelessWidget {
     return FlatPill(
       color: ShopStyle.yellow,
       onTap: onBuy,
-      semanticLabel: '코인 $price개로 사기',
+      semanticLabel: context.l10n.shop_buyFor(price),
       child: FitBox(
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -543,7 +546,7 @@ class _CoinChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: '코인 $coins',
+    label: context.l10n.shop_coins(coins),
     child: _FlatChip(
       padding: const EdgeInsets.fromLTRB(10, 0, 18, 0),
       child: Row(

@@ -155,5 +155,18 @@
   "poke_helloSay": "Hi!",
   "poke_ticklesSay": "That tickles!",
   "poke_playSay": "Let's play!",
-  "poke_againSay": "Do it again!"
+  "poke_againSay": "Do it again!",
+  "shop_vehicles": "Rides",
+  "shop_tileOwned": "{name}, owned",
+  "shop_tilePrice": "{name}, {price} coins",
+  "shop_buyAsk": "Buy for {price}?",
+  "common_no": "No",
+  "common_yes": "Yes",
+  "shop_boughtSay": "{name}! So cool!",
+  "shop_pickItem": "Tap what you want to try on",
+  "shop_takeOff": "Take off",
+  "shop_putOn": "Put on",
+  "shop_needCoins": "Play to collect coins ({coins}/{price})",
+  "shop_buyFor": "Buy for {price} coins",
+  "shop_coins": "{coins} coins"
 }

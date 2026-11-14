@@ -324,5 +324,56 @@
   "poke_againSay": "또 만져 줘!",
   "@poke_againSay": {
     "description": "[음성] 말한다"
+  },
+  "shop_vehicles": "탈것",
+  "shop_tileOwned": "{name}, 가지고 있음",
+  "@shop_tileOwned": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "shop_tilePrice": "{name}, 코인 {price}개",
+  "@shop_tilePrice": {
+    "placeholders": {
+      "name": {},
+      "price": {}
+    }
+  },
+  "shop_buyAsk": "{price}개로 살까요?",
+  "@shop_buyAsk": {
+    "placeholders": {
+      "price": {}
+    }
+  },
+  "common_no": "아니요",
+  "common_yes": "네",
+  "shop_boughtSay": "{name}, 정말 멋져요!",
+  "@shop_boughtSay": {
+    "description": "[음성] 말한다",
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "shop_pickItem": "입어 보고 싶은 걸 눌러요",
+  "shop_takeOff": "벗기",
+  "shop_putOn": "입기",
+  "shop_needCoins": "놀이하면서 코인을 모아요 ({coins}/{price})",
+  "@shop_needCoins": {
+    "placeholders": {
+      "coins": {},
+      "price": {}
+    }
+  },
+  "shop_buyFor": "코인 {price}개로 사기",
+  "@shop_buyFor": {
+    "placeholders": {
+      "price": {}
+    }
+  },
+  "shop_coins": "코인 {coins}",
+  "@shop_coins": {
+    "placeholders": {
+      "coins": {}
+    }
   }
 }

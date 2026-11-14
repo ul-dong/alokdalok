@@ -528,4 +528,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get poke_againSay => 'Do it again!';
+
+  @override
+  String get shop_vehicles => 'Rides';
+
+  @override
+  String shop_tileOwned(Object name) {
+    return '$name, owned';
+  }
+
+  @override
+  String shop_tilePrice(Object name, Object price) {
+    return '$name, $price coins';
+  }
+
+  @override
+  String shop_buyAsk(Object price) {
+    return 'Buy for $price?';
+  }
+
+  @override
+  String get common_no => 'No';
+
+  @override
+  String get common_yes => 'Yes';
+
+  @override
+  String shop_boughtSay(Object name) {
+    return '$name! So cool!';
+  }
+
+  @override
+  String get shop_pickItem => 'Tap what you want to try on';
+
+  @override
+  String get shop_takeOff => 'Take off';
+
+  @override
+  String get shop_putOn => 'Put on';
+
+  @override
+  String shop_needCoins(Object coins, Object price) {
+    return 'Play to collect coins ($coins/$price)';
+  }
+
+  @override
+  String shop_buyFor(Object price) {
+    return 'Buy for $price coins';
+  }
+
+  @override
+  String shop_coins(Object coins) {
+    return '$coins coins';
+  }
 }

@@ -1033,6 +1033,84 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'또 만져 줘!'**
   String get poke_againSay;
+
+  /// No description provided for @shop_vehicles.
+  ///
+  /// In ko, this message translates to:
+  /// **'탈것'**
+  String get shop_vehicles;
+
+  /// No description provided for @shop_tileOwned.
+  ///
+  /// In ko, this message translates to:
+  /// **'{name}, 가지고 있음'**
+  String shop_tileOwned(Object name);
+
+  /// No description provided for @shop_tilePrice.
+  ///
+  /// In ko, this message translates to:
+  /// **'{name}, 코인 {price}개'**
+  String shop_tilePrice(Object name, Object price);
+
+  /// No description provided for @shop_buyAsk.
+  ///
+  /// In ko, this message translates to:
+  /// **'{price}개로 살까요?'**
+  String shop_buyAsk(Object price);
+
+  /// No description provided for @common_no.
+  ///
+  /// In ko, this message translates to:
+  /// **'아니요'**
+  String get common_no;
+
+  /// No description provided for @common_yes.
+  ///
+  /// In ko, this message translates to:
+  /// **'네'**
+  String get common_yes;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'{name}, 정말 멋져요!'**
+  String shop_boughtSay(Object name);
+
+  /// No description provided for @shop_pickItem.
+  ///
+  /// In ko, this message translates to:
+  /// **'입어 보고 싶은 걸 눌러요'**
+  String get shop_pickItem;
+
+  /// No description provided for @shop_takeOff.
+  ///
+  /// In ko, this message translates to:
+  /// **'벗기'**
+  String get shop_takeOff;
+
+  /// No description provided for @shop_putOn.
+  ///
+  /// In ko, this message translates to:
+  /// **'입기'**
+  String get shop_putOn;
+
+  /// No description provided for @shop_needCoins.
+  ///
+  /// In ko, this message translates to:
+  /// **'놀이하면서 코인을 모아요 ({coins}/{price})'**
+  String shop_needCoins(Object coins, Object price);
+
+  /// No description provided for @shop_buyFor.
+  ///
+  /// In ko, this message translates to:
+  /// **'코인 {price}개로 사기'**
+  String shop_buyFor(Object price);
+
+  /// No description provided for @shop_coins.
+  ///
+  /// In ko, this message translates to:
+  /// **'코인 {coins}'**
+  String shop_coins(Object coins);
 }
 
 class _AppLocalizationsDelegate

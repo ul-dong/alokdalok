@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../character/item_thumb.dart';
 import '../core/palette.dart';
 import '../data/item_catalog.dart';
+import '../l10n/l10n.dart';
 import '../widgets/common.dart';
 import '../widgets/paged_grid.dart';
 
@@ -46,7 +47,7 @@ class ThemeTabs extends StatelessWidget {
           final on = t == selected;
           return Pressable(
             onTap: () => onSelect(t),
-            semanticLabel: t?.label ?? '탈것',
+            semanticLabel: t?.label ?? context.l10n.shop_vehicles,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               // 납작한 탭: 고른 탭은 진한 노랑 면(테두리 자리) 안에 밝은 노랑 면.
@@ -94,7 +95,7 @@ class ThemeTabs extends StatelessWidget {
                     ),
                     FitBox(
                       child: Text(
-                        t?.label ?? '탈것',
+                        t?.label ?? context.l10n.shop_vehicles,
                         style: const TextStyle(
                           fontSize: TextSizes.small,
                           color: Palette.text,
@@ -172,7 +173,9 @@ class ItemTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Pressable(
     onTap: onTap,
-    semanticLabel: '${item.name}${owned ? ', 가지고 있음' : ', 코인 ${item.price}개'}',
+    semanticLabel: owned
+        ? context.l10n.shop_tileOwned(item.name)
+        : context.l10n.shop_tilePrice(item.name, item.price),
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: flat
@@ -337,7 +340,7 @@ class BuyDialog extends StatelessWidget {
                     flat ? const FlatCoin(size: 28) : const CoinIcon(size: 28),
                     const SizedBox(width: 6),
                     Text(
-                      '$price개로 살까요?',
+                      context.l10n.shop_buyAsk(price),
                       style: const TextStyle(
                         fontSize: TextSizes.button,
                         color: Palette.textSoft,
@@ -351,7 +354,7 @@ class BuyDialog extends StatelessWidget {
             DialogButton(
               icon: Icons.close_rounded,
               color: flat ? ShopStyle.no : const Color(0xFFCFC4B4),
-              label: '아니요',
+              label: context.l10n.common_no,
               flat: flat,
               onTap: () => Navigator.of(context).pop(false),
             ),
@@ -359,7 +362,7 @@ class BuyDialog extends StatelessWidget {
             DialogButton(
               icon: Icons.check_rounded,
               color: flat ? ShopStyle.mint : Palette.mint,
-              label: '네',
+              label: context.l10n.common_yes,
               flat: flat,
               onTap: () => Navigator.of(context).pop(true),
             ),
@@ -581,7 +584,9 @@ class FlatPageArrow extends StatelessWidget {
     child: Pressable(
       onTap: onTap,
       enabled: enabled,
-      semanticLabel: forward ? '다음 쪽' : '앞 쪽',
+      semanticLabel: forward
+          ? context.l10n.common_nextPage
+          : context.l10n.common_prevPage,
       child: Container(
         width: size,
         height: size,
