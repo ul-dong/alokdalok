@@ -22,7 +22,7 @@ import 'package:alokdalok/services/voice_lines.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _fixture = 'test/fixtures/voice_ko_snapshot.json';
-const _manifest = 'assets/voice/manifest.json';
+const _manifest = 'assets/voice/ko/manifest.json';
 
 /// 놀이에서 실제로 만들어지는 문장 (단계마다 여러 씨앗으로 문제 5개씩)
 List<String> roundLines() {

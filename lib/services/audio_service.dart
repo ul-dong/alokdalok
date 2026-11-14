@@ -139,20 +139,87 @@ abstract class AudioService {
   Future<void> endMusic();
 }
 
+/// 기기 음성 합성(TTS) 중 앱이 쓰는 부분 (앱은 flutter_tts, 테스트는 가짜)
+abstract class SpeechEngine {
+  Future<dynamic> isLanguageAvailable(String language);
+  Future<dynamic> setLanguage(String language);
+  Future<dynamic> get getVoices;
+  Future<dynamic> setVoice(Map<String, String> voice);
+  Future<dynamic> setPitch(double pitch);
+  Future<dynamic> setSpeechRate(double rate);
+  Future<dynamic> setVolume(double volume);
+  Future<dynamic> awaitSpeakCompletion(bool on);
+  Future<dynamic> speak(String text);
+  Future<dynamic> stop();
+}
+
+/// flutter_tts (Android TTS 엔진 / iOS AVSpeechSynthesizer / 웹 Web Speech API)
+class FlutterTtsEngine implements SpeechEngine {
+  final FlutterTts _tts = FlutterTts();
+
+  @override
+  Future<dynamic> isLanguageAvailable(String language) =>
+      _tts.isLanguageAvailable(language);
+  @override
+  Future<dynamic> setLanguage(String language) => _tts.setLanguage(language);
+  @override
+  Future<dynamic> get getVoices => _tts.getVoices;
+  @override
+  Future<dynamic> setVoice(Map<String, String> voice) => _tts.setVoice(voice);
+  @override
+  Future<dynamic> setPitch(double pitch) => _tts.setPitch(pitch);
+  @override
+  Future<dynamic> setSpeechRate(double rate) => _tts.setSpeechRate(rate);
+  @override
+  Future<dynamic> setVolume(double volume) => _tts.setVolume(volume);
+  @override
+  Future<dynamic> awaitSpeakCompletion(bool on) =>
+      _tts.awaitSpeakCompletion(on);
+  @override
+  Future<dynamic> speak(String text) => _tts.speak(text);
+  @override
+  Future<dynamic> stop() => _tts.stop();
+}
+
+/// 말 하나를 내는 방법: 녹음 조각([clips]) 또는 기기 음성([ttsLanguage])
+class SpeechRoute {
+  const SpeechRoute({this.clips, required this.ttsLanguage});
+
+  /// 녹음 조각 (없으면 기기 음성으로 말한다)
+  final List<VoiceClip>? clips;
+
+  /// 기기 음성 언어 (ko-KR, en-US)
+  final String ttsLanguage;
+
+  bool get usesTts => clips == null;
+}
+
 /// 실제 기기용 구현.
 /// - 효과음: audioplayers로 WAV 재생
-/// - 음성: flutter_tts (Android TTS 엔진 / iOS AVSpeechSynthesizer / 웹 Web Speech API)
+/// - 음성: 녹음 팩(assets/voice/<언어>/)이 있으면 녹음 조각, 없거나 그 문장이 없으면
+///   기기 음성(TTS). 영어는 아직 녹음이 없어서 모두 기기 음성(en-US)이다.
 class DeviceAudio extends AudioService {
-  final FlutterTts _tts = FlutterTts();
+  DeviceAudio({
+    SpeechEngine? tts,
+    ClipPlayer Function()? clipPlayer,
+    AssetBundle? bundle,
+  }) : _tts = tts ?? FlutterTtsEngine(),
+       _bundle = bundle ?? rootBundle,
+       _clips = ClipQueue(clipPlayer ?? _NativeClip.new);
+
+  final SpeechEngine _tts;
+  final AssetBundle _bundle;
   final Map<Sfx, AudioPlayer> _players = {};
   bool _voiceAvailable = false;
   bool _initDone = false;
 
-  /// 녹음 음성 팩 (assets/voice/). 없거나 비어 있으면 기기 음성만 쓴다.
+  /// 지금 언어의 녹음 음성 팩 (assets/voice/<언어>/). 없거나 비어 있으면 기기 음성만 쓴다.
   VoicePack? _pack;
   int _voiceToken = 0;
   final WebAudioEngine _web = WebAudioEngine();
-  final AudioPlayer _music = AudioPlayer();
+
+  /// 앱 배경 음악 플레이어 (쓸 때 만든다)
+  late final AudioPlayer _music = AudioPlayer();
   static const double _musicVolume = .3;
 
   /// 목소리가 나올 때 음악을 이만큼으로 줄인다 (웹과 같다)
@@ -197,20 +264,94 @@ class DeviceAudio extends AudioService {
   /// 녹음 목소리를 쓸 수 있는지
   bool get hasVoicePack => _pack?.isEmpty == false;
 
-  Future<void> _loadPack() async {
+  /// 지금 언어의 녹음 팩 (테스트·진단용)
+  VoicePack? get voicePack => _pack;
+
+  /// 기기 음성 언어 이름 (ko → ko-KR, en → en-US)
+  static String ttsLanguage(String locale) => switch (locale) {
+    'en' => 'en-US',
+    _ => 'ko-KR',
+  };
+
+  /// [locale] 언어의 녹음 팩을 읽는다 (assets/voice/<언어>/manifest.json).
+  /// 파일이 없거나 비어 있거나 깨져 있으면 빈 팩 → 그 언어는 모두 기기 음성으로 말한다.
+  static Future<VoicePack> loadVoicePack(
+    AssetBundle bundle,
+    String locale,
+  ) async {
+    final folder = VoicePack.folderOf(locale);
     try {
-      final raw = await rootBundle.loadString('assets/voice/manifest.json');
+      final raw = await bundle.loadString(
+        'assets/$folder/manifest.json',
+        cache: false,
+      );
       final map = jsonDecode(raw);
       if (map is Map) {
-        _pack = VoicePack({
+        return VoicePack({
           for (final e in map.entries)
             if (e.key is String && e.value is String)
               e.key as String: e.value as String,
-        });
+        }, folder: folder);
       }
     } catch (e) {
-      debugPrint('voice pack: $e');
+      debugPrint('voice pack $locale: $e');
     }
+    return VoicePack(const {}, folder: folder);
+  }
+
+  /// 말 하나를 어떻게 낼지: 녹음 조각이 다 있으면 조각, 아니면 그 언어 기기 음성.
+  /// ('teacher' 목소리를 고르면 녹음이 있어도 기기 음성)
+  static SpeechRoute route(
+    VoicePack? pack,
+    String text, {
+    required String style,
+    required String locale,
+  }) => SpeechRoute(
+    clips: style == 'teacher' ? null : pack?.plan(text),
+    ttsLanguage: ttsLanguage(locale),
+  );
+
+  /// 이 언어로 지금 말할 수 있게 준비한다: 녹음 팩을 읽고 기기 음성 언어·목소리를 맞춘다.
+  /// (처음 [init]과 언어가 바뀔 때. 테스트는 init 대신 이것만 부른다)
+  Future<void> prepareVoice() {
+    final run = _prepared = _prepareVoice(locale);
+    return run;
+  }
+
+  Future<void>? _prepared;
+
+  /// 마지막 [prepareVoice]가 끝날 때 끝난다
+  Future<void> get voiceReady => _prepared ?? Future<void>.value();
+
+  Future<void> _prepareVoice(String forLocale) async {
+    final pack = await loadVoicePack(_bundle, forLocale);
+    if (forLocale != locale) return; // 그 사이 언어가 또 바뀌었다
+    _pack = pack;
+    if (kIsWeb && !pack.isEmpty) {
+      // 놀이를 시작하기 전에 녹음 조각을 조금씩 미리 받아 둔다
+      unawaited(_web.preload(pack.assets.map(_voiceUrl).toList()));
+    }
+    final lang = ttsLanguage(forLocale);
+    try {
+      final available = await _tts.isLanguageAvailable(lang);
+      // 웹은 목소리 목록이 늦게 로드되어 false가 나올 수 있어 일단 시도한다
+      _voiceAvailable = kIsWeb || available == true || available == 1;
+      await _tts.setLanguage(lang);
+      await _pickFriendlyVoice(forLocale);
+      await _applyTone();
+      await _tts.setVolume(0.85);
+      await _tts.awaitSpeakCompletion(true); // say()가 말이 끝날 때 끝나도록
+    } catch (e) {
+      debugPrint('tts init: $e');
+      _voiceAvailable = false;
+    }
+  }
+
+  @override
+  void onLocaleChanged() {
+    if (!_initDone) return; // init이 지금 언어로 준비한다
+    unawaited(stopVoice());
+    unawaited(prepareVoice());
   }
 
   @override
@@ -226,33 +367,15 @@ class DeviceAudio extends AudioService {
     } catch (e) {
       debugPrint('audio context: $e');
     }
-    await _loadPack();
     if (kIsWeb) {
       _web.init();
-      final pack = _pack;
-      if (pack != null && !pack.isEmpty) {
-        // 놀이를 시작하기 전에 녹음 조각을 조금씩 미리 받아 둔다
-        unawaited(_web.preload(pack.files.map(_voiceUrl).toList()));
-      }
     } else {
       try {
         await _music.setReleaseMode(ReleaseMode.loop);
         await _music.setVolume(0);
       } catch (_) {}
     }
-    try {
-      final available = await _tts.isLanguageAvailable('ko-KR');
-      // 웹은 목소리 목록이 늦게 로드되어 false가 나올 수 있어 일단 시도한다
-      _voiceAvailable = kIsWeb || available == true || available == 1;
-      await _tts.setLanguage('ko-KR');
-      await _pickFriendlyVoice();
-      await _applyTone();
-      await _tts.setVolume(0.85);
-      await _tts.awaitSpeakCompletion(true); // say()가 말이 끝날 때 끝나도록
-    } catch (e) {
-      debugPrint('tts init: $e');
-      _voiceAvailable = false;
-    }
+    await prepareVoice();
   }
 
   /// 목소리 톤. 기기 음성 합성(TTS)은 음높이를 많이 올리면 기계음이 일그러져 오히려 무섭게
@@ -278,8 +401,8 @@ class DeviceAudio extends AudioService {
     if (_initDone) _applyTone();
   }
 
-  /// 기기에 있는 한국어 목소리 중 부드러운 여성 목소리를 우선 고른다.
-  Future<void> _pickFriendlyVoice() async {
+  /// 기기에 있는 그 언어 목소리 중 부드러운 여성 목소리를 우선 고른다.
+  Future<void> _pickFriendlyVoice(String forLocale) async {
     try {
       final raw = await _tts.getVoices;
       if (raw is! List) return;
@@ -289,13 +412,20 @@ class DeviceAudio extends AudioService {
                   if (v is Map)
                     {for (final e in v.entries) '${e.key}': '${e.value}'},
               ]
-              .where((v) => (v['locale'] ?? '').toLowerCase().startsWith('ko'))
+              .where(
+                (v) => (v['locale'] ?? '').toLowerCase().startsWith(forLocale),
+              )
               .toList();
       if (voices.isEmpty) return;
-      voices.sort(
-        (a, b) =>
-            voiceScore(b['name'] ?? '').compareTo(voiceScore(a['name'] ?? '')),
-      );
+      // 영어는 미국 영어(en-US) 목소리를 먼저
+      int score(Map<String, String> v) =>
+          voiceScore(v['name'] ?? '', locale: forLocale) +
+          (forLocale == 'en' &&
+                  (v['locale'] ?? '').toLowerCase().replaceAll('_', '-') ==
+                      'en-us'
+              ? 5
+              : 0);
+      voices.sort((a, b) => score(b).compareTo(score(a)));
       final best = voices.first;
       await _tts.setVoice({'name': best['name']!, 'locale': best['locale']!});
       debugPrint('tts voice: ${best['name']}');
@@ -305,8 +435,9 @@ class DeviceAudio extends AudioService {
   }
 
   /// 목소리 이름으로 점수를 매긴다 (높을수록 우선). 테스트를 위해 공개.
-  static int voiceScore(String name) {
+  static int voiceScore(String name, {String locale = 'ko'}) {
     final n = name.toLowerCase();
+    if (locale == 'en') return _englishVoiceScore(n);
     const preferred = [
       'sunhi', // Edge 자연스러운 여성 음성
       'google 한국', 'google korean', // Chrome 여성 음성
@@ -324,6 +455,26 @@ class DeviceAudio extends AudioService {
       'ko-kr-x-kod',
       'male',
     ];
+    for (var i = 0; i < preferred.length; i++) {
+      if (n.contains(preferred[i])) return 100 - i;
+    }
+    for (final a in avoid) {
+      if (n.contains(a) && !n.contains('female')) return -10;
+    }
+    return n.contains('natural') || n.contains('neural') ? 20 : 0;
+  }
+
+  /// 영어 목소리: 부드러운 여성 목소리 우선
+  static int _englishVoiceScore(String n) {
+    const preferred = [
+      'aria', 'jenny', 'ana', // Edge 자연스러운 여성 음성
+      'google us english', // Chrome
+      'samantha', // iOS/macOS
+      'en-us-x-sfg', 'en-us-x-iob', 'en-us-x-tpc', // Android Google 여성 음성
+      'zira', // Windows
+      'female',
+    ];
+    const avoid = ['guy', 'david', 'mark', 'fred', 'en-us-x-iom', 'male'];
     for (var i = 0; i < preferred.length; i++) {
       if (n.contains(preferred[i])) return 100 - i;
     }
@@ -358,20 +509,21 @@ class DeviceAudio extends AudioService {
     }
   }
 
-  static String _voiceUrl(String file) => 'assets/assets/voice/$file';
+  /// 웹: 녹음 조각 주소 (voice/ko/v0001.mp3 → assets/assets/voice/ko/v0001.mp3)
+  static String _voiceUrl(String asset) => 'assets/assets/$asset';
 
   @override
   Future<void> say(String text) async {
     if (!voiceOn) return;
     final token = ++_voiceToken;
-    final clips = voiceStyle == 'teacher' ? null : _pack?.plan(text);
+    final clips = route(_pack, text, style: voiceStyle, locale: locale).clips;
     try {
       await _tts.stop();
     } catch (_) {}
     if (clips != null) {
       if (kIsWeb) {
         final ok = await _web.playClips(
-          [for (final c in clips) _voiceUrl(c.file)],
+          [for (final c in clips) _voiceUrl(c.asset)],
           [for (final c in clips) c.pauseBefore.inMilliseconds / 1000],
         );
         if (ok) return;
@@ -396,7 +548,7 @@ class DeviceAudio extends AudioService {
   }
 
   /// 앱(안드로이드·iOS): 녹음 조각 플레이어 ([ClipQueue]가 만들고 반드시 정리한다)
-  late final ClipQueue _clips = ClipQueue(_NativeClip.new);
+  final ClipQueue _clips;
 
   @override
   Future<void> startMusic(String track) async {
@@ -552,7 +704,7 @@ class ClipQueue {
         final p = _create();
         _live.add(p);
         mine.add(p);
-        await p.load('voice/${c.file}');
+        await p.load(c.asset);
       }
       if (!current()) return;
       duck?.call(ducked = true);

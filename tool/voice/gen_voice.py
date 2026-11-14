@@ -1,5 +1,6 @@
 # MeloTTS(MIT 라이선스, 한국어 모델)로 놀이터 음성 조각을 만든다.
-# 사용: python gen_voice.py lines.json assets/voice [속도] [--all]  (tool/gen_voice.command 가 부른다)
+# 사용: python gen_voice.py lines_ko.json assets/voice/ko [속도] [--lang=KR|EN] [--all]  (tool/gen_voice.command 가 부른다)
+#   --lang: MeloTTS 언어 (KR 기본, EN 은 미국 영어 EN-US 목소리)
 #   --all 을 붙이면 이미 있는 녹음도 모두 새로 만든다 (목소리 설정을 바꿨을 때만).
 # 녹음마다 child_voice.py 의 처리(피치 +5반음, 포먼트 ×1.12, 서울 말투 억양, 따뜻한 EQ, 음량 맞추기)를 거친다.
 # MeloTTS 설정(sdp_ratio 등)과 난수 씨앗도 child_voice.py 에 있어서 같은 문장은 늘 같은 녹음이 나온다.
@@ -9,6 +10,8 @@ import json, os, subprocess, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 redo_all = "--all" in sys.argv
+lang = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--lang=")), "KR")
+speaker = {"KR": "KR", "EN": "EN-US"}[lang]
 lines_path, out_dir = args[0], args[1]
 import child_voice  # noqa: E402  (설정값만 먼저 읽는다. 무거운 모듈은 녹음할 때 불러온다)
 
@@ -53,8 +56,8 @@ if todo:
     import torch
     from melo.api import TTS
 
-    model = TTS(language="KR", device="cpu")
-    spk = model.hps.data.spk2id["KR"]
+    model = TTS(language=lang, device="cpu")
+    spk = model.hps.data.spk2id[speaker]
     tmp = os.path.join(out_dir, "_tmp.wav")
     for i, item in enumerate(todo):
         mp3 = os.path.join(out_dir, item["file"])
@@ -66,7 +69,7 @@ if todo:
         y, sr = sf.read(tmp)
         if y.ndim > 1:
             y = y.mean(axis=1)
-        sf.write(tmp, child_voice.process(y, sr, item["text"]), sr, subtype="PCM_16")
+        sf.write(tmp, child_voice.process(y, sr, item["text"], lang=lang), sr, subtype="PCM_16")
         subprocess.run(
             ["ffmpeg", "-y", "-loglevel", "error", "-i", tmp,
              "-ac", "1", "-ar", "24000", "-b:a", "40k", mp3],

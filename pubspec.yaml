@@ -67,7 +67,9 @@ flutter:
   assets:
     - assets/audio/sfx/
     - assets/audio/music/
-    - assets/voice/
+    # 녹음 음성은 언어별 폴더 (manifest.json + v0001.mp3 …). 영어는 아직 비어 있다(기기 음성).
+    - assets/voice/ko/
+    - assets/voice/en/
     - assets/licenses/
   fonts:
     - family: Jua

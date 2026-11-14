@@ -269,10 +269,14 @@ def warm(y, sr):
     return np.asarray(z, dtype=np.float64)
 
 
-def process(y, sr, text):
-    """MeloTTS 결과 → 어린이 느낌 서울 말투 목소리, 말끝 덜 자르기, 따뜻한 EQ, 음량 맞추기"""
+def process(y, sr, text, lang="KR"):
+    """MeloTTS 결과 → 어린이 느낌 서울 말투 목소리, 말끝 덜 자르기, 따뜻한 EQ, 음량 맞추기.
+    lang 이 KR 이 아니면(영어) 한국어 억양 모양은 빼고 음색(피치·포먼트)만 같게 맞춘다."""
     y = gentle_trim(np.asarray(y, dtype=np.float64), sr)
-    y = seoul_voice(y, sr, text)
+    if lang == "KR":
+        y = seoul_voice(y, sr, text)
+    else:
+        y = change_voice(y, sr)
     y = warm(y, sr)
     y = gentle_trim(y, sr)
     return normalize(y, sr)

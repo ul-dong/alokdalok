@@ -1,273 +1,62 @@
-import '../character/nickname.dart';
-import '../character/zodiac.dart';
-import '../data/game_objects.dart';
-import '../data/item_catalog.dart';
-import '../data/stages.dart';
-import '../data/vehicles.dart';
-import '../l10n/ko/korean_numbers.dart';
-import '../l10n/ko/korean_phrases.dart';
-import '../l10n/phrases.dart';
-import 'game_state.dart';
+import '../l10n/en/voice_lines_en.dart';
+import '../l10n/ko/voice_lines_ko.dart';
 
-/// 녹음 음성 팩에 들어가는 모든 문장 조각.
+/// 녹음 음성 팩에 들어가는 문장 목록 (언어별).
 ///
-/// 놀이 문제에서 나오는 문장은 [sentences]로 한 문장씩 통째로 녹음하고 (이음새에서 끊기지 않게),
-/// 그 밖의 말은 "빨간 풍선이 / 세 개!"처럼 조각을 이어 붙여 말할 수 있게 조각도 함께 둔다.
-/// 여기 없는 문장(아이 이름 등)은 기기 음성(TTS)으로 말한다.
+/// - 한국어: lib/l10n/ko/voice_lines_ko.dart → assets/voice/ko (MeloTTS로 녹음함)
+/// - 영어: lib/l10n/en/voice_lines_en.dart → assets/voice/en (아직 녹음 없음, 기기 음성으로 읽는다)
+///
+/// 목록 내보내기: `VOICE_LOCALE=en flutter test tool/voice/export_lines_test.dart`,
+/// 녹음: `tool/gen_voice.command en`. 녹음이 없는 문장은 기기 음성(TTS)으로 말한다.
 class VoiceLines {
   VoiceLines._();
 
-  /// 통째로 쓰는 문장
-  static const fixed = [
-    '같이 세어 볼까요?',
-    '정말 잘했어요!',
-    '코인을 받았어요.',
-    '스티커가 가득 찼어요.',
-    '지우개로 떼어 볼까요?',
-    '앞 단계를 먼저 놀아 볼까요?',
-    '안녕! 오늘은 뭐 하고 놀까?',
-    '안녕!',
-    '반가워!',
-    '숫자 놀이를 해 볼까요?',
-    '색깔 놀이를 해 볼까요?',
-    '안녕! 함께 놀 친구를 골라 볼까요?',
-    '내 이름을 지어 줄래?',
-    '목소리 안내를 켰어요.',
-    '안녕! 나랑 같이 놀자!',
-    '몇 개 있을까요?',
-    '몇 마리 있을까요?',
-    '찾아볼까요?',
-    '정말 멋져요!',
-    '출발!',
-    '코인 10개가 필요해요.',
-    '놀이하면서 모아 볼까요?',
-    '화면이 너무 가까워요.',
-    '조금 뒤로 가 볼까요?',
-    '바르게 앉아서 봐요.',
-    '화면을 똑바로 봐 주세요.',
-    '잘했어요! 다시 놀아요.',
-    // 놀이 시간·눈 쉬기·부모 확인
-    '오늘은 여기까지!',
-    '내일 또 만나요.',
-    '창밖 먼 곳을 봐요.',
-    '잘 쉬었어요! 다시 놀아요.',
-    '부모님을 불러 주세요.',
-    '15분 더 놀 수 있어요.',
-    // 모양·크기·짝 맞추기 놀이
-    '모양 놀이를 해 볼까요?',
-    '크기 놀이를 해 볼까요?',
-    '짝 맞추기를 해 볼까요?',
-    '다시 찾아볼까요?',
-    '똑같은 모양을 찾아볼까요?',
-    '똑같은 그림 두 장을 찾아볼까요?',
-    '똑같은',
-    '똑같아요!',
-    '가장',
-    // 화면과 버튼 이름 (누르면 말해 준다)
-    '내 캐릭터',
-    '꾸미기 상점',
-    '집으로',
-    '뒤로',
-    '다시 듣기',
-    '뭘 하고 놀까요?', // 놀이터에 들어왔을 때
-    '꾹 누르고 있어요.',
-    // 캐릭터를 콕 눌렀을 때 (widgets/poke_character.dart, "나는 ○○야!"는 친구 고르기 문장)
-    '간지러워!',
-    '같이 놀자!',
-    '또 만져 줘!',
-  ];
+  /// 녹음 팩이 있는(또는 만들 수 있는) 언어
+  static const locales = ['ko', 'en'];
 
-  static String _subject(String w) => '$w${hasBatchim(w) ? '이' : '가'}';
-  static String _topic(String w) => '$w${hasBatchim(w) ? '은' : '는'}';
-  static String _object(String w) => '$w${hasBatchim(w) ? '을' : '를'}';
+  /// [locale] 언어의 전체 목록 (중복 없음, 순서 고정)
+  static List<String> forLocale(String locale) => switch (locale) {
+    'en' => EnVoiceLines.all(),
+    _ => KoVoiceLines.all(),
+  };
 
-  /// 전체 목록 (중복 없음, 순서 고정)
-  static List<String> all() {
-    final out = <String>{...fixed};
+  /// 한국어 전체 목록 (예전 이름 그대로)
+  static List<String> all() => KoVoiceLines.all();
 
-    // 숫자 세기: 하나, 둘 … / 한 개!, 두 마리!
-    out.addAll(KoreanNumbers.counting);
-    for (var n = 1; n <= 10; n++) {
-      for (final unit in ['개', '마리']) {
-        out.add('${KoreanNumbers.pieces(n, unit)}!');
-      }
-    }
+  /// 한국어 놀이 문제 통문장
+  static List<String> sentences() => KoVoiceLines.sentences();
 
-    // 사물 이름 (+ 색): 사과가 / 빨간 풍선은 / 파란 자동차를
-    final labels = <String>[
-      for (final k in ObjectKind.values) k.ko,
-      for (final c in GameColor.extended)
-        for (final k in ObjectKind.values) '${c.adjective} ${k.ko}',
-    ];
-    for (final l in labels) {
-      out
-        ..add(_subject(l))
-        ..add(_topic(l))
-        ..add(_object(l));
-    }
-
-    // 색 이름: 빨간색! / 이건 빨간색이에요. / 빨간색을 찾아볼까요?
-    for (final c in GameColor.extended) {
-      out
-        ..add('${c.name}!')
-        ..add('이건 ${c.name}이에요.')
-        ..add('${_object(c.name)} 찾아볼까요?');
-    }
-
-    // 모양 놀이: 동그라미! / 동그라미를 / 이건 동그라미예요.
-    for (final sh in ShapeKind.values) {
-      out
-        ..add('${sh.ko}!')
-        ..add(sh.object)
-        ..add(sh.thisIs);
-    }
-
-    // 크기 놀이: 큰 사과를 / 작은 오리를 (+ "가장")
-    for (final a in SizeAsk.values) {
-      for (final k in ObjectKind.values) {
-        out.add('${a.adjective} ${k.object}');
-      }
-    }
-
-    // 짝 맞추기: 사과! / 빨간 사과! (같은 물건 다른 색 단계)
-    for (final k in ObjectKind.values) {
-      out.add('${k.ko}!');
-      for (final c in GameColor.extended) {
-        out.add('${c.adjective} ${k.ko}!');
-      }
-    }
-
-    // 상점: 아이템·탈것 이름
-    for (final i in ItemCatalog.all) {
-      out.add(i.nameKo);
-    }
-    for (final v in Vehicles.all) {
-      out.add(v.nameKo);
-    }
-
-    // 색칠
-    for (final p in Vehicles.paints) {
-      out
-        ..add(p.nameKo)
-        ..add(Phrases.ko.paintedWith(p))
-        ..add(_topic(p.nameKo));
-    }
-
-    // 친구 고르기
-    for (final z in Zodiac.values) {
-      out.add(Phrases.ko.friendHello(z));
-    }
-
-    // 놀이터 그림·이름표: "숫자 놀이!", "짝 맞추기!"
-    // 길게 누르면(놀이터·홈 또 하기): "숫자 놀이야!", "짝 맞추기야!"
-    for (final g in GameKind.values) {
-      out
-        ..add(Phrases.ko.gameInvite(g))
-        ..add(Phrases.ko.gameNameLine(g));
-    }
-
-    // 이름을 비워 두면 지어 주는 이름 ("별이, 반가워!")
-    out.addAll(Nickname.randomPool);
-
-    // 통문장: 조각을 이어 붙이면 이음새에서 끊기고 억양이 따로 놀아서,
-    // 놀이에서 실제로 나오는 문장은 한 문장씩 통째로 녹음한다.
-    // (VoicePack.plan은 가장 긴 녹음부터 맞추므로 통문장이 있으면 그것을 쓴다)
-    out.addAll(sentences());
-    return out.toList();
-  }
-
-  /// 놀이 문제에서 나올 수 있는 문장 전부 (단계 자료에서 만든다).
-  /// 숫자 세기("하나, 둘")는 도장 박자에 맞춰 한 마디씩 말하므로 여기 넣지 않는다.
-  static List<String> sentences() {
-    final out = <String>{};
-    String ask(String what) => '$what 찾아볼까요?';
-    String askAgain(String what) => '$what 다시 찾아볼까요?';
-
-    // 숫자: "사과가 몇 개 있을까요?" / "빨간 풍선은 몇 개 있을까요?" / "빨간 풍선이 세 개!"
-    for (final st in Stages.number) {
-      final colored =
-          st.mode == NumberMode.mixColors || st.mode == NumberMode.mixBoth;
-      for (final k in st.objects) {
-        for (final c in colored ? st.colors : const <GameColor?>[null]) {
-          final label = c == null ? k.ko : '${c.adjective} ${k.ko}';
-          out.add(
-            st.scattered
-                ? '${_topic(label)} 몇 ${k.counter} 있을까요?'
-                : '${_subject(label)} 몇 ${k.counter} 있을까요?',
-          );
-          for (var n = st.min; n <= st.max; n++) {
-            out.add(
-              '${_subject(label)} ${KoreanNumbers.pieces(n, k.counter)}!',
-            );
-          }
-        }
-      }
-    }
-
-    // 색깔: "빨간 자동차를 찾아볼까요?"
-    for (final st in Stages.color) {
-      for (final c in st.colors) {
-        for (final k in st.objects.where((k) => k.tintable)) {
-          out.add(ask('${c.adjective} ${k.object}'));
-        }
-      }
-    }
-
-    // 모양: "동그라미를 찾아볼까요?" / "동그라미를 다시 찾아볼까요?"
-    for (final sh in ShapeKind.values) {
-      out
-        ..add(ask(sh.object))
-        ..add(askAgain(sh.object));
-    }
-
-    // 크기: "큰 사과를 찾아볼까요?" / "가장 작은 오리를 다시 찾아볼까요?"
-    for (final st in Stages.size) {
-      for (final k in st.objects) {
-        for (final a in SizeAsk.values) {
-          final t = '${st.superlative ? '가장 ' : ''}${a.adjective} ${k.object}';
-          out
-            ..add(ask(t))
-            ..add(askAgain(t));
-        }
-      }
-    }
-
-    // 짝 맞추기: "똑같은 사과를 찾아볼까요?" / "똑같은 빨간 자동차를 다시 찾아볼까요?"
-    for (final st in Stages.match) {
-      final labels = st.colorVariant
-          ? [
-              for (final k in st.objects.where((k) => k.tintable))
-                for (final c in st.colors) '${c.adjective} ${k.ko}',
-            ]
-          : [for (final k in st.objects) k.ko];
-      for (final l in labels) {
-        out
-          ..add(ask('똑같은 ${_object(l)}'))
-          ..add(askAgain('똑같은 ${_object(l)}'));
-      }
-    }
-
-    // 색칠 물감이 모자랄 때: "분홍색은 코인 10개가 필요해요."
-    for (final p in Vehicles.paints) {
-      out.add(Phrases.ko.paintNeedsCoins(p, Vehicles.paintPrice));
-    }
-    return out.toList();
-  }
+  /// 통째로 쓰는 한국어 문장
+  static List<String> get fixed => KoVoiceLines.fixed;
 }
 
 /// 녹음 음성 팩: 문장 → 파일 목록. 문장을 앞에서부터 가장 긴 조각으로 맞춰 나간다.
 class VoicePack {
-  VoicePack(Map<String, String> files) : _files = files {
+  /// [files]: 문장 → 파일 이름 (manifest.json). [folder]: 파일이 있는 곳 (assets/ 아래)
+  VoicePack(Map<String, String> files, {this.folder = defaultFolder})
+    : _files = files {
     _maxLen = files.keys.fold(0, (m, k) => k.length > m ? k.length : m);
   }
 
+  /// 한국어 녹음 팩 자리
+  static const defaultFolder = 'voice/ko';
+
+  /// [locale] 언어 녹음 팩 자리: voice/ko, voice/en
+  static String folderOf(String locale) => 'voice/$locale';
+
   final Map<String, String> _files;
+
+  /// 녹음 파일이 있는 곳 (assets/ 아래, 예: voice/ko)
+  final String folder;
   late final int _maxLen;
 
   bool get isEmpty => _files.isEmpty;
 
   /// 모든 녹음 파일 이름
   Iterable<String> get files => _files.values.toSet();
+
+  /// 모든 녹음 파일 경로 (assets/ 아래, 예: voice/ko/v0001.mp3)
+  Iterable<String> get assets => files.map((f) => '$folder/$f');
 
   /// 조각 사이 쉼: 한 문장 안은 짧게, 문장이 끝난 뒤(. ! ?)는 숨 쉬듯, 쉼표 뒤는 숫자 세기 박자
   static const shortPause = Duration(milliseconds: 60);
@@ -307,6 +96,7 @@ class VoicePack {
       clips.add(
         VoiceClip(
           _files[hit]!,
+          folder: folder,
           pauseBefore: clips.isEmpty
               ? Duration.zero
               : comma
@@ -323,7 +113,19 @@ class VoicePack {
 }
 
 class VoiceClip {
-  const VoiceClip(this.file, {this.pauseBefore = Duration.zero});
+  const VoiceClip(
+    this.file, {
+    this.pauseBefore = Duration.zero,
+    this.folder = VoicePack.defaultFolder,
+  });
+
+  /// 파일 이름 (v0001.mp3)
   final String file;
   final Duration pauseBefore;
+
+  /// 파일이 있는 곳 (voice/ko)
+  final String folder;
+
+  /// assets/ 아래 경로 (voice/ko/v0001.mp3)
+  String get asset => '$folder/$file';
 }

@@ -339,7 +339,7 @@ void main() {
 
   test('실제 녹음 팩(manifest)으로도 새 화면의 말이 녹음 조각으로 재생된다', () {
     final manifest = (jsonDecode(
-      File('assets/voice/manifest.json').readAsStringSync(),
+      File('assets/voice/ko/manifest.json').readAsStringSync(),
     ) as Map).cast<String, String>();
     final pack = VoicePack(manifest);
     // 말 → 기대하는 조각 문장들
@@ -361,7 +361,7 @@ void main() {
         reason: e.key,
       );
       for (final c in clips) {
-        expect(File('assets/voice/${c.file}').existsSync(), isTrue);
+        expect(File('assets/voice/ko/${c.file}').existsSync(), isTrue);
       }
     }
   });

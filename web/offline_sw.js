@@ -8,6 +8,16 @@
 const PREFIX = 'alokdalok-';
 const LIST = 'offline_files.json';
 
+// 녹음 음성이 언어별 폴더(assets/voice/ko/, en/)로 옮겨졌다. 새 버전이 깔리는 동안 아직 떠 있는
+// 예전 앱은 옛 자리(assets/assets/voice/v0001.mp3, manifest.json)를 찾으므로 한국어 폴더로 돌려준다.
+const LEGACY_VOICE = /\/assets\/assets\/voice\/(v\d+\.mp3|manifest\.json)$/;
+
+function legacyVoice(url) {
+  const m = url.pathname.match(LEGACY_VOICE);
+  if (!m) return null;
+  return new URL(url.pathname.replace(LEGACY_VOICE, '/assets/assets/voice/ko/' + m[1]), url.origin);
+}
+
 async function readList() {
   try {
     const res = await fetch(LIST, { cache: 'no-store' });
@@ -49,13 +59,15 @@ async function currentCache() {
 }
 
 self.addEventListener('fetch', (event) => {
-  const req = event.request;
+  let req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   const sameOrigin = url.origin === self.location.origin;
   // 같은 곳의 파일과, 빠진 글자가 있을 때 Flutter 가 받는 구글 글꼴만 다룬다. 카메라 영상 등은 관여하지 않는다.
   if (!sameOrigin && url.hostname !== 'fonts.gstatic.com') return;
   if (sameOrigin && url.pathname.endsWith('/' + LIST)) return;
+  const moved = sameOrigin && legacyVoice(url);
+  if (moved) req = new Request(moved.href);
 
   if (req.mode === 'navigate') {
     event.respondWith((async () => {

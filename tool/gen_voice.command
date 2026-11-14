@@ -1,16 +1,26 @@
 #!/bin/zsh
 # 알록달록 꼬마 놀이터 - 무료 음성 모델(MeloTTS, MIT)로 녹음 목소리 만들기
-# 1) lib/services/voice_lines.dart 의 문장 목록을 tool/voice/lines.json 으로 내보내고
-# 2) assets/voice 에 녹음(mp3)이 없는 문장만 새로 만들어 넣은 뒤
-# 3) assets/voice/manifest.json 을 갱신한다 (기존 녹음은 건드리지 않는다).
+# 사용: tool/gen_voice.command [언어] [--all]   언어: ko(기본) | en
+# 1) 그 언어의 문장 목록(lib/l10n/<언어>/voice_lines_<언어>.dart)을 tool/voice/lines_<언어>.json 으로 내보내고
+# 2) assets/voice/<언어> 에 녹음(mp3)이 없는 문장만 새로 만들어 넣은 뒤
+# 3) assets/voice/<언어>/manifest.json 을 갱신한다 (기존 녹음은 건드리지 않는다).
+# 영어(en)는 MeloTTS 영어 모델(EN-US)로 만든다. 한국어 억양 처리 대신 음색(피치·포먼트)만 맞춘다.
 # 새 녹음은 모두 tool/voice/child_voice.py 의 처리(어린이 느낌 음색 + 서울 말투 억양 + 따뜻한 EQ)를 거친다 (기존 녹음과 같은 목소리).
 # 목소리 설정을 바꿨다면 --all 로 전부 다시 녹음해야 섞이지 않는다.
-# 전부 다시 녹음하려면: tool/gen_voice.command --all
+# 전부 다시 녹음하려면: tool/gen_voice.command ko --all
 # 필요: Homebrew (python@3.10, ffmpeg 은 자동 설치), Flutter 는 ~/alokdev/flutter.
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/.." && pwd)"
 ROOT="$HOME/alokdev"
-OUT="$REPO/assets/voice"
+LOCALE="ko"
+case "${1:-}" in
+  ko|en) LOCALE="$1"; shift ;;
+esac
+case "$LOCALE" in
+  ko) MELO_LANG="KR" ;;
+  en) MELO_LANG="EN" ;;
+esac
+OUT="$REPO/assets/voice/$LOCALE"
 mkdir -p "$REPO/build"
 LOG="$REPO/build/voice_log.txt"
 exec > >(tee "$LOG") 2>&1
@@ -24,10 +34,10 @@ command -v brew > /dev/null || fail "Homebrew가 없어요 (https://brew.sh 에�
 export PATH="$ROOT/flutter/bin:$PATH"
 command -v flutter > /dev/null || fail "Flutter가 없어요 (install_and_build.command 먼저)"
 
-step "1/5 문장 목록 내보내기"
+step "1/5 문장 목록 내보내기 ($LOCALE)"
 cd "$REPO"
 flutter pub get > /dev/null || fail "pub get 실패"
-flutter test tool/voice/export_lines_test.dart || fail "문장 목록 내보내기 실패"
+flutter test --dart-define=VOICE_LOCALE="$LOCALE" tool/voice/export_lines_test.dart || fail "문장 목록 내보내기 실패"
 
 step "2/5 파이썬과 ffmpeg"
 brew list python@3.10 > /dev/null 2>&1 || brew install python@3.10 || fail "python 설치 실패"
@@ -55,8 +65,8 @@ if ! python -c "import mecab; mecab.MeCab().pos('안녕')" 2>/dev/null; then
 fi
 python -c "import mecab; mecab.MeCab().pos('안녕하세요')" || fail "mecab 확인 실패"
 
-step "4/5 없는 문장만 녹음 → assets/voice"
-python "$HERE/voice/gen_voice.py" "$HERE/voice/lines.json" "$OUT" 0.82 "$@" || fail "음성 만들기 실패 (위 메시지 참고)"
+step "4/5 없는 문장만 녹음 → assets/voice/$LOCALE"
+python "$HERE/voice/gen_voice.py" "$HERE/voice/lines_$LOCALE.json" "$OUT" 0.82 --lang="$MELO_LANG" "$@" || fail "음성 만들기 실패 (위 메시지 참고)"
 
 step "5/5 완료"
 echo "녹음 파일 $(ls "$OUT" | grep -c mp3)개. git status 로 새 mp3 와 manifest.json 을 확인하고 커밋하세요."
