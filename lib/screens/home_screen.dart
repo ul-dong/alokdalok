@@ -8,6 +8,7 @@ import '../core/palette.dart';
 import '../data/game_kinds.dart';
 import '../games/common/scene_game.dart';
 import '../games/game_entry.dart';
+import '../l10n/l10n.dart';
 import '../services/game_state.dart';
 import '../shop/shop_screen.dart';
 import '../widgets/common.dart';
@@ -26,11 +27,11 @@ import '../widgets/poke_character.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  static const playgroundLabel = '놀이터 가기';
-  static const replayLabel = '또 하기';
-  static const characterLabel = '내 캐릭터';
-  static const shopLabel = '꾸미기 상점';
-  static const settingsLabel = '설정';
+  static String get playgroundLabel => L10n.current.home_playground;
+  static String get replayLabel => L10n.current.home_replay;
+  static String get characterLabel => L10n.current.home_character;
+  static String get shopLabel => L10n.current.home_shop;
+  static String get settingsLabel => L10n.current.settings_title;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -50,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
       final state = AppScope.read(context);
       Future.delayed(
         const Duration(milliseconds: 600),
-        () => state.audio.say('안녕! 오늘은 뭐 하고 놀까?'),
+        () => state.audio.say(L10n.current.home_helloSay),
       );
     }
   }
@@ -77,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
     final state = AppScope.of(context);
     final last = state.lastGame;
     final playground = _MenuTile(
-      label: HomeScreen.playgroundLabel,
+      label: context.l10n.home_playground,
       color: const Color(0xFFD3F1E2),
       // 아래 줄 작은 칸에서는 그림 두 개만 크게
       art: _PlaygroundArt(compact: last != null),
@@ -111,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                             ),
                             const SizedBox(height: Gaps.sm),
                             PokeCharacter(
-                              semanticLabel: '내 친구 쓰다듬기',
+                              semanticLabel: context.l10n.home_pet,
                               child: CharacterView(
                                 equipped: state.equipped,
                                 size: charSize,
@@ -137,13 +138,13 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                       CountBadge(
                         icon: const StarIcon(),
                         value: state.stars,
-                        label: '별',
+                        label: context.l10n.common_stars,
                       ),
                       const SizedBox(width: Gaps.md),
                       CountBadge(
                         icon: const CoinIcon(),
                         value: state.coins,
-                        label: '코인',
+                        label: context.l10n.common_coins,
                       ),
                     ],
                   ),
@@ -157,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                           ? playground
                           : _MenuTile(
                               label: last.title,
-                              semanticLabel: HomeScreen.replayLabel,
+                              semanticLabel: context.l10n.home_replay,
                               color: last.tint,
                               art: _ReplayArt(kind: last),
                               // 누르면 말 없이 바로 들어간다 (놀이가 문제를 읽어 준다)
@@ -178,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                         ],
                         Expanded(
                           child: _MenuTile(
-                            label: HomeScreen.characterLabel,
+                            label: context.l10n.home_character,
                             color: const Color(0xFFD9ECFB),
                             art: _FaceArt(zodiac: state.zodiac),
                             onTap: () => _go(const CharacterScreen()),
@@ -187,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                         const SizedBox(width: Gaps.lg),
                         Expanded(
                           child: _MenuTile(
-                            label: HomeScreen.shopLabel,
+                            label: context.l10n.home_shop,
                             color: const Color(0xFFFFEFC2),
                             art: const _ShopArt(),
                             onTap: () => _go(const ShopScreen()),
@@ -224,7 +225,7 @@ class _SettingsCorner extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Pressable(
     onTap: onTap,
-    semanticLabel: HomeScreen.settingsLabel,
+    semanticLabel: context.l10n.settings_title,
     child: SizedBox.square(
       dimension: touch,
       child: Center(

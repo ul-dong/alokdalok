@@ -15,6 +15,9 @@ import '../widgets/common.dart';
 import '../widgets/eye_guard_overlay.dart';
 import 'nickname_screen.dart';
 
+// 부모님께 칸을 길게 누르면 열리는 개발 진단 칸 (한국어 전용, 번역하지 않는다)
+part 'settings_diagnostics.dart';
+
 /// 설정 (부모님용): 눈 보호, 놀이 시간, 눈 쉬기 간격, 소리, 부모 확인, 백업,
 /// 닉네임, 부모용 정보와 기록 지우기.
 class SettingsScreen extends StatelessWidget {
@@ -46,17 +49,17 @@ class SettingsScreen extends StatelessWidget {
                     children: [
                       RoundIconButton(
                         icon: Icons.home_rounded,
-                        label: '집으로',
+                        label: context.l10n.common_home,
                         size: 60,
                         onTap: () => Navigator.of(context).pop(),
                       ),
                       const SizedBox(width: Gaps.md),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '설정',
+                              context.l10n.settings_title,
                               style: TextStyle(
                                 fontSize: TextSizes.heading,
                                 color: Palette.text,
@@ -64,7 +67,7 @@ class SettingsScreen extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              '부모님용',
+                              context.l10n.settings_forParents,
                               style: TextStyle(
                                 fontSize: TextSizes.caption,
                                 color: Palette.textSoft,
@@ -75,36 +78,38 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const _Section('눈 보호'),
+                  _Section(context.l10n.settings_eyeSection),
                   const _EyeGuardCard(),
-                  const _Section('놀이 시간'),
+                  _Section(context.l10n.settings_playTimeSection),
                   const _PlayLimitCard(),
-                  const _Section('눈 쉬기 간격'),
+                  _Section(context.l10n.settings_breakSection),
                   const _EyeBreakCard(),
-                  const _Section('소리'),
+                  _Section(context.l10n.settings_soundSection),
                   _Panel(
                     children: [
                       _ToggleRow(
                         icon: state.voiceOn
                             ? Icons.record_voice_over_rounded
                             : Icons.voice_over_off_rounded,
-                        label: '목소리 안내',
+                        label: context.l10n.settings_voiceGuide,
                         value: state.voiceOn,
                         onChanged: (v) {
                           state.setVoice(v);
-                          if (v) state.audio.say('목소리 안내를 켰어요.');
+                          if (v) {
+                            state.audio.say(context.l10n.settings_voiceOnSay);
+                          }
                         },
                       ),
                       _RowTile(
                         icon: Icons.graphic_eq_rounded,
-                        title: '목소리',
-                        subtitle: '녹음한 목소리 또는 기기 음성',
+                        title: context.l10n.settings_voice,
+                        subtitle: context.l10n.settings_voiceHint,
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            for (final (style, label) in const [
-                              ('pack', '녹음'),
-                              ('teacher', '기기'),
+                            for (final (style, label) in [
+                              ('pack', context.l10n.settings_voiceRecorded),
+                              ('teacher', context.l10n.settings_voiceDevice),
                             ]) ...[
                               const SizedBox(width: Gaps.sm),
                               _Chip(
@@ -112,7 +117,9 @@ class SettingsScreen extends StatelessWidget {
                                 selected: state.voiceStyle == style,
                                 onTap: () {
                                   state.setVoiceStyle(style);
-                                  state.audio.say('안녕! 나랑 같이 놀자!');
+                                  state.audio.say(
+                                    context.l10n.settings_voiceSampleSay,
+                                  );
                                 },
                               ),
                             ],
@@ -123,7 +130,7 @@ class SettingsScreen extends StatelessWidget {
                         icon: state.sfxOn
                             ? Icons.music_note_rounded
                             : Icons.music_off_rounded,
-                        label: '효과음',
+                        label: context.l10n.settings_sfx,
                         value: state.sfxOn,
                         onChanged: (v) => state.setSfx(v),
                       ),
@@ -131,50 +138,48 @@ class SettingsScreen extends StatelessWidget {
                         icon: state.musicOn
                             ? Icons.queue_music_rounded
                             : Icons.music_off_rounded,
-                        label: '배경 음악',
+                        label: context.l10n.settings_music,
                         value: state.musicOn,
                         onChanged: (v) => state.setMusic(v),
                       ),
                     ],
                   ),
                   if (!state.audio.voiceAvailable)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.fromLTRB(
                         Gaps.sm,
                         Gaps.sm,
                         Gaps.sm,
                         0,
                       ),
-                      child: _Note(
-                        '이 기기에서는 한국어 음성을 찾지 못했어요. 기기 설정에서 한국어 TTS를 설치하면 들을 수 있어요.',
-                      ),
+                      child: _Note(context.l10n.settings_noTts),
                     ),
                   _Section(context.l10n.settings_language),
                   const _LanguageCard(),
-                  const _Section('부모 확인'),
+                  _Section(context.l10n.settings_gateSection),
                   _Panel(
                     children: [
                       _ToggleRow(
                         icon: state.parentGateOn
                             ? Icons.lock_rounded
                             : Icons.lock_open_rounded,
-                        label: '설정 전에 덧셈 문제',
+                        label: context.l10n.settings_gateToggle,
                         value: state.parentGateOn,
                         onChanged: (v) => state.setParentGate(v),
                       ),
                     ],
                   ),
-                  const _Section('기록'),
+                  _Section(context.l10n.settings_recordSection),
                   _Panel(
                     children: [
                       _RowTile(
                         icon: Icons.badge_rounded,
                         title: state.nickname,
-                        subtitle: '닉네임',
+                        subtitle: context.l10n.settings_nickname,
                         trailing: _SmallButton(
                           icon: Icons.edit_rounded,
-                          label: '바꾸기',
-                          semanticLabel: '닉네임 바꾸기',
+                          label: context.l10n.settings_change,
+                          semanticLabel: context.l10n.settings_changeNickname,
                           onTap: () =>
                               Navigator.of(context)
                                   .push(softRoute(const NicknameScreen())),
@@ -183,7 +188,7 @@ class SettingsScreen extends StatelessWidget {
                       const _BackupCard(),
                     ],
                   ),
-                  const _Section('부모님께'),
+                  _Section(context.l10n.settings_parentNotesSection),
                   const _ParentNotes(),
                   const SizedBox(height: Gaps.xl),
                   const _HoldToReset(),
@@ -192,11 +197,11 @@ class SettingsScreen extends StatelessWidget {
                     child: TextButton(
                       onPressed: () => showLicensePage(
                         context: context,
-                        applicationName: '알록달록 꼬마 놀이터',
+                        applicationName: context.l10n.app_title,
                         applicationVersion: '0.1.0',
                       ),
-                      child: const Text(
-                        '오픈소스 라이선스',
+                      child: Text(
+                        context.l10n.settings_licenses,
                         style: TextStyle(
                           fontSize: TextSizes.small,
                           color: Palette.textSoft,
@@ -384,7 +389,10 @@ class _ToggleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Pressable(
     onTap: () => onChanged(!value),
-    semanticLabel: '$label ${value ? '켜짐' : '꺼짐'}',
+    semanticLabel: context.l10n.settings_toggleState(
+      label,
+      value ? context.l10n.common_on : context.l10n.common_off,
+    ),
     child: _RowTile(
       icon: icon,
       title: label,
@@ -591,7 +599,7 @@ class _HoldToResetState extends State<_HoldToReset> {
             widthFactor: _progress,
             child: Container(color: const Color(0xFFFFD9D9)),
           ),
-          const Center(
+          Center(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -602,7 +610,7 @@ class _HoldToResetState extends State<_HoldToReset> {
                 ),
                 SizedBox(width: 6),
                 Text(
-                  '기록 모두 지우기 (3초 꾹 누르기)',
+                  context.l10n.settings_resetAll,
                   style: TextStyle(
                     fontSize: TextSizes.body,
                     color: Color(0xFFC9566F),
@@ -633,25 +641,25 @@ class _EyeGuardCard extends StatelessWidget {
         final r = eye.last;
         String status;
         if (!eye.supported) {
-          status = '이 기기에서는 쓸 수 없어요';
+          status = context.l10n.settings_eyeUnsupported;
         } else if (on && eye.heatOff) {
-          status = '기기가 뜨거워서 눈 지킴이를 잠시 껐어요';
+          status = context.l10n.settings_eyeHeatOff;
         } else if (eye.error != null) {
           status = eye.error!;
         } else if (!on) {
-          status = '앞카메라로 화면과의 거리(30cm 이상)와 바른 자세를 살펴봐요';
+          status = context.l10n.settings_eyeAbout;
         } else if (!eye.running) {
-          status = '아이 화면(설정 밖)에서 앞카메라로 거리(30cm 이상)와 바른 자세를 살펴봐요';
+          status = context.l10n.settings_eyeIdle;
         } else if (r == null || d == null) {
-          status = '얼굴을 찾는 중이에요…';
+          status = context.l10n.settings_eyeSearching;
         } else {
           final angle =
               r.yaw.abs() <= EyeRules.maxYaw &&
                   r.pitch.abs() <= EyeRules.maxPitch &&
                   r.roll.abs() <= EyeRules.maxRoll
-              ? '자세 좋아요'
-              : '자세가 비뚤어졌어요';
-          status = '지금 거리 약 ${d.round()}cm, $angle';
+              ? context.l10n.settings_eyePostureGood
+              : context.l10n.settings_eyePostureBad;
+          status = context.l10n.settings_eyeNow(d.round(), angle);
         }
         return _Panel(
           children: [
@@ -663,7 +671,7 @@ class _EyeGuardCard extends StatelessWidget {
                 icon: on
                     ? Icons.visibility_rounded
                     : Icons.visibility_off_rounded,
-                title: '눈 지킴이',
+                title: context.l10n.settings_eyeGuard,
                 subtitle: status,
                 on: on,
                 trailing: _Switch(value: on),
@@ -675,8 +683,8 @@ class _EyeGuardCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      '이보다 가까우면 쉬어 가요',
+                    Text(
+                      context.l10n.settings_eyeDistance,
                       style: TextStyle(
                         fontSize: TextSizes.small,
                         color: Palette.text,
@@ -697,7 +705,7 @@ class _EyeGuardCard extends StatelessWidget {
                         children: [
                           _SmallButton(
                             icon: Icons.straighten_rounded,
-                            label: '30cm 기준 맞추기',
+                            label: context.l10n.settings_eyeCalibrate,
                             onTap: () async {
                               final ok = await state.calibrateEye();
                               if (!context.mounted) return;
@@ -705,8 +713,8 @@ class _EyeGuardCard extends StatelessWidget {
                                 SnackBar(
                                   content: Text(
                                     ok
-                                        ? '지금 거리를 30cm 기준으로 저장했어요'
-                                        : '얼굴이 보이지 않아요. 카메라를 보고 다시 눌러 주세요',
+                                        ? context.l10n.settings_eyeCalibrated
+                                        : context.l10n.settings_eyeNoFace,
                                   ),
                                 ),
                               );
@@ -715,15 +723,13 @@ class _EyeGuardCard extends StatelessWidget {
                           if (eye.calibration != null)
                             _SmallButton(
                               icon: Icons.close_rounded,
-                              label: '기준 지우기',
+                              label: context.l10n.settings_eyeCalibrationClear,
                               onTap: () => state.resetEyeCalibration(),
                             ),
                         ],
                       ),
                       const SizedBox(height: Gaps.sm),
-                      const _Note(
-                        '정확하게 하려면: 아이 눈에서 30cm(자 하나) 떨어진 곳에 화면을 두고, 아이가 화면을 볼 때 "30cm 기준 맞추기"를 눌러 주세요.',
-                      ),
+                      _Note(context.l10n.settings_eyeCalibrateHow),
                     ],
                   ],
                 ),
@@ -775,7 +781,8 @@ class _Choices<T> extends StatelessWidget {
   );
 }
 
-String _minutes(Duration d) => '${(d.inSeconds / 60).ceil()}분';
+String _minutes(Duration d) =>
+    L10n.current.settings_minutes((d.inSeconds / 60).ceil());
 
 /// 하루 놀이 시간: 제한 없음·10·15·20·30·45·60분
 class _PlayLimitCard extends StatelessWidget {
@@ -790,11 +797,15 @@ class _PlayLimitCard extends StatelessWidget {
       children: [
         _RowTile(
           icon: Icons.timer_rounded,
-          title: '하루 놀이 시간',
+          title: context.l10n.settings_dailyLimit,
           subtitle:
-              '오늘 논 시간 ${_minutes(play.used)}'
-              '${left == null ? '' : ', 남은 시간 ${_minutes(left)}'}'
-              '${play.bonusMinutes > 0 ? ' (더 준 시간 ${play.bonusMinutes}분)' : ''}',
+              context.l10n.settings_playUsed(_minutes(play.used)) +
+              (left == null
+                  ? ''
+                  : context.l10n.settings_playLeft(_minutes(left))) +
+              (play.bonusMinutes > 0
+                  ? context.l10n.settings_playBonus(play.bonusMinutes)
+                  : ''),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 14, 14),
@@ -804,13 +815,13 @@ class _PlayLimitCard extends StatelessWidget {
               _Choices(
                 values: SafetyRules.limitChoices,
                 selected: state.playLimitMin,
-                label: (m) => m == 0 ? '제한 없음' : '$m분',
+                label: (m) => m == 0
+                    ? context.l10n.settings_noLimit
+                    : context.l10n.settings_minutes(m),
                 onPick: (m) => state.setPlayLimit(m),
               ),
               const SizedBox(height: Gaps.sm),
-              const _Note(
-                '다 되면 "오늘은 여기까지!"가 화면을 덮어요. 부모 확인 후 15분 더 놀 수 있고, 다음 날 다시 풀려요.',
-              ),
+              _Note(context.l10n.settings_limitNote),
             ],
           ),
         ),
@@ -861,13 +872,12 @@ class _EyeBreakCard extends StatelessWidget {
       children: [
         _RowTile(
           icon: Icons.landscape_rounded,
-          title: '눈 쉬기',
-          subtitle:
-              '이어서 놀면 20초 동안 "창밖 먼 곳을 봐요"를 보여 줘요. 앱을 5분 넘게 안 보면 쉰 것으로 쳐요.',
+          title: context.l10n.settings_break,
+          subtitle: context.l10n.settings_breakNote,
           trailing: _Choices(
             values: SafetyRules.breakChoices,
             selected: state.eyeBreakMin,
-            label: (m) => '$m분마다',
+            label: (m) => context.l10n.settings_breakEvery(m),
             onPick: (m) => state.setEyeBreak(m),
           ),
         ),
@@ -887,13 +897,13 @@ class _BackupCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               _TileIcon(Icons.cloud_off_rounded),
               SizedBox(width: 14),
               Expanded(
                 child: Text(
-                  '백업',
+                  context.l10n.settings_backup,
                   style: TextStyle(
                     fontSize: TextSizes.button,
                     color: Palette.text,
@@ -903,9 +913,7 @@ class _BackupCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: Gaps.sm),
-          const _Note(
-            "기록을 'ALOK1-'로 시작하는 글자로 만들어 복사해 두었다가, 다른 기기에 붙여 넣으면 그대로 옮겨져요. 서버로 보내지 않아요.",
-          ),
+          _Note(context.l10n.settings_backupNote),
           const SizedBox(height: Gaps.md),
           Wrap(
             spacing: Gaps.sm,
@@ -913,7 +921,7 @@ class _BackupCard extends StatelessWidget {
             children: [
               _SmallButton(
                 icon: Icons.copy_rounded,
-                label: '백업 글자 만들기',
+                label: context.l10n.settings_backupMake,
                 onTap: () => showDialog<void>(
                   context: context,
                   builder: (_) => const _BackupExportDialog(),
@@ -921,7 +929,7 @@ class _BackupCard extends StatelessWidget {
               ),
               _SmallButton(
                 icon: Icons.restore_rounded,
-                label: '백업 글자로 복구',
+                label: context.l10n.settings_backupRestore,
                 onTap: () => showDialog<void>(
                   context: context,
                   builder: (_) => const BackupRestoreDialog(),
@@ -985,7 +993,7 @@ class _BackupExportDialogState extends State<_BackupExportDialog> {
 
   @override
   Widget build(BuildContext context) => _SheetDialog(
-    title: '백업 글자',
+    title: context.l10n.settings_backupText,
     children: [
       Container(
         constraints: const BoxConstraints(maxHeight: 110),
@@ -1008,8 +1016,8 @@ class _BackupExportDialogState extends State<_BackupExportDialog> {
       const SizedBox(height: 8),
       Text(
         _copied
-            ? '복사했어요. 메모나 메시지에 붙여 넣어 보관해 주세요.'
-            : '아래 버튼으로 복사해서 안전한 곳에 보관해 주세요.',
+            ? context.l10n.settings_backupCopied
+            : context.l10n.settings_backupCopyHint,
         style: const TextStyle(
           fontSize: TextSizes.caption,
           color: Palette.textSoft,
@@ -1023,10 +1031,10 @@ class _BackupExportDialogState extends State<_BackupExportDialog> {
         children: [
           PillButton(
             height: 56,
-            semanticLabel: '닫기',
+            semanticLabel: context.l10n.common_close,
             onTap: () => Navigator.of(context).pop(),
-            child: const Text(
-              '닫기',
+            child: Text(
+              context.l10n.common_close,
               style: TextStyle(
                 fontSize: TextSizes.body,
                 color: Palette.textSoft,
@@ -1037,13 +1045,13 @@ class _BackupExportDialogState extends State<_BackupExportDialog> {
             height: 56,
             color: Palette.yellow,
             edge: Palette.coinDeep,
-            semanticLabel: '복사하기',
+            semanticLabel: context.l10n.settings_copy,
             onTap: () async {
               await Clipboard.setData(ClipboardData(text: _code));
               if (mounted) setState(() => _copied = true);
             },
-            child: const Text(
-              '복사하기',
+            child: Text(
+              context.l10n.settings_copy,
               style: TextStyle(fontSize: TextSizes.body, color: Palette.text),
             ),
           ),
@@ -1096,12 +1104,14 @@ class _BackupRestoreDialogState extends State<BackupRestoreDialog> {
     }
     final messenger = ScaffoldMessenger.maybeOf(context);
     Navigator.of(context).pop();
-    messenger?.showSnackBar(const SnackBar(content: Text('백업 글자로 기록을 되살렸어요')));
+    messenger?.showSnackBar(
+      SnackBar(content: Text(context.l10n.settings_backupRestored)),
+    );
   }
 
   @override
   Widget build(BuildContext context) => _SheetDialog(
-    title: '백업 글자로 복구',
+    title: context.l10n.settings_backupRestore,
     children: [
       TextField(
         controller: _text,
@@ -1125,7 +1135,7 @@ class _BackupRestoreDialogState extends State<BackupRestoreDialog> {
       ),
       const SizedBox(height: 8),
       Text(
-        _error ?? '복구하면 지금 기기의 기록이 백업 기록으로 바뀌어요.',
+        _error ?? context.l10n.settings_backupRestoreNote,
         style: TextStyle(
           fontSize: TextSizes.caption,
           color: _error != null ? const Color(0xFFD9536F) : Palette.textSoft,
@@ -1139,10 +1149,10 @@ class _BackupRestoreDialogState extends State<BackupRestoreDialog> {
         children: [
           PillButton(
             height: 56,
-            semanticLabel: '닫기',
+            semanticLabel: context.l10n.common_close,
             onTap: () => Navigator.of(context).pop(),
-            child: const Text(
-              '닫기',
+            child: Text(
+              context.l10n.common_close,
               style: TextStyle(
                 fontSize: TextSizes.body,
                 color: Palette.textSoft,
@@ -1151,10 +1161,10 @@ class _BackupRestoreDialogState extends State<BackupRestoreDialog> {
           ),
           PillButton(
             height: 56,
-            semanticLabel: '붙여 넣기',
+            semanticLabel: context.l10n.settings_paste,
             onTap: _paste,
-            child: const Text(
-              '붙여 넣기',
+            child: Text(
+              context.l10n.settings_paste,
               style: TextStyle(fontSize: TextSizes.body, color: Palette.text),
             ),
           ),
@@ -1162,10 +1172,10 @@ class _BackupRestoreDialogState extends State<BackupRestoreDialog> {
             height: 56,
             color: Palette.yellow,
             edge: Palette.coinDeep,
-            semanticLabel: '복구하기',
+            semanticLabel: context.l10n.settings_restore,
             onTap: _restore,
-            child: const Text(
-              '복구하기',
+            child: Text(
+              context.l10n.settings_restore,
               style: TextStyle(fontSize: TextSizes.body, color: Palette.text),
             ),
           ),
@@ -1192,15 +1202,15 @@ class _ParentNotesState extends State<_ParentNotes> {
     children: [
       GestureDetector(
         onLongPress: () => setState(() => _diag = !_diag),
-        child: const _Panel(
+        child: _Panel(
           padding: EdgeInsets.fromLTRB(18, 14, 18, 14),
           children: [
             _Bullets([
-              '회원가입, 서버, 광고, 추적, 현금 결제가 없습니다.',
-              '닉네임과 진행 기록은 이 기기 안에만 저장됩니다.',
-              '코인은 놀이로만 모으고, 꾸미기 아이템에만 씁니다.',
-              '한 판은 5문제(약 1~2분)입니다.',
-              '눈 지킴이를 켜면 앞카메라 영상을 이 기기 안에서만 살펴보고, 저장하거나 보내지 않습니다.',
+              context.l10n.settings_note1,
+              context.l10n.settings_note2,
+              context.l10n.settings_note3,
+              context.l10n.settings_note4,
+              context.l10n.settings_note5,
             ]),
           ],
         ),
@@ -1213,322 +1223,4 @@ class _ParentNotesState extends State<_ParentNotes> {
       ],
     ],
   );
-}
-
-/// 렉·터치 진단: 최근 1분의 화면 그리기 시간(느린 장 수, 가장 느린 장), 최근 누름이 무엇에 맞았는지,
-/// 살아 있는 소리 플레이어 수, (웹) 얼굴 인식 한 번에 걸린 시간. 렉을 느낀 직후 열면 숫자로 보인다.
-/// 1초마다 새로 읽는다. (release 빌드에서도 보인다)
-class PerfDiagnosticsPanel extends StatefulWidget {
-  const PerfDiagnosticsPanel({super.key, this.monitor});
-
-  /// 없으면 앱 전체 기록([PerfMonitor.instance])
-  final PerfMonitor? monitor;
-
-  @override
-  State<PerfDiagnosticsPanel> createState() => _PerfDiagnosticsPanelState();
-}
-
-class _PerfDiagnosticsPanelState extends State<PerfDiagnosticsPanel> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  static String _ms(double v) =>
-      v < 0 ? '-' : '${v.toStringAsFixed(v < 10 ? 1 : 0)}ms';
-
-  static String _touch(TouchRecord t) {
-    final ago = DateTime.now().difference(t.at).inSeconds;
-    final held = (t.held.inMilliseconds / 1000).toStringAsFixed(1);
-    final long = t.held >= LongPress.sayName ? ', 길게' : '';
-    final cancel = t.cancelled ? ', 취소됨' : '';
-    return '${t.target} ($held초$long, ${t.moved.round()}px 움직임$cancel, $ago초 전)';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final state = AppScope.of(context);
-    final m = widget.monitor ?? PerfMonitor.instance;
-    final f = m.frames();
-    final a = state.audio.playerCounts;
-    final touches = m.touches.reversed.toList();
-    final d = state.eye.detectStats;
-    final rows = <(String, String)>[
-      ('화면 그리기', '${f.count}장, 평균 ${_ms(f.averageMs)}'),
-      ('느린 장', '16ms 넘음 ${f.over16}장, 33ms 넘음 ${f.over33}장'),
-      ('가장 느린 장', f.count == 0 ? '-' : _ms(f.worstMs)),
-      (
-        '소리 플레이어',
-        a.webDecoded != null
-            ? '효과음 ${a.sfx}, 풀어 둔 소리 ${a.webDecoded}개, 받은 파일 ${a.webFiles}개'
-            : '효과음 ${a.sfx}, 음악 ${a.music}, 말 조각 ${a.clips} (합 ${a.total})',
-      ),
-      ('마지막 누름', touches.isEmpty ? '아직 없음' : _touch(touches[0])),
-      if (touches.length > 1) ('그 전 누름', _touch(touches[1])),
-      if (d != null && d.count > 0)
-        (
-          '얼굴 인식 시간',
-          '${d.where}, 마지막 ${_ms(d.lastMs)}, 최대 ${_ms(d.maxMs)}, '
-              '화면 막음 ${_ms(d.mainMs)}, 준비 ${_ms(d.initMs)}',
-        ),
-    ];
-    return _Panel(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              '렉, 터치 진단 (최근 1분)',
-              style: TextStyle(fontSize: TextSizes.body, color: Palette.text),
-            ),
-            for (final (k, v) in rows) _DiagRow(label: k, value: v),
-            const SizedBox(height: Gaps.sm),
-            const _Note(
-              '렉을 느낀 바로 뒤에 이 칸을 열어 주세요. 한 장에 16ms가 넘으면 부드럽지 않고, 33ms가 넘으면 끊겨 보입니다. 마지막 누름에서 길게(0.4초 넘게) 누르면 놀이에 들어가지 않고 이름만 말합니다. 소리 플레이어 수가 계속 늘면 알려 주세요.',
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// 진단 칸 한 줄: 왼쪽 이름, 오른쪽 값
-class _DiagRow extends StatelessWidget {
-  const _DiagRow({required this.label, required this.value});
-  final String label, value;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: TextSizes.caption,
-              color: Palette.textSoft,
-            ),
-          ),
-        ),
-        const SizedBox(width: Gaps.sm),
-        Flexible(
-          flex: 2,
-          child: Text(
-            value,
-            key: ValueKey('diag:$label'),
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              fontSize: TextSizes.caption,
-              color: Palette.text,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-/// 눈 지킴이 실측 진단: 최근 1분의 실제 초당 프레임 수, 검사 횟수, 카메라가 켜져 있던 시간 비율,
-/// 창 열기 시간과 방식(카메라 유지 / 창마다 끄기), 기기 열·절전·배터리.
-/// 카메라에 요청한 초당 프레임(안드로이드 10, iOS 5)이 기기에서 실제로 먹히는지,
-/// 두 방식 중 어느 쪽이 창을 짧게 여는지 실기기에서 확인한다 ('방식 바꾸기'를 누르면 기록을 새로 잰다).
-/// 1초마다 새로 읽는다. (release 빌드에서도 보인다)
-class EyeDiagnosticsPanel extends StatefulWidget {
-  const EyeDiagnosticsPanel({super.key, this.stats});
-
-  /// 없으면 앱 전체 기록([EyeStats.instance])
-  final EyeStats? stats;
-
-  @override
-  State<EyeDiagnosticsPanel> createState() => _EyeDiagnosticsPanelState();
-}
-
-class _EyeDiagnosticsPanelState extends State<EyeDiagnosticsPanel> {
-  Timer? _timer;
-
-  String _ago(DateTime at) {
-    final s = DateTime.now().difference(at).inSeconds;
-    return s < 60 ? '$s초 전' : '${s ~/ 60}분 전';
-  }
-
-  /// 마지막 창: "얼굴 32cm (3초 전)" / "얼굴 없음" / "실패 2번: 이유"
-  String _windowText(EyeWindowResult? r, int failures) {
-    if (r == null) return '아직 없음';
-    final what = switch (r.outcome) {
-      EyeWindowOutcome.face => '얼굴 ${r.cm?.round() ?? '-'}cm',
-      EyeWindowOutcome.noFace => '얼굴 없음',
-      EyeWindowOutcome.failed =>
-        '실패${failures > 1 ? ' $failures번' : ''}: ${r.message ?? ''}',
-    };
-    return '$what (${_ago(r.at)})';
-  }
-
-  static String _windowShort(EyeWindowResult r) => switch (r.outcome) {
-    EyeWindowOutcome.face => '${r.cm?.round() ?? '-'}cm',
-    EyeWindowOutcome.noFace => '없음',
-    EyeWindowOutcome.failed => '실패',
-  };
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final eye = AppScope.of(context).eye;
-    final sum = (widget.stats ?? EyeStats.instance).summary();
-    final fps = sum.fps;
-    final sec = sum.window.inMilliseconds / 1000;
-    final on = sum.cameraOn.inMilliseconds / 1000;
-    final ios = Theme.of(context).platform == TargetPlatform.iOS;
-    final asked = ios ? EyeRules.iosFps : EyeRules.androidFps;
-    String ms(Duration d) => '${(d.inMilliseconds / 1000).toStringAsFixed(1)}초';
-    String msOf(Duration? d) => d == null ? '-' : '${d.inMilliseconds}ms';
-    final heat = eye.heat;
-    final hs = heat.status;
-    final zone = switch (eye.zone) {
-      EyeZone.safe => '넉넉',
-      EyeZone.caution => '기준 가까이',
-      EyeZone.alert => '경고 중',
-    };
-    final rows = <(String, String)>[
-      (
-        '실제 초당 프레임',
-        fps == null
-            ? '카메라가 켜진 적 없음'
-            : '${fps.toStringAsFixed(1)}장 (요청 $asked장)',
-      ),
-      ('검사 횟수', '${sum.checks}번'),
-      (
-        '카메라 켜짐',
-        '${(sum.onRatio * 100).round()}% (${on.toStringAsFixed(0)}초 / ${sec.toStringAsFixed(0)}초)',
-      ),
-      ('받은 프레임', '${sum.frames}장'),
-      (
-        '창 열기 시간',
-        '평균 ${msOf(sum.windowAverage)}, 마지막 ${msOf(sum.lastWindow)} (${sum.windows}번)',
-      ),
-      ('방식', eye.cameraMode),
-      (
-        '지금',
-        eye.heatOff
-            ? '꺼짐 (기기가 뜨거움)'
-            : eye.running
-            ? '켜짐, 창 주기 ${ms(eye.checkInterval)} ($zone)'
-            : '꺼짐 (${eye.offReason})',
-      ),
-      ('마지막 창 결과', _windowText(eye.lastWindow, eye.failures)),
-      (
-        '최근 창',
-        eye.recentWindows.isEmpty
-            ? '-'
-            : eye.recentWindows.map(_windowShort).join(' / '),
-      ),
-      (
-        '다음 창까지',
-        eye.windowOpen
-            ? '지금 보는 중'
-            : eye.nextWindowIn != null
-            ? ms(eye.nextWindowIn!)
-            : '없음 (${eye.offReason ?? '창을 기다리는 중'})',
-      ),
-      (
-        '부모님 계속하기',
-        eye.snoozeLeft == null
-            ? '아님'
-            : '경고 쉬는 중 (${(eye.snoozeLeft!.inSeconds / 60).ceil()}분 남음)',
-      ),
-      ('기기 열', heat.bound ? hs.thermal.label : '${hs.thermal.label} (채널 없음)'),
-      (
-        '절전, 배터리',
-        '절전 ${hs.powerSave == null ? '모름' : (hs.powerSave! ? '켜짐' : '꺼짐')}, '
-            '배터리 ${hs.battery == null ? '모름' : '${hs.battery}%'}'
-            '${heat.backoff > 1 ? ' (창 주기 ${heat.backoff}배)' : ''}',
-      ),
-    ];
-    return _Panel(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              '눈 지킴이 진단 (최근 1분)',
-              style: TextStyle(fontSize: TextSizes.body, color: Palette.text),
-            ),
-            for (final (k, v) in rows)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        k,
-                        style: const TextStyle(
-                          fontSize: TextSizes.caption,
-                          color: Palette.textSoft,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: Gaps.sm),
-                    Flexible(
-                      flex: 2,
-                      child: Text(
-                        v,
-                        key: ValueKey('diag:$k'),
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          fontSize: TextSizes.caption,
-                          color: Palette.text,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            const SizedBox(height: Gaps.sm),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: _SmallButton(
-                icon: Icons.swap_horiz_rounded,
-                label: '방식 바꾸기',
-                onTap: () => setState(() {
-                  eye.keepCamera = !eye.keepCamera;
-                  (widget.stats ?? EyeStats.instance).reset();
-                }),
-              ),
-            ),
-            const SizedBox(height: Gaps.sm),
-            const _Note(
-              '실제 초당 프레임이 30 가까이면 카메라가 요청을 따르지 않는 것입니다 (발열 원인). 방식을 바꾸면 기록을 새로 잽니다: 같은 놀이를 1분씩 해 보고 카메라 켜짐·창 열기 시간을 비교해 주세요. 숫자는 저장하거나 보내지 않습니다.',
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 }

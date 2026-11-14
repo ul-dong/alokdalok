@@ -5,6 +5,7 @@ import '../character/character_view.dart';
 import '../character/nickname.dart';
 import '../core/palette.dart';
 import '../games/common/scene_game.dart';
+import '../l10n/l10n.dart';
 import '../services/audio_service.dart';
 import '../widgets/common.dart';
 
@@ -31,7 +32,7 @@ class _NicknameScreenState extends State<NicknameScreen> {
     _ctrl = TextEditingController(text: keep ? state.nickname : '');
     if (widget.onboarding) {
       Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) state.audio.say('내 이름을 지어 줄래?');
+        if (mounted) state.audio.say(L10n.current.nickname_askSay);
       });
     }
   }
@@ -64,7 +65,7 @@ class _NicknameScreenState extends State<NicknameScreen> {
     if (error != null) return;
     await state.setNickname(value);
     state.audio.play(Sfx.correct);
-    state.audio.say('$value, 반가워!');
+    state.audio.say(L10n.current.nickname_greetSay(value));
     if (mounted) _finish();
   }
 
@@ -83,7 +84,7 @@ class _NicknameScreenState extends State<NicknameScreen> {
                   children: [
                     RoundIconButton(
                       icon: Icons.arrow_back_rounded,
-                      label: '뒤로',
+                      label: context.l10n.common_back,
                       size: 60,
                       onTap: () => Navigator.of(context).pop(),
                     ),
@@ -113,8 +114,8 @@ class _NicknameScreenState extends State<NicknameScreen> {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    const Text(
-                      '이름을 지어 주세요',
+                    Text(
+                      context.l10n.nickname_title,
                       style: TextStyle(fontSize: 26, color: Palette.text),
                     ),
                     const SizedBox(height: 12),
@@ -140,7 +141,7 @@ class _NicknameScreenState extends State<NicknameScreen> {
                             onChanged: (_) => setState(() => _error = null),
                             onSubmitted: (_) => _save(),
                             decoration: InputDecoration(
-                              hintText: '이름 쓰기',
+                              hintText: context.l10n.nickname_field,
                               errorText: _error,
                               errorStyle: const TextStyle(
                                 fontSize: TextSizes.small,
@@ -166,8 +167,8 @@ class _NicknameScreenState extends State<NicknameScreen> {
                           edge: const Color(0xFFD9799A),
                           sound: null,
                           onTap: _save,
-                          semanticLabel: '좋아요',
-                          child: const Row(
+                          semanticLabel: context.l10n.nickname_ok,
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
@@ -177,7 +178,7 @@ class _NicknameScreenState extends State<NicknameScreen> {
                               ),
                               SizedBox(width: 6),
                               Text(
-                                '좋아요',
+                                context.l10n.nickname_ok,
                                 style: TextStyle(
                                   fontSize: TextSizes.title,
                                   color: Colors.white,
@@ -189,8 +190,8 @@ class _NicknameScreenState extends State<NicknameScreen> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    const Text(
-                      '비워 두고 좋아요를 누르면 이름을 아무거나 지어 줘요',
+                    Text(
+                      context.l10n.nickname_randomHint,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: TextSizes.small,
@@ -220,14 +221,14 @@ class _ParentNotice extends StatelessWidget {
       color: Palette.yellowSoft,
       borderRadius: BorderRadius.circular(16),
     ),
-    child: const Row(
+    child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(Icons.info_outline_rounded, color: Palette.textSoft, size: 20),
         SizedBox(width: 8),
         Expanded(
           child: Text(
-            '부모님께: 실명이나 연락처 대신 별명을 써 주세요. 닉네임은 이 기기 안에만 저장되고 어디로도 보내지 않아요. (한글, 영문, 숫자 8글자까지)',
+            context.l10n.nickname_parentNote,
             style: TextStyle(
               fontSize: TextSizes.caption,
               color: Palette.textSoft,

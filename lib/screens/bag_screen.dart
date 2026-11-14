@@ -4,6 +4,7 @@ import '../character/item_thumb.dart';
 import '../core/palette.dart';
 import '../data/item_catalog.dart';
 import '../games/common/scene_game.dart';
+import '../l10n/l10n.dart';
 import '../widgets/common.dart';
 
 /// 내 가방 (가로): 왼쪽에 모은 코인·별, 오른쪽에 가진 아이템.
@@ -26,16 +27,16 @@ class BagScreen extends StatelessWidget {
                   children: [
                     RoundIconButton(
                       icon: Icons.home_rounded,
-                      label: '집으로',
+                      label: context.l10n.common_home,
                       size: 60,
                       onTap: () => Navigator.of(context).pop(),
                     ),
                     const SizedBox(width: 10),
-                    const Expanded(
+                    Expanded(
                       child: FitBox(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          '내 가방',
+                          context.l10n.bag_title,
                           style: TextStyle(
                             fontSize: TextSizes.heading,
                             color: Palette.text,
@@ -50,7 +51,7 @@ class BagScreen extends StatelessWidget {
                   child: _Stat(
                     icon: const CoinIcon(size: 52),
                     value: state.coins,
-                    label: '코인',
+                    label: context.l10n.common_coins,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -58,7 +59,7 @@ class BagScreen extends StatelessWidget {
                   child: _Stat(
                     icon: const StarIcon(size: 50),
                     value: state.stars,
-                    label: '별',
+                    label: context.l10n.common_stars,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -92,9 +93,9 @@ class BagScreen extends StatelessWidget {
                   const SizedBox(height: 10),
                   Expanded(
                     child: mine.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
-                              '놀이로 코인을 모아\n상점에서 골라 보세요',
+                              context.l10n.bag_empty,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: TextSizes.label,

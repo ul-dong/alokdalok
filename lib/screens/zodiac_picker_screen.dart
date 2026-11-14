@@ -7,6 +7,7 @@ import '../character/character_view.dart';
 import '../character/zodiac.dart';
 import '../core/palette.dart';
 import '../games/common/scene_game.dart';
+import '../l10n/l10n.dart';
 import '../services/audio_service.dart';
 import '../widgets/common.dart';
 import '../widgets/paged_grid.dart' show GridRows;
@@ -35,7 +36,9 @@ class _ZodiacPickerScreenState extends State<ZodiacPickerScreen> {
     super.initState();
     if (widget.onboarding) {
       Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) AppScope.read(context).audio.say('안녕! 함께 놀 친구를 골라 볼까요?');
+        if (mounted) {
+          AppScope.read(context).audio.say(L10n.current.zodiac_askSay);
+        }
       });
     }
   }
@@ -78,7 +81,7 @@ class _ZodiacPickerScreenState extends State<ZodiacPickerScreen> {
                     if (!widget.onboarding)
                       RoundIconButton(
                         icon: Icons.arrow_back_rounded,
-                        label: '뒤로',
+                        label: context.l10n.common_back,
                         size: 60,
                         onTap: () => Navigator.of(context).pop(),
                       ),
@@ -110,7 +113,9 @@ class _ZodiacPickerScreenState extends State<ZodiacPickerScreen> {
                   edge: const Color(0xFFD9799A),
                   sound: null,
                   onTap: _done,
-                  semanticLabel: widget.onboarding ? '이 친구로 할래요' : '바꾸기',
+                  semanticLabel: widget.onboarding
+                      ? context.l10n.zodiac_choose
+                      : context.l10n.settings_change,
                   child: FitBox(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -122,7 +127,9 @@ class _ZodiacPickerScreenState extends State<ZodiacPickerScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          widget.onboarding ? '이 친구로 할래요' : '이 친구로 바꾸기',
+                          widget.onboarding
+                              ? context.l10n.zodiac_choose
+                              : context.l10n.zodiac_change,
                           style: const TextStyle(
                             fontSize: TextSizes.title,
                             color: Colors.white,
@@ -148,9 +155,9 @@ class _ZodiacPickerScreenState extends State<ZodiacPickerScreen> {
                     height: 52,
                     child: Row(
                       children: [
-                        for (final (g, label) in const [
-                          (FriendGroup.zodiac, '12지신'),
-                          (FriendGroup.dino, '공룡'),
+                        for (final (g, label) in [
+                          (FriendGroup.zodiac, context.l10n.zodiac_groupZodiac),
+                          (FriendGroup.dino, context.l10n.zodiac_groupDino),
                         ]) ...[
                           if (g == FriendGroup.dino) const SizedBox(width: 8),
                           Expanded(
@@ -309,7 +316,7 @@ class PageDots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: '${current + 1}쪽 / $count쪽',
+    label: context.l10n.common_page(current + 1, count),
     child: SizedBox(
       height: 14,
       child: Row(
@@ -351,7 +358,9 @@ class _TallArrow extends StatelessWidget {
     child: Pressable(
       onTap: onTap,
       enabled: enabled,
-      semanticLabel: forward ? '다음 쪽' : '앞 쪽',
+      semanticLabel: forward
+          ? context.l10n.common_nextPage
+          : context.l10n.common_prevPage,
       child: Container(
         width: FriendPager.arrowSize.width,
         height: FriendPager.arrowSize.height,

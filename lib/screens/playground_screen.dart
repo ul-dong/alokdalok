@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../character/character_view.dart';
 import '../core/palette.dart';
 import '../data/game_kinds.dart';
+import '../l10n/l10n.dart';
 import '../services/game_state.dart';
 import '../widgets/common.dart';
 import 'playground_art.dart';
@@ -27,7 +28,7 @@ class PlaygroundScreen extends StatefulWidget {
 
   /// 들어오면 한 문장만 말한다. 홈의 "놀이터 가기" 버튼은 이름을 읽지 않아서
   /// 버튼 이름이 반쯤 나오다 끊겨 "놀이… 놀이터에 왔어요"처럼 겹쳐 들리지 않는다.
-  static const greeting = '뭘 하고 놀까요?';
+  static String get greeting => L10n.current.playground_greetingSay;
 
   @override
   State<PlaygroundScreen> createState() => _PlaygroundScreenState();
@@ -75,16 +76,16 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> with ScreenMusic {
               children: [
                 RoundIconButton(
                   icon: Icons.home_rounded,
-                  label: '집으로',
+                  label: context.l10n.common_home,
                   size: 60,
                   speakLabel: true,
                   onTap: () => Navigator.of(context).pop(),
                 ),
                 const SizedBox(width: 12),
-                const Flexible(
+                Flexible(
                   child: FitBox(
                     alignment: Alignment.centerLeft,
-                    child: TitleChip('놀이터'),
+                    child: TitleChip(context.l10n.playground_title),
                   ),
                 ),
                 const Spacer(),
@@ -92,7 +93,7 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> with ScreenMusic {
                   child: CountBadge(
                     icon: const CoinIcon(),
                     value: state.coins,
-                    label: '코인',
+                    label: context.l10n.common_coins,
                   ),
                 ),
               ],

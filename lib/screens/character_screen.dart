@@ -6,6 +6,7 @@ import '../core/palette.dart';
 import '../data/item_catalog.dart';
 import '../games/common/scene_game.dart';
 import '../data/vehicles.dart';
+import '../l10n/l10n.dart';
 import '../shop/item_widgets.dart';
 import '../vehicle/garage_screen.dart';
 import '../vehicle/vehicle_painter.dart';
@@ -53,14 +54,14 @@ class _CharacterScreenState extends State<CharacterScreen> with ScreenMusic {
                   children: [
                     RoundIconButton(
                       icon: Icons.home_rounded,
-                      label: '집으로',
+                      label: context.l10n.common_home,
                       size: 60,
                       onTap: () => Navigator.of(context).pop(),
                     ),
                     const Spacer(),
                     RoundIconButton(
                       icon: Icons.refresh_rounded,
-                      label: '처음 모습으로',
+                      label: context.l10n.character_resetOutfit,
                       size: 56,
                       onTap: () {
                         state.resetOutfit();
@@ -92,7 +93,7 @@ class _CharacterScreenState extends State<CharacterScreen> with ScreenMusic {
                           onTap: () =>
                               Navigator.of(context)
                                   .push(softRoute(const NicknameScreen())),
-                          semanticLabel: '닉네임 바꾸기',
+                          semanticLabel: context.l10n.settings_changeNickname,
                           child: FitBox(
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -124,7 +125,7 @@ class _CharacterScreenState extends State<CharacterScreen> with ScreenMusic {
                           onTap: () =>
                               Navigator.of(context)
                                   .push(softRoute(const ZodiacPickerScreen())),
-                          semanticLabel: '친구 바꾸기',
+                          semanticLabel: context.l10n.character_changeFriend,
                           child: FitBox(
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -271,10 +272,10 @@ class _VehicleShelfState extends State<_VehicleShelf> {
         SizedBox(
           height: 60,
           child: picked == null
-              ? const Center(
+              ? Center(
                   child: FitBox(
                     child: Text(
-                      '타고 싶은 걸 눌러요',
+                      context.l10n.character_pickRide,
                       style: TextStyle(
                         fontSize: TextSizes.label,
                         color: Palette.textSoft,
@@ -297,13 +298,19 @@ class _VehicleShelfState extends State<_VehicleShelf> {
                         onTap: () {
                           final boarding = state.ride != picked.id;
                           state.setRide(boarding ? picked.id : null);
-                          if (boarding) state.audio.say('출발!');
+                          if (boarding) {
+                            state.audio.say(context.l10n.character_goSay);
+                          }
                           widget.onChanged();
                         },
-                        semanticLabel: state.ride == picked.id ? '내리기' : '탑승',
+                        semanticLabel: state.ride == picked.id
+                            ? context.l10n.character_getOff
+                            : context.l10n.character_ride,
                         child: FitBox(
                           child: Text(
-                            state.ride == picked.id ? '내리기' : '탑승!',
+                            state.ride == picked.id
+                                ? context.l10n.character_getOff
+                                : context.l10n.character_rideButton,
                             style: TextStyle(
                               fontSize: TextSizes.title,
                               color: state.ride == picked.id
@@ -323,10 +330,10 @@ class _VehicleShelfState extends State<_VehicleShelf> {
                         onTap: () => Navigator.of(
                           context,
                         ).push(softRoute(GarageScreen(vehicleId: picked.id))),
-                        semanticLabel: '탈것 꾸미기',
-                        child: const FitBox(
+                        semanticLabel: context.l10n.character_decorateRide,
+                        child: FitBox(
                           child: Text(
-                            '꾸미기',
+                            context.l10n.character_decorate,
                             style: TextStyle(
                               fontSize: TextSizes.title,
                               color: Palette.text,
@@ -361,7 +368,9 @@ class _VehicleCard extends StatelessWidget {
     final state = AppScope.of(context);
     return Pressable(
       onTap: onTap,
-      semanticLabel: riding ? '${vehicle.name}, 타는 중' : vehicle.name,
+      semanticLabel: riding
+          ? context.l10n.character_riding(vehicle.name)
+          : vehicle.name,
       child: Container(
         decoration: BoxDecoration(
           color: Palette.cream,
@@ -413,8 +422,8 @@ class _Empty extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            '아직 없어요',
+          Text(
+            context.l10n.character_none,
             style: TextStyle(
               fontSize: TextSizes.title,
               color: Palette.textSoft,
@@ -425,14 +434,14 @@ class _Empty extends StatelessWidget {
             color: Palette.yellow,
             edge: Palette.coinDeep,
             onTap: onShop,
-            semanticLabel: '상점 가기',
-            child: const Row(
+            semanticLabel: context.l10n.character_goShop,
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.checkroom_rounded, size: 32, color: Palette.text),
                 SizedBox(width: 8),
                 Text(
-                  '상점 가기',
+                  context.l10n.character_goShop,
                   style: TextStyle(
                     fontSize: TextSizes.label,
                     color: Palette.text,

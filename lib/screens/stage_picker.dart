@@ -9,6 +9,7 @@ import '../games/common/journey_trail.dart';
 import '../games/common/object_art.dart';
 import '../games/common/scene_game.dart';
 import '../games/game_entry.dart';
+import '../l10n/l10n.dart';
 import '../services/game_state.dart';
 import '../widgets/common.dart';
 import '../widgets/paged_grid.dart';
@@ -23,7 +24,7 @@ class StagePicker extends StatefulWidget {
 
   final GameKind game;
 
-  static const lockedLine = '앞 단계를 먼저 놀아 볼까요?';
+  static String get lockedLine => L10n.current.stage_lockedSay;
 
   /// 카드 가장 좁은 폭 (좁으면 한 쪽에 카드를 덜 넣고 화살표로 넘긴다)
   static const minCardWidth = 120.0;
@@ -78,7 +79,7 @@ class _StagePickerState extends State<StagePicker> {
             children: [
               RoundIconButton(
                 icon: Icons.arrow_back_rounded,
-                label: '놀이터로',
+                label: context.l10n.stage_toPlayground,
                 size: 60,
                 onTap: () => Navigator.of(context).pop(),
               ),
@@ -94,7 +95,7 @@ class _StagePickerState extends State<StagePicker> {
                 child: CountBadge(
                   icon: const CoinIcon(),
                   value: state.coins,
-                  label: '코인',
+                  label: context.l10n.common_coins,
                 ),
               ),
             ],
@@ -201,7 +202,9 @@ class _StageCard extends StatelessWidget {
     final face = open ? SeasonIcon.tintOf(season) : const Color(0xFFF4EFE6);
     return Pressable(
       onTap: onTap,
-      semanticLabel: '$id단계${open ? '' : ' 아직 열리지 않음'}',
+      semanticLabel: open
+          ? context.l10n.stage_card(id)
+          : context.l10n.stage_cardLocked(id),
       child: Container(
         padding: const EdgeInsets.fromLTRB(Gaps.sm, Gaps.sm, Gaps.sm, Gaps.md),
         decoration: BoxDecoration(
