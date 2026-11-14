@@ -133,7 +133,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                                     child: Text(
                                       context.l10n.home_shop,
                                       maxLines: 1,
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: TextSizes.heading,
                                         color: Palette.text,
                                         height: 1.1,
@@ -355,7 +355,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
               child: FitBox(
                 child: Text(
                   context.l10n.character_decorate,
-                  style: TextStyle(fontSize: 26, color: Palette.text),
+                  style: const TextStyle(fontSize: 26, color: Palette.text),
                 ),
               ),
             ),

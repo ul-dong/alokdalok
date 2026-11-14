@@ -271,14 +271,17 @@ class _ParentContinueState extends State<_ParentContinue>
           borderRadius: BorderRadius.circular(26),
           border: Border.all(color: Palette.creamDeep, width: 2),
           gradient: LinearGradient(
-            colors: [Palette.yellowSoft, Colors.white],
+            colors: const [Palette.yellowSoft, Colors.white],
             stops: [_c.value, _c.value],
           ),
         ),
         alignment: Alignment.center,
         child: Text(
           context.l10n.eye_parentContinue,
-          style: TextStyle(fontSize: TextSizes.body, color: Palette.textSoft),
+          style: const TextStyle(
+            fontSize: TextSizes.body,
+            color: Palette.textSoft,
+          ),
         ),
       ),
     ),

@@ -259,15 +259,15 @@ class _Bubble extends StatelessWidget {
     ),
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.only(
+        borderRadius: BorderRadius.only(
           topLeft: Radius.circular(18),
           topRight: Radius.circular(18),
           bottomRight: Radius.circular(18),
           bottomLeft: Radius.circular(4),
         ),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
             color: Palette.panelShadow,
             blurRadius: 8,
@@ -304,7 +304,10 @@ class _GoalBurst extends StatelessWidget {
         child: FitBox(
           child: Text(
             context.l10n.game_goal,
-            style: TextStyle(fontSize: TextSizes.label, color: Colors.white),
+            style: const TextStyle(
+              fontSize: TextSizes.label,
+              color: Colors.white,
+            ),
           ),
         ),
       ),

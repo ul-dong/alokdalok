@@ -729,7 +729,7 @@ class _RotateHintState extends State<RotateHint> {
             Text(
               context.l10n.common_rotate,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 26, color: Palette.text),
+              style: const TextStyle(fontSize: 26, color: Palette.text),
             ),
           ],
         ),

@@ -37,7 +37,7 @@ class BagScreen extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           context.l10n.bag_title,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: TextSizes.heading,
                             color: Palette.text,
                           ),
@@ -97,7 +97,7 @@ class BagScreen extends StatelessWidget {
                             child: Text(
                               context.l10n.bag_empty,
                               textAlign: TextAlign.center,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: TextSizes.label,
                                 color: Palette.textSoft,
                               ),

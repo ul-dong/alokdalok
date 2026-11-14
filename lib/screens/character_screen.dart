@@ -277,7 +277,7 @@ class _VehicleShelfState extends State<_VehicleShelf> {
                   child: FitBox(
                     child: Text(
                       context.l10n.character_pickRide,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: TextSizes.label,
                         color: Palette.textSoft,
                       ),
@@ -335,7 +335,7 @@ class _VehicleShelfState extends State<_VehicleShelf> {
                         child: FitBox(
                           child: Text(
                             context.l10n.character_decorate,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: TextSizes.title,
                               color: Palette.text,
                             ),
@@ -425,7 +425,7 @@ class _Empty extends StatelessWidget {
         children: [
           Text(
             context.l10n.character_none,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: TextSizes.title,
               color: Palette.textSoft,
             ),
@@ -439,11 +439,15 @@ class _Empty extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.checkroom_rounded, size: 32, color: Palette.text),
-                SizedBox(width: 8),
+                const Icon(
+                  Icons.checkroom_rounded,
+                  size: 32,
+                  color: Palette.text,
+                ),
+                const SizedBox(width: 8),
                 Text(
                   context.l10n.character_goShop,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: TextSizes.label,
                     color: Palette.text,
                   ),

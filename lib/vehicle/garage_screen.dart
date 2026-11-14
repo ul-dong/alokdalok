@@ -231,7 +231,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
           Text(
             context.l10n.garage_empty,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: TextSizes.label,
               color: Palette.textSoft,
             ),
@@ -246,7 +246,10 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
             semanticLabel: context.l10n.character_goShop,
             child: Text(
               context.l10n.character_goShop,
-              style: TextStyle(fontSize: TextSizes.label, color: Palette.text),
+              style: const TextStyle(
+                fontSize: TextSizes.label,
+                color: Palette.text,
+              ),
             ),
           ),
         ],
@@ -287,7 +290,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
                   child: FitBox(
                     child: Text(
                       context.l10n.garage_pickColor,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: TextSizes.body,
                         color: Palette.textSoft,
                       ),
@@ -304,15 +307,15 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.auto_fix_normal_rounded,
                           size: 28,
                           color: Palette.text,
                         ),
-                        SizedBox(width: 4),
+                        const SizedBox(width: 4),
                         Text(
                           context.l10n.garage_eraser,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: TextSizes.button,
                             color: Palette.text,
                           ),

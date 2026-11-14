@@ -193,14 +193,17 @@ class PlayLimitCard extends StatelessWidget {
                     FitBox(
                       child: Text(
                         context.l10n.play_limitTitle,
-                        style: TextStyle(fontSize: 48, color: Palette.text),
+                        style: const TextStyle(
+                          fontSize: 48,
+                          color: Palette.text,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
                     FitBox(
                       child: Text(
                         context.l10n.play_limitSub,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: TextSizes.heading,
                           color: Palette.textSoft,
                         ),
@@ -214,7 +217,7 @@ class PlayLimitCard extends StatelessWidget {
                         semanticLabel: context.l10n.play_parentMore,
                         child: Text(
                           context.l10n.play_parentMore,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: TextSizes.button,
                             color: Palette.textSoft,
                           ),
@@ -303,12 +306,12 @@ class _EyeBreakCardState extends State<EyeBreakCard> {
           padding: const EdgeInsets.all(18),
           child: Row(
             children: [
-              Expanded(
+              const Expanded(
                 flex: 6,
                 child: Center(
                   child: AspectRatio(
                     aspectRatio: 1.25,
-                    child: CustomPaint(painter: const WindowViewPainter()),
+                    child: CustomPaint(painter: WindowViewPainter()),
                   ),
                 ),
               ),
@@ -321,7 +324,10 @@ class _EyeBreakCardState extends State<EyeBreakCard> {
                     FitBox(
                       child: Text(
                         context.l10n.play_breakTitle,
-                        style: TextStyle(fontSize: 40, color: Palette.text),
+                        style: const TextStyle(
+                          fontSize: 40,
+                          color: Palette.text,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -407,7 +413,7 @@ class _TapToPlay extends StatelessWidget {
       FitBox(
         child: Text(
           context.l10n.play_restDone,
-          style: TextStyle(fontSize: 24, color: Palette.textSoft),
+          style: const TextStyle(fontSize: 24, color: Palette.textSoft),
         ),
       ),
     ],

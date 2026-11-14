@@ -61,7 +61,7 @@ class SettingsScreen extends StatelessWidget {
                           children: [
                             Text(
                               context.l10n.settings_title,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: TextSizes.heading,
                                 color: Palette.text,
                                 height: 1.1,
@@ -69,7 +69,7 @@ class SettingsScreen extends StatelessWidget {
                             ),
                             Text(
                               context.l10n.settings_forParents,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: TextSizes.caption,
                                 color: Palette.textSoft,
                               ),
@@ -147,7 +147,7 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   if (!state.audio.voiceAvailable)
                     Padding(
-                      padding: EdgeInsets.fromLTRB(
+                      padding: const EdgeInsets.fromLTRB(
                         Gaps.sm,
                         Gaps.sm,
                         Gaps.sm,
@@ -203,7 +203,7 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       child: Text(
                         context.l10n.settings_licenses,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: TextSizes.small,
                           color: Palette.textSoft,
                         ),
@@ -604,15 +604,15 @@ class _HoldToResetState extends State<_HoldToReset> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                const Icon(
                   Icons.delete_outline_rounded,
                   size: 22,
                   color: Color(0xFFC9566F),
                 ),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text(
                   context.l10n.settings_resetAll,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: TextSizes.body,
                     color: Color(0xFFC9566F),
                   ),
@@ -686,7 +686,7 @@ class _EyeGuardCard extends StatelessWidget {
                   children: [
                     Text(
                       context.l10n.settings_eyeDistance,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: TextSizes.small,
                         color: Palette.text,
                       ),
@@ -896,12 +896,12 @@ class _BackupCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              _TileIcon(Icons.cloud_off_rounded),
-              SizedBox(width: 14),
+              const _TileIcon(Icons.cloud_off_rounded),
+              const SizedBox(width: 14),
               Expanded(
                 child: Text(
                   context.l10n.settings_backup,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: TextSizes.button,
                     color: Palette.text,
                   ),
@@ -1032,7 +1032,7 @@ class _BackupExportDialogState extends State<_BackupExportDialog> {
             onTap: () => Navigator.of(context).pop(),
             child: Text(
               context.l10n.common_close,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: TextSizes.body,
                 color: Palette.textSoft,
               ),
@@ -1049,7 +1049,10 @@ class _BackupExportDialogState extends State<_BackupExportDialog> {
             },
             child: Text(
               context.l10n.settings_copy,
-              style: TextStyle(fontSize: TextSizes.body, color: Palette.text),
+              style: const TextStyle(
+                fontSize: TextSizes.body,
+                color: Palette.text,
+              ),
             ),
           ),
         ],
@@ -1150,7 +1153,7 @@ class _BackupRestoreDialogState extends State<BackupRestoreDialog> {
             onTap: () => Navigator.of(context).pop(),
             child: Text(
               context.l10n.common_close,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: TextSizes.body,
                 color: Palette.textSoft,
               ),
@@ -1162,7 +1165,10 @@ class _BackupRestoreDialogState extends State<BackupRestoreDialog> {
             onTap: _paste,
             child: Text(
               context.l10n.settings_paste,
-              style: TextStyle(fontSize: TextSizes.body, color: Palette.text),
+              style: const TextStyle(
+                fontSize: TextSizes.body,
+                color: Palette.text,
+              ),
             ),
           ),
           PillButton(
@@ -1173,7 +1179,10 @@ class _BackupRestoreDialogState extends State<BackupRestoreDialog> {
             onTap: _restore,
             child: Text(
               context.l10n.settings_restore,
-              style: TextStyle(fontSize: TextSizes.body, color: Palette.text),
+              style: const TextStyle(
+                fontSize: TextSizes.body,
+                color: Palette.text,
+              ),
             ),
           ),
         ],
@@ -1200,7 +1209,7 @@ class _ParentNotesState extends State<_ParentNotes> {
       GestureDetector(
         onLongPress: () => setState(() => _diag = !_diag),
         child: _Panel(
-          padding: EdgeInsets.fromLTRB(18, 14, 18, 14),
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
           children: [
             _Bullets([
               context.l10n.settings_note1,

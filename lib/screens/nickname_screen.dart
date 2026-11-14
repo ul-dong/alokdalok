@@ -116,7 +116,7 @@ class _NicknameScreenState extends State<NicknameScreen> {
                   children: [
                     Text(
                       context.l10n.nickname_title,
-                      style: TextStyle(fontSize: 26, color: Palette.text),
+                      style: const TextStyle(fontSize: 26, color: Palette.text),
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -171,15 +171,15 @@ class _NicknameScreenState extends State<NicknameScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.check_rounded,
                                 color: Colors.white,
                                 size: 32,
                               ),
-                              SizedBox(width: 6),
+                              const SizedBox(width: 6),
                               Text(
                                 context.l10n.nickname_ok,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: TextSizes.title,
                                   color: Colors.white,
                                 ),
@@ -193,7 +193,7 @@ class _NicknameScreenState extends State<NicknameScreen> {
                     Text(
                       context.l10n.nickname_randomHint,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: TextSizes.small,
                         color: Palette.textSoft,
                       ),
@@ -224,12 +224,16 @@ class _ParentNotice extends StatelessWidget {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.info_outline_rounded, color: Palette.textSoft, size: 20),
-        SizedBox(width: 8),
+        const Icon(
+          Icons.info_outline_rounded,
+          color: Palette.textSoft,
+          size: 20,
+        ),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             context.l10n.nickname_parentNote,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: TextSizes.caption,
               color: Palette.textSoft,
               height: 1.35,

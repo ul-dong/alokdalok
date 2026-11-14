@@ -163,7 +163,7 @@ class _ParentalGateState extends State<ParentalGate> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   context.l10n.gate_title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: TextSizes.number,
                     color: Palette.text,
                   ),
