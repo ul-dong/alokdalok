@@ -27,6 +27,9 @@ class _SceneSensor implements EyeSensor {
   String get mode => '미리보기';
   @override
   bool get supported => true;
+
+  @override
+  EyeDetectStats? get detectStats => null;
   @override
   Future<FaceReading?> sampleOnce({
     Duration budget = EyeRules.windowBudget,

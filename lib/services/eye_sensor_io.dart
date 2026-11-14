@@ -80,6 +80,9 @@ class _MlKitEyeSensor implements EyeSensor {
   @override
   bool get supported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
+  @override
+  EyeDetectStats? get detectStats => null;
+
   /// 이어서 프레임을 한 장도 받지 못한 창 수 (카메라가 멈춘 것 같으면 새로 연다)
   int _emptyWindows = 0;
 

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../core/palette.dart';
 import '../services/backup_code.dart';
 import '../services/eye_guard.dart';
+import '../services/perf_monitor.dart';
 import '../services/play_clock.dart';
 import '../widgets/common.dart';
 import '../widgets/eye_guard_overlay.dart';
@@ -1171,9 +1172,138 @@ class _ParentNotesState extends State<_ParentNotes> {
       ),
       if (_diag) ...[
         const SizedBox(height: Gaps.md),
+        const PerfDiagnosticsPanel(),
+        const SizedBox(height: Gaps.md),
         const EyeDiagnosticsPanel(),
       ],
     ],
+  );
+}
+
+/// 렉·터치 진단: 최근 1분의 화면 그리기 시간(느린 장 수, 가장 느린 장), 최근 누름이 무엇에 맞았는지,
+/// 살아 있는 소리 플레이어 수, (웹) 얼굴 인식 한 번에 걸린 시간. 렉을 느낀 직후 열면 숫자로 보인다.
+/// 1초마다 새로 읽는다. (release 빌드에서도 보인다)
+class PerfDiagnosticsPanel extends StatefulWidget {
+  const PerfDiagnosticsPanel({super.key, this.monitor});
+
+  /// 없으면 앱 전체 기록([PerfMonitor.instance])
+  final PerfMonitor? monitor;
+
+  @override
+  State<PerfDiagnosticsPanel> createState() => _PerfDiagnosticsPanelState();
+}
+
+class _PerfDiagnosticsPanelState extends State<PerfDiagnosticsPanel> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  static String _ms(double v) =>
+      v < 0 ? '-' : '${v.toStringAsFixed(v < 10 ? 1 : 0)}ms';
+
+  static String _touch(TouchRecord t) {
+    final ago = DateTime.now().difference(t.at).inSeconds;
+    final held = (t.held.inMilliseconds / 1000).toStringAsFixed(1);
+    final long = t.held >= LongPress.sayName ? ', 길게' : '';
+    final cancel = t.cancelled ? ', 취소됨' : '';
+    return '${t.target} ($held초$long, ${t.moved.round()}px 움직임$cancel, $ago초 전)';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    final m = widget.monitor ?? PerfMonitor.instance;
+    final f = m.frames();
+    final a = state.audio.playerCounts;
+    final touches = m.touches.reversed.toList();
+    final d = state.eye.detectStats;
+    final rows = <(String, String)>[
+      ('화면 그리기', '${f.count}장, 평균 ${_ms(f.averageMs)}'),
+      ('느린 장', '16ms 넘음 ${f.over16}장, 33ms 넘음 ${f.over33}장'),
+      ('가장 느린 장', f.count == 0 ? '-' : _ms(f.worstMs)),
+      (
+        '소리 플레이어',
+        a.webDecoded != null
+            ? '효과음 ${a.sfx}, 풀어 둔 소리 ${a.webDecoded}개, 받은 파일 ${a.webFiles}개'
+            : '효과음 ${a.sfx}, 음악 ${a.music}, 말 조각 ${a.clips} (합 ${a.total})',
+      ),
+      ('마지막 누름', touches.isEmpty ? '아직 없음' : _touch(touches[0])),
+      if (touches.length > 1) ('그 전 누름', _touch(touches[1])),
+      if (d != null && d.count > 0)
+        (
+          '얼굴 인식 시간',
+          '${d.where}, 마지막 ${_ms(d.lastMs)}, 최대 ${_ms(d.maxMs)}, '
+              '화면 막음 ${_ms(d.mainMs)}, 준비 ${_ms(d.initMs)}',
+        ),
+    ];
+    return _Panel(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              '렉, 터치 진단 (최근 1분)',
+              style: TextStyle(fontSize: TextSizes.body, color: Palette.text),
+            ),
+            for (final (k, v) in rows) _DiagRow(label: k, value: v),
+            const SizedBox(height: Gaps.sm),
+            const _Note(
+              '렉을 느낀 바로 뒤에 이 칸을 열어 주세요. 한 장에 16ms가 넘으면 부드럽지 않고, 33ms가 넘으면 끊겨 보입니다. 마지막 누름에서 길게(0.4초 넘게) 누르면 놀이에 들어가지 않고 이름만 말합니다. 소리 플레이어 수가 계속 늘면 알려 주세요.',
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// 진단 칸 한 줄: 왼쪽 이름, 오른쪽 값
+class _DiagRow extends StatelessWidget {
+  const _DiagRow({required this.label, required this.value});
+  final String label, value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: TextSizes.caption,
+              color: Palette.textSoft,
+            ),
+          ),
+        ),
+        const SizedBox(width: Gaps.sm),
+        Flexible(
+          flex: 2,
+          child: Text(
+            value,
+            key: ValueKey('diag:$label'),
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: TextSizes.caption,
+              color: Palette.text,
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 }
 

@@ -54,7 +54,35 @@ abstract class EyeSensor {
   /// 이 기기에서 쓸 수 있는지 (카메라·얼굴 인식 지원)
   bool get supported;
 
+  /// 얼굴 인식 한 번에 걸린 시간 (진단 칸, 웹만. 앱은 [EyeStats]의 창 열기 시간을 본다)
+  EyeDetectStats? get detectStats => null;
+
   static EyeSensor create() => createEyeSensor();
+}
+
+/// 얼굴 인식 시간 (진단 칸). 웹은 Web Worker에서 인식하므로 [mainMs]만 화면(터치)을 막는다.
+class EyeDetectStats {
+  const EyeDetectStats({
+    required this.where,
+    required this.lastMs,
+    required this.maxMs,
+    required this.mainMs,
+    required this.initMs,
+    required this.count,
+  });
+
+  /// '일꾼'(Web Worker) 또는 '메인'
+  final String where;
+
+  /// 마지막 인식 시간, 가장 오래 걸린 인식 시간 (ms, 아직 없으면 음수)
+  final double lastMs, maxMs;
+
+  /// 마지막 인식에서 메인 스레드를 막은 시간 (영상 한 장 뜨기, ms)
+  final double mainMs;
+
+  /// 인식기 준비 시간 (ms)
+  final double initMs;
+  final int count;
 }
 
 /// 카메라를 아예 쓸 수 없을 때 [EyeSensor.sampleOnce]가 던진다 (권한 거부, 앞카메라 없음 등).
@@ -200,6 +228,10 @@ class EyeRules {
 
   /// 아이 화면을 벗어나도 이만큼은 카메라를 그대로 둔다 (짧은 화면 전환마다 껐다 켜지 않게)
   static const offDelay = Duration(seconds: 1);
+
+  /// 화면을 누른 직후 이만큼은 카메라 창을 열지 않는다 (창 하나에 한 번만 미룬다).
+  /// 창을 열고 얼굴을 보는 일이 누른 화면이 바뀌는 순간과 겹치면 화면이 늦게 바뀐다 (특히 웹).
+  static const touchQuiet = Duration(seconds: 1);
 
   /// 창을 못 열면(카메라가 잠깐 바쁨 등) 이만큼 뒤 다시 연다. 처음 [quickRetries]번은 3초,
   /// 그 뒤로는 넉넉 주기(10초, 백오프 적용). 실패해도 눈 지킴이를 멈추지 않는다.
@@ -347,6 +379,9 @@ class EyeGuard extends ChangeNotifier {
 
   /// 진단 칸에 보이는 방식 이름
   String get cameraMode => _sensor.mode;
+
+  /// 얼굴 인식 시간 (진단 칸, 웹)
+  EyeDetectStats? get detectStats => _sensor.detectStats;
 
   /// 30cm에서 잰 얼굴 크기 (부모님이 맞춘 값). 없으면 기본 계산을 쓴다.
   double? calibration;
@@ -544,11 +579,27 @@ class EyeGuard extends ChangeNotifier {
     unawaited(_openWindow(gen)); // 첫 창은 바로 연다
   }
 
+  DateTime? _touchedAt;
+
+  /// 화면을 눌렀다 (앱 전체의 누름을 [EyeGuardOverlay]가 알려 준다)
+  void touched() => _touchedAt = _now();
+
   /// 창 하나: 카메라를 잠깐 열어 얼굴을 보고 닫은 뒤, [checkInterval] 뒤 다음 창을 잡는다.
-  Future<void> _openWindow(int gen) async {
+  /// 화면을 막 눌렀으면 [EyeRules.touchQuiet]이 지날 때까지 한 번만 미룬다 ([deferred]).
+  Future<void> _openWindow(int gen, {bool deferred = false}) async {
     _windowTimer = null;
     _windowAt = null;
     if (gen != _gen || !_running) return;
+    final touched = _touchedAt;
+    if (!deferred && _measuring == 0 && touched != null) {
+      final quietAt = touched.add(EyeRules.touchQuiet);
+      final wait = quietAt.difference(_now());
+      if (wait > Duration.zero) {
+        _windowAt = quietAt;
+        _windowTimer = Timer(wait, () => _openWindow(gen, deferred: true));
+        return;
+      }
+    }
     final began = _now();
     _windowOpen = true;
     _stats.cameraOn(true);

@@ -2,6 +2,8 @@
 class WebAudioEngine {
   bool get supported => false;
   bool get unlocked => false;
+  int get decodedCount => 0;
+  int get fileCount => 0;
   void init() {}
   Future<void> preload(List<String> urls) async {}
   Future<bool> playClips(List<String> urls, List<double> pauses) async => false;

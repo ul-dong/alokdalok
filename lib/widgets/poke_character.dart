@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../character/zodiac.dart';
 import '../core/slow_clock.dart';
 import 'common.dart';
+import 'live_transform.dart';
 
 /// 캐릭터를 콕 눌렀을 때 하는 짧은 몸짓
 enum PokeMotion {
@@ -106,15 +107,18 @@ class PokeCharacterState extends State<PokeCharacter> {
         : SlowClock.instance.removeListener(_onClock);
   }
 
+  /// 시계 박자마다 알린다. 위젯을 다시 만들지 않고 [LiveTransform]만 다시 그린다
+  /// (홈처럼 LayoutBuilder 안에서 setState를 하면 화면 전체를 다시 배치하고 그린다).
+  final _moved = ValueNotifier<int>(0);
+
   void _onClock() {
     if (!mounted) return;
-    setState(() {
-      _tick++;
-      if (_tick >= _totalTicks) {
-        _tick = -1;
-        _listen(false);
-      }
-    });
+    _tick++;
+    if (_tick >= _totalTicks) {
+      _tick = -1;
+      _listen(false);
+    }
+    _moved.value++;
   }
 
   void _poke() {
@@ -127,18 +131,28 @@ class PokeCharacterState extends State<PokeCharacter> {
     }
     widget.onPoke?.call();
     final calm = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    setState(() {
-      _motion = PokeCharacter.motionFor(n);
-      if (calm) return;
-      _tick = 0;
-      _listen(true);
-    });
+    _motion = PokeCharacter.motionFor(n);
+    if (calm) return;
+    _tick = 0;
+    _listen(true);
+    _moved.value++;
   }
 
   @override
   void dispose() {
     _listen(false);
+    _moved.dispose();
     super.dispose();
+  }
+
+  /// 지금 박자의 몸짓 변환 (멈춰 있으면 null)
+  Matrix4? _transform(Size size) {
+    if (!moving) return null;
+    final t = _tick / _totalTicks;
+    return Matrix4.translationValues(0, -liftFor(_motion, t) * size.height, 0)
+      ..multiply(
+        transformAround(size, Alignment.bottomCenter, transformFor(_motion, t)),
+      );
   }
 
   /// 0..1 진행에서 위로 뛰는 높이 (그림 높이에 대한 비율, 폴짝 뛰기만)
@@ -166,7 +180,6 @@ class PokeCharacterState extends State<PokeCharacter> {
 
   @override
   Widget build(BuildContext context) {
-    final t = moving ? _tick / _totalTicks : 0.0;
     return Semantics(
       button: true,
       label: widget.semanticLabel,
@@ -181,14 +194,12 @@ class PokeCharacterState extends State<PokeCharacter> {
           child: Align(
             widthFactor: 1,
             heightFactor: 1,
-            // 멈춰 있을 때도 같은 모양의 위젯 트리를 유지해서 캐릭터 상태가 새로 만들어지지 않게 한다
-            child: FractionalTranslation(
-              translation: Offset(0, moving ? -liftFor(_motion, t) : 0),
-              child: Transform(
-                alignment: Alignment.bottomCenter,
-                transform: moving
-                    ? transformFor(_motion, t)
-                    : Matrix4.identity(),
+            // 몸짓은 그리기만 옮긴다 (위젯 트리는 그대로라 캐릭터 상태가 새로 만들어지지 않는다)
+            // 이 칸만 다시 그린다 (RepaintBoundary)
+            child: RepaintBoundary(
+              child: LiveTransform(
+                listenable: _moved,
+                transform: _transform,
                 child: widget.child,
               ),
             ),

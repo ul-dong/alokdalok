@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 
 import '../data/item_catalog.dart';
@@ -2967,7 +2968,9 @@ class AnimalPainter extends CustomPainter {
   @override
   bool shouldRepaint(AnimalPainter old) =>
       old.zodiac != zodiac ||
-      old.items != items ||
+      // 장착 목록은 화면을 다시 만들 때마다 새 Map으로 오므로 내용으로 비교한다
+      // (같은 옷인데 다른 Map이라고 초당 20번 다시 그리지 않게)
+      !mapEquals(old.items, items) ||
       old.mood != mood ||
       old.phase != phase ||
       old.drawLegs != drawLegs ||

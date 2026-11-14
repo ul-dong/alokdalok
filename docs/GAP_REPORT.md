@@ -14,6 +14,7 @@
 | 통합 마무리 (2026-10-22) | `flutter test` **323개 전부 통과**, `flutter analyze` **0건** (이 경로는 ASCII라 바로 실행), `flutter test test_preview --update-goldens` **131개 통과** (568×320·844×390·1280×800 주요 화면 그림 확인). 빌드 3종은 11장 참고 |
 | 짝 맞추기 짧게 (2026-10-22, match5) | `flutter test` **440개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **197개 통과** (game_match_1~5 × 568·844·1280, 결과 화면 5문제·3장) |
 | 홈·놀이터 진입 개선 (2026-11-13, home3) | `flutter test` **513개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **218개 통과** (홈 기록 있음·없음, 놀이터 568·844·1280, `playground_items.png`), 터치 칸 감사 통과. 문장 목록 1044 = manifest 1044 = mp3 1044 |
+| 렉·터치 점검 (2026-11-14, perf) | `flutter test` **540개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **225개 통과** (`settings_perf_diag_*` 렉·터치 진단 칸). 홈 1초 다시 그리기 2880 → 172 (`test/perf_test.dart`), 웹 얼굴 인식은 Web Worker(`web/eye_worker.js`), 웹 녹음 조각은 최근 48개만 풀어 둠 |
 | 점검 수정 (2026-10-22, release2) | `flutter test` **395개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **187개 통과**. 문장 목록 577 = manifest 577 = mp3 577 (14장) |
 | 기준선 `flutter test` (test/) | **120개 전부 통과** (소스상 `test`/`testWidgets` 72곳: state 33·widget 19·logic 14·eye_guard 6, 화면 크기 반복 포함 실행 120건). 사양 목표 142 |
 | 기준선 `flutter test test_preview` | 그대로 돌리면 9 통과 / 32 실패 (골든 비교: `shots/` 없음 + 저장된 PNG 픽셀 차이). 미리보기 생성기이므로 `--update-goldens`로 돌리면 **41개 전부 통과** |

@@ -6,6 +6,7 @@
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
@@ -13,7 +14,14 @@ class WebAudioEngine {
   web.AudioContext? _ctx;
   web.GainNode? _voiceGain;
   web.GainNode? _musicGain;
+
+  /// 받아 둔 소리 파일 (압축된 MP3 그대로: 녹음 조각 전부 합쳐 약 12MB)
+  final Map<String, Future<Uint8List?>> _files = {};
+
+  /// 풀어 둔(디코딩한) 소리. 녹음 조각은 최근 [_maxDecodedVoice]개만 둔다:
+  /// 1044개를 모두 풀어 두면 약 35분 분량의 PCM(약 400MB)이 메모리에 쌓여 렉·탭 새로고침이 난다.
   final Map<String, Future<web.AudioBuffer?>> _cache = {};
+  static const _maxDecodedVoice = 48;
   final List<web.AudioBufferSourceNode> _voiceNodes = [];
   web.AudioBufferSourceNode? _musicNode;
   web.GainNode? _trackGain; // 곡마다 따로: 부드럽게 커지고 작아지기
@@ -92,25 +100,65 @@ class WebAudioEngine {
 
   bool get unlocked => _ctx != null && _ctx!.state == 'running';
 
-  Future<web.AudioBuffer?> _load(String url) => _cache[url] ??= _fetch(url);
+  /// 풀어 둔 소리 개수 (진단 칸)
+  int get decodedCount => _cache.length;
 
-  Future<web.AudioBuffer?> _fetch(String url) async {
+  /// 받아 둔 소리 파일 개수 (진단 칸)
+  int get fileCount => _files.length;
+
+  Future<web.AudioBuffer?> _load(String url) {
+    final hit = _cache.remove(url);
+    if (hit != null) return _cache[url] = hit; // 최근에 쓴 것으로 옮긴다
+    final made = _cache[url] = _decode(url);
+    // 녹음 조각은 오래 안 쓴 것부터 놓는다 (음악은 몇 곡뿐이라 그대로 둔다)
+    var voices = _cache.keys.where((k) => !k.contains('/music/')).length;
+    for (final k in _cache.keys.toList()) {
+      if (voices <= _maxDecodedVoice) break;
+      if (k.contains('/music/') || k == url) continue;
+      _cache.remove(k);
+      voices--;
+    }
+    return made;
+  }
+
+  Future<web.AudioBuffer?> _decode(String url) async {
+    final bytes = await _file(url);
+    if (bytes == null) {
+      _cache.remove(url);
+      return null;
+    }
     try {
-      final ctx = _context();
-      final res = await web.window.fetch(url.toJS).toDart;
-      if (!res.ok) return null;
-      final bytes = await res.arrayBuffer().toDart;
-      return await ctx.decodeAudioData(bytes).toDart;
+      // decodeAudioData는 넘긴 버퍼를 비우므로 복사본을 넘긴다
+      return await _context()
+          .decodeAudioData(Uint8List.fromList(bytes).buffer.toJS)
+          .toDart;
     } catch (_) {
       _cache.remove(url);
       return null;
     }
   }
 
-  /// 녹음 조각들을 미리 받아 둔다 (조금씩, 놀이를 방해하지 않게).
+  Future<Uint8List?> _file(String url) => _files[url] ??= _fetch(url);
+
+  Future<Uint8List?> _fetch(String url) async {
+    try {
+      final res = await web.window.fetch(url.toJS).toDart;
+      if (!res.ok) {
+        _files.remove(url);
+        return null;
+      }
+      final ab = await res.arrayBuffer().toDart;
+      return ab.toDart.asUint8List();
+    } catch (_) {
+      _files.remove(url);
+      return null;
+    }
+  }
+
+  /// 녹음 조각 파일을 미리 받아 둔다 (조금씩, 놀이를 방해하지 않게). 풀어 두지는 않는다.
   Future<void> preload(List<String> urls) async {
     for (var i = 0; i < urls.length; i += 6) {
-      await Future.wait(urls.skip(i).take(6).map(_load));
+      await Future.wait(urls.skip(i).take(6).map(_file));
     }
   }
 

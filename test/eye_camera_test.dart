@@ -228,33 +228,40 @@ void main() {
     const s10 = Duration(seconds: 10), s3 = Duration(seconds: 3);
     const s15 = Duration(milliseconds: 1500);
 
-    test('넉넉(42cm 넘고 자세 바름) 10초, 기준 가까이(36cm 이하·각도 80% 넘음) 3초, 그 사이는 직전 그대로', () {
-      expect(g.checkInterval, s10);
-      step(at(50));
-      expect((g.zone, g.checkInterval), (EyeZone.safe, s10));
-      step(at(36));
-      expect((g.zone, g.checkInterval), (EyeZone.caution, s3), reason: '36cm');
-      step(at(40));
-      expect(g.checkInterval, s3, reason: '36~42cm는 직전(기준 가까이) 그대로');
-      step(at(42));
-      expect(g.checkInterval, s3, reason: '42cm는 아직 넉넉하지 않다');
-      step(at(43));
-      expect(g.checkInterval, s10);
-      step(at(40));
-      expect(g.checkInterval, s10, reason: '36~42cm는 직전(넉넉) 그대로');
-      step(at(50, yaw: 28)); // 35도의 80% (넘지 않음)
-      expect(g.checkInterval, s10);
-      step(at(50, yaw: 29));
-      expect(g.checkInterval, s3);
-      step(at(50, pitch: 25)); // 30도의 80% = 24
-      expect(g.checkInterval, s3);
-      step(at(50));
-      expect(g.checkInterval, s10);
-      step(at(50, roll: 37)); // 45도의 80% = 36
-      expect(g.checkInterval, s3);
-      step(null);
-      expect(g.checkInterval, s10, reason: '얼굴이 안 보이면 넉넉');
-    });
+    test(
+      '넉넉(42cm 넘고 자세 바름) 10초, 기준 가까이(36cm 이하·각도 80% 넘음) 3초, 그 사이는 직전 그대로',
+      () {
+        expect(g.checkInterval, s10);
+        step(at(50));
+        expect((g.zone, g.checkInterval), (EyeZone.safe, s10));
+        step(at(36));
+        expect(
+          (g.zone, g.checkInterval),
+          (EyeZone.caution, s3),
+          reason: '36cm',
+        );
+        step(at(40));
+        expect(g.checkInterval, s3, reason: '36~42cm는 직전(기준 가까이) 그대로');
+        step(at(42));
+        expect(g.checkInterval, s3, reason: '42cm는 아직 넉넉하지 않다');
+        step(at(43));
+        expect(g.checkInterval, s10);
+        step(at(40));
+        expect(g.checkInterval, s10, reason: '36~42cm는 직전(넉넉) 그대로');
+        step(at(50, yaw: 28)); // 35도의 80% (넘지 않음)
+        expect(g.checkInterval, s10);
+        step(at(50, yaw: 29));
+        expect(g.checkInterval, s3);
+        step(at(50, pitch: 25)); // 30도의 80% = 24
+        expect(g.checkInterval, s3);
+        step(at(50));
+        expect(g.checkInterval, s10);
+        step(at(50, roll: 37)); // 45도의 80% = 36
+        expect(g.checkInterval, s3);
+        step(null);
+        expect(g.checkInterval, s10, reason: '얼굴이 안 보이면 넉넉');
+      },
+    );
 
     test('경고 중 1.5초 (얼굴이 잠깐 안 보여도), 풀리면 기준 가까이 3초부터', () {
       while (g.alert == EyeAlert.none) {
@@ -382,7 +389,11 @@ void main() {
       await messenger.handlePlatformMessage(
         DeviceHeat.channel.name,
         codec.encodeMethodCall(
-          const MethodCall('changed', {'thermal': 3, 'powerSave': false, 'battery': 90}),
+          const MethodCall('changed', {
+            'thermal': 3,
+            'powerSave': false,
+            'battery': 90,
+          }),
         ),
         (_) {},
       );
@@ -648,22 +659,32 @@ void main() {
       expect(eyeCameraFps(ios: true), 5);
     });
 
-    test('웹: 320x240, 초당 5장(최대 10장), 창을 열 때 play·닫을 때 pause (창 주기는 앱이 정한다)', () {
-      final js = File('web/eye_guard.js').readAsStringSync();
-      expect(js, contains('width: { ideal: 320 }'));
-      expect(js, contains('height: { ideal: 240 }'));
-      expect(js, contains('frameRate: { ideal: 5, max: 10 }'));
-      expect(js, contains('open: async function ()'));
-      expect(js, contains('detect: function ()'));
-      expect(js, contains('pause: function ()'));
-      expect(js, contains('await video.play()'));
-      expect(js, contains('if (video) video.pause()'));
-      expect(js, isNot(contains('setTimeout(tick')), reason: '스스로 도는 검사 없음');
-      expect(js, isNot(contains('640')));
-      final dart = File('lib/services/eye_sensor_web.dart').readAsStringSync();
-      expect(dart, contains('EyeWindow<int>('));
-      expect(dart, contains('g.pause()'));
-    });
+    test(
+      '웹: 320x240, 초당 5장(최대 10장), 창을 열 때 play·닫을 때 pause (창 주기는 앱이 정한다)',
+      () {
+        final js = File('web/eye_guard.js').readAsStringSync();
+        expect(js, contains('width: { ideal: 320 }'));
+        expect(js, contains('height: { ideal: 240 }'));
+        expect(js, contains('frameRate: { ideal: 5, max: 10 }'));
+        expect(js, contains('open: async function ()'));
+        expect(js, contains('detect: async function ()'));
+        // 얼굴 인식은 Web Worker에서 (메인 스레드를 막지 않게), 못 쓰면 메인에서
+        expect(js, contains("new Worker(new URL('eye_worker.js'"));
+        expect(js, contains('createImageBitmap(video)'));
+        final worker = File('web/eye_worker.js').readAsStringSync();
+        expect(worker, contains('detectForVideo(bmp'));
+        expect(worker, contains('bmp.close()'));
+        expect(js, contains('pause: function ()'));
+        expect(js, contains('await video.play()'));
+        expect(js, contains('if (video) video.pause()'));
+        expect(js, isNot(contains('setTimeout(tick')), reason: '스스로 도는 검사 없음');
+        expect(js, isNot(contains('640')));
+        final dart = File('lib/services/eye_sensor_web.dart')
+            .readAsStringSync();
+        expect(dart, contains('EyeWindow<int>('));
+        expect(dart, contains('g.pause()'));
+      },
+    );
 
     test('앱: 창마다 이미지 스트림을 열고 닫는다, 컨트롤러는 기본으로 살려 둔다', () {
       final io = File('lib/services/eye_sensor_io.dart').readAsStringSync();
@@ -815,6 +836,8 @@ void main() {
       expect(sensor.on, isFalse, reason: '멈춤 화면');
       await t.tap(find.text('계속'));
       await t.pump();
+      expect(sensor.on, isFalse, reason: '누른 직후 1초는 창을 미룬다');
+      await t.pump(EyeRules.touchQuiet);
       expect(sensor.on, isTrue);
       expect(sensor.starts, 2);
       Navigator.of(t.element(find.byType(Scaffold).last)).pop();
@@ -1145,6 +1168,7 @@ void main() {
       await t.tap(find.text('창밖 먼 곳을 봐요'));
       await t.pump();
       expect(s.playBlock, PlayBlock.none);
+      await t.pump(EyeRules.touchQuiet); // 누른 직후 1초는 창을 미룬다
       expect(sensor.on, isTrue, reason: '카메라를 다시 켠다');
       expect(audio.spoken.last, '잘 쉬었어요! 다시 놀아요.');
       expect(SlowClock.instance.held, isFalse);

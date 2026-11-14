@@ -60,6 +60,9 @@ class Pressable extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
 
+  /// 누르는 동안 손가락이 이만큼(px)까지 움직여도 짧은 누르기로 받는다 (기본 18px의 두 배)
+  static const slop = 36.0;
+
   /// 길게 누르기 ([LongPress.sayName]). 효과음 없이 이것만 부른다.
   final VoidCallback? onLongPress;
   final Sfx? sound;
@@ -82,19 +85,36 @@ class _PressableState extends State<Pressable> {
       button: true,
       label: widget.semanticLabel,
       enabled: active,
-      child: GestureDetector(
+      // 아이 손가락은 누르는 동안 조금 미끄러진다. 기본(18px)보다 넉넉히([Pressable.slop])
+      // 움직여도 짧은 누르기로 받는다 (아이 화면에는 옆으로 밀기·스크롤이 없다).
+      // 탭은 손을 떼는 순간 바로 처리하고, 효과음·이름 말하기는 기다리지 않는다.
+      child: RawGestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapDown: active ? (_) => setState(() => _down = true) : null,
-        onTapCancel: () => setState(() => _down = false),
-        onTapUp: active ? (_) => setState(() => _down = false) : null,
-        onTap: active
-            ? () {
-                final audio = AppScope.read(context).audio;
-                if (widget.sound != null) audio.play(widget.sound!);
-                if (widget.speak != null) audio.say(widget.speak!);
-                widget.onTap!();
-              }
-            : null,
+        gestures: {
+          TapGestureRecognizer:
+              GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
+                () => TapGestureRecognizer(
+                  preAcceptSlopTolerance: Pressable.slop,
+                  postAcceptSlopTolerance: Pressable.slop,
+                ),
+                (r) => r
+                  ..onTapDown = active
+                      ? (_) => setState(() => _down = true)
+                      : null
+                  ..onTapCancel = (() => setState(() => _down = false))
+                  ..onTapUp = active
+                      ? (_) => setState(() => _down = false)
+                      : null
+                  ..onTap = active
+                      ? () {
+                          final audio = AppScope.read(context).audio;
+                          if (widget.sound != null) audio.play(widget.sound!);
+                          if (widget.speak != null) audio.say(widget.speak!);
+                          widget.onTap!();
+                        }
+                      : null,
+              ),
+        },
         child: PressDown(down: _down, child: widget.child),
       ),
     );

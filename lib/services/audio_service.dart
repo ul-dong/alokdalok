@@ -50,6 +50,9 @@ abstract class AudioService {
   Future<void> say(String text);
   Future<void> stopVoice();
 
+  /// 지금 살아 있는 소리 플레이어 수 (설정 진단 칸: 계속 늘면 새는 것)
+  AudioPlayerCounts get playerCounts => const AudioPlayerCounts();
+
   /// 캐릭터를 콕 눌렀을 때 나는 귀여운 소리 (assets/audio/sfx/poke.wav)
   Future<void> playPoke() => play(Sfx.poke);
 
@@ -319,6 +322,17 @@ class DeviceAudio extends AudioService {
   }
 
   @override
+  AudioPlayerCounts get playerCounts => kIsWeb
+      ? AudioPlayerCounts(
+          sfx: _players.length,
+          music: 0,
+          clips: 0,
+          webDecoded: _web.decodedCount,
+          webFiles: _web.fileCount,
+        )
+      : AudioPlayerCounts(sfx: _players.length, music: 1, clips: _clips.alive);
+
+  @override
   Future<void> play(Sfx sfx) async {
     if (!sfxOn) return;
     try {
@@ -350,11 +364,13 @@ class DeviceAudio extends AudioService {
         );
         if (ok) return;
       } else {
-        await _playClipsNative(clips, token);
+        await _clips.play(clips, duck: _duck);
         return;
       }
     } else if (kIsWeb) {
       _web.stopVoice();
+    } else {
+      await _clips.stop(); // 기기 음성으로 말하기 전에 녹음 조각을 멈춘다
     }
     if (!_voiceAvailable || token != _voiceToken) return;
     _duck(true);
@@ -367,49 +383,8 @@ class DeviceAudio extends AudioService {
     }
   }
 
-  /// 앱(안드로이드·iOS): 조각을 모두 먼저 불러온 뒤 차례로 틀어서 사이가 벌어지지 않게 한다.
-  final List<AudioPlayer> _clipPlayers = [];
-
-  Future<void> _playClipsNative(List<VoiceClip> clips, int token) async {
-    await _disposeClipPlayers();
-    final players = <AudioPlayer>[];
-    try {
-      for (final c in clips) {
-        final p = AudioPlayer();
-        players.add(p);
-        await p.setReleaseMode(ReleaseMode.stop);
-        await p.setSource(AssetSource('voice/${c.file}'));
-      }
-      if (token != _voiceToken) return;
-      _clipPlayers.addAll(players);
-      _duck(true);
-      for (var i = 0; i < clips.length; i++) {
-        if (token != _voiceToken) return;
-        if (clips[i].pauseBefore > Duration.zero) {
-          await Future<void>.delayed(clips[i].pauseBefore);
-          if (token != _voiceToken) return;
-        }
-        final done = players[i].onPlayerComplete.first;
-        await players[i].resume();
-        await done.timeout(const Duration(seconds: 8));
-      }
-    } catch (e) {
-      debugPrint('voice clips: $e');
-    } finally {
-      if (token == _voiceToken) _duck(false);
-    }
-  }
-
-  Future<void> _disposeClipPlayers() async {
-    final old = List.of(_clipPlayers);
-    _clipPlayers.clear();
-    for (final p in old) {
-      try {
-        await p.stop();
-        await p.dispose();
-      } catch (_) {}
-    }
-  }
+  /// 앱(안드로이드·iOS): 녹음 조각 플레이어 ([ClipQueue]가 만들고 반드시 정리한다)
+  late final ClipQueue _clips = ClipQueue(_NativeClip.new);
 
   @override
   Future<void> startMusic(String track) async {
@@ -462,10 +437,142 @@ class DeviceAudio extends AudioService {
     _voiceToken++;
     _duck(false);
     _web.stopVoice();
-    await _disposeClipPlayers();
+    await _clips.stop();
     try {
       await _tts.stop();
     } catch (_) {}
+  }
+}
+
+/// 살아 있는 소리 플레이어 수 ([AudioService.playerCounts])
+class AudioPlayerCounts {
+  const AudioPlayerCounts({
+    this.sfx = 0,
+    this.music = 0,
+    this.clips = 0,
+    this.webDecoded,
+    this.webFiles,
+  });
+
+  /// 효과음 플레이어 (종류마다 하나씩, 최대 [Sfx.values] 개)
+  final int sfx;
+
+  /// 배경 음악 플레이어 (앱 1개)
+  final int music;
+
+  /// 녹음 조각 플레이어 (말하는 동안만, 말이 끝나면 0)
+  final int clips;
+
+  /// 웹: 풀어 둔 소리 수, 받아 둔 소리 파일 수
+  final int? webDecoded, webFiles;
+
+  int get total => sfx + music + clips;
+}
+
+/// 녹음 조각 하나를 트는 플레이어 (앱은 audioplayers, 테스트는 가짜)
+abstract class ClipPlayer {
+  /// 조각을 불러 둔다 (assets/ 아래 경로)
+  Future<void> load(String asset);
+
+  /// 틀고, 끝날 때까지 기다린다
+  Future<void> play();
+
+  /// 멈추고 놓는다 (네이티브 플레이어를 돌려준다)
+  Future<void> dispose();
+}
+
+class _NativeClip implements ClipPlayer {
+  final AudioPlayer _p = AudioPlayer();
+
+  @override
+  Future<void> load(String asset) async {
+    await _p.setReleaseMode(ReleaseMode.stop);
+    await _p.setSource(AssetSource(asset));
+  }
+
+  @override
+  Future<void> play() async {
+    final done = _p.onPlayerComplete.first;
+    await _p.resume();
+    await done;
+  }
+
+  @override
+  Future<void> dispose() async {
+    try {
+      await _p.stop();
+    } catch (_) {}
+    await _p.dispose();
+  }
+}
+
+/// 녹음 조각들을 모두 먼저 불러온 뒤 차례로 틀어서 사이가 벌어지지 않게 한다 (앱).
+///
+/// 플레이어는 말 하나마다 만들고, 말이 끝나거나 다음 말이 시작되거나 멈추면 반드시 놓는다.
+/// (예전에는 앞의 말이 아직 조각을 불러오는 중에 다음 말이 시작되면 그 플레이어들을 아무도
+/// 놓지 않아서 네이티브 플레이어가 쌓였다: 캐릭터를 연달아 콕콕 누르거나 화면을 빨리 넘길 때.)
+class ClipQueue {
+  ClipQueue(this._create);
+  final ClipPlayer Function() _create;
+  final Set<ClipPlayer> _live = {};
+  int _token = 0;
+
+  /// 지금 살아 있는 조각 플레이어 수
+  int get alive => _live.length;
+
+  /// 한 조각이 끝나기를 이만큼까지만 기다린다
+  static const clipTimeout = Duration(seconds: 8);
+
+  /// 앞의 말을 멈추고 [clips]를 차례로 튼다. 다른 말이 시작되거나 [stop]하면 그만둔다.
+  /// [duck]은 트는 동안 음악을 줄이고(true) 끝나면 돌려놓는다(false).
+  Future<void> play(
+    List<VoiceClip> clips, {
+    void Function(bool on)? duck,
+  }) async {
+    final token = ++_token;
+    bool current() => token == _token;
+    await _release(_live.toList());
+    final mine = <ClipPlayer>[];
+    var ducked = false;
+    try {
+      for (final c in clips) {
+        if (!current()) return;
+        final p = _create();
+        _live.add(p);
+        mine.add(p);
+        await p.load('voice/${c.file}');
+      }
+      if (!current()) return;
+      duck?.call(ducked = true);
+      for (var i = 0; i < clips.length; i++) {
+        if (!current()) return;
+        if (clips[i].pauseBefore > Duration.zero) {
+          await Future<void>.delayed(clips[i].pauseBefore);
+          if (!current()) return;
+        }
+        await mine[i].play().timeout(clipTimeout);
+      }
+    } catch (e) {
+      debugPrint('voice clips: $e');
+    } finally {
+      if (ducked && current()) duck?.call(false);
+      await _release(mine);
+    }
+  }
+
+  /// 지금 말을 멈추고 플레이어를 모두 놓는다
+  Future<void> stop() async {
+    _token++;
+    await _release(_live.toList());
+  }
+
+  Future<void> _release(List<ClipPlayer> players) async {
+    for (final p in players) {
+      if (!_live.remove(p)) continue; // 이미 놓았다
+      try {
+        await p.dispose();
+      } catch (_) {}
+    }
   }
 }
 

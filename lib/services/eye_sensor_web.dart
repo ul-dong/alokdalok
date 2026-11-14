@@ -12,8 +12,12 @@ extension type _Guard(JSObject _) implements JSObject {
   /// 잘 열리면 null, 안 되면 메시지 ('!'로 시작하면 카메라를 아예 쓸 수 없음: 권한 거부 등)
   external JSPromise<JSString?> open();
 
-  /// [size, yaw, pitch, roll] / 얼굴 없음 [] / 아직 볼 수 없음 null
-  external JSArray<JSNumber>? detect();
+  /// [size, yaw, pitch, roll] / 얼굴 없음 [] / 아직 볼 수 없음 null.
+  /// 인식은 Web Worker에서 해서 메인 스레드(화면·터치)를 막지 않는다 (web/eye_worker.js).
+  external JSPromise<JSArray<JSNumber>?> detect();
+
+  /// 진단: [어디서, 마지막 인식 ms, 1회 최대 ms, 메인 스레드를 막은 ms, 준비 ms, 횟수]
+  external JSArray<JSAny?>? stats();
   external void pause();
   external void stop();
 }
@@ -82,7 +86,7 @@ class _WebEyeSensor implements EyeSensor {
         }
       },
       analyze: (_) async {
-        final r = g.detect();
+        final r = await g.detect().toDart;
         if (r == null) throw StateError('not ready');
         final v = r.toDart;
         if (v.length < 4) return null; // 얼굴 없음
@@ -105,6 +109,25 @@ class _WebEyeSensor implements EyeSensor {
           g.stop(); // 다음 창에서 카메라를 새로 연다
         }
       }
+    }
+  }
+
+  @override
+  EyeDetectStats? get detectStats {
+    try {
+      final v = _guard?.stats()?.toDart;
+      if (v == null || v.length < 6) return null;
+      double n(int i) => (v[i] as JSNumber?)?.toDartDouble ?? -1;
+      return EyeDetectStats(
+        where: (v[0] as JSString?)?.toDart ?? '',
+        lastMs: n(1),
+        maxMs: n(2),
+        mainMs: n(3),
+        initMs: n(4),
+        count: n(5).round(),
+      );
+    } catch (_) {
+      return null;
     }
   }
 

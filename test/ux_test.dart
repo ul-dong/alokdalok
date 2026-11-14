@@ -16,6 +16,7 @@ import 'package:alokdalok/widgets/paged_grid.dart';
 import 'package:alokdalok/widgets/poke_character.dart';
 import 'package:alokdalok/shop/item_widgets.dart';
 import 'package:alokdalok/shop/shop_screen.dart';
+import 'package:alokdalok/widgets/live_transform.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -195,11 +196,15 @@ void main() {
       final poke = find.byType(PokeCharacter);
       expect(poke, findsOneWidget);
       final st = t.state<PokeCharacterState>(poke);
-      Matrix4 matrix() => t
-          .widget<Transform>(
-            find.descendant(of: poke, matching: find.byType(Transform)).first,
-          )
-          .transform;
+      Matrix4 matrix() =>
+          t
+              .renderObject<RenderLiveTransform>(
+                find
+                    .descendant(of: poke, matching: find.byType(LiveTransform))
+                    .first,
+              )
+              .currentTransform ??
+          Matrix4.identity();
 
       await t.tap(poke);
       await t.pump();

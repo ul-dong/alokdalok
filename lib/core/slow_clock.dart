@@ -21,7 +21,14 @@ class SlowClock extends ChangeNotifier {
   int get listenerCount => _listeners;
 
   /// 시작 후 흐른 시간 (초)
-  double get seconds => _watch.elapsedMicroseconds / 1e6;
+  double get seconds => debugCountTicks
+      ? _ticks * interval.inMicroseconds / 1e6
+      : _watch.elapsedMicroseconds / 1e6;
+
+  /// 테스트용: 실제 시계 대신 박자 수로 시간을 센다 (위젯 테스트의 가짜 시간에서도 움직이게).
+  @visibleForTesting
+  static bool debugCountTicks = false;
+  int _ticks = 0;
 
   /// 지금 시계가 돌고 있는지 (듣는 위젯이 있고 [held]가 아닐 때). 테스트 확인용.
   @visibleForTesting
@@ -43,7 +50,10 @@ class SlowClock extends ChangeNotifier {
     if (run == (_timer != null)) return;
     if (run) {
       _watch.start();
-      _timer = Timer.periodic(interval, (_) => notifyListeners());
+      _timer = Timer.periodic(interval, (_) {
+        _ticks++;
+        notifyListeners();
+      });
     } else {
       _timer?.cancel();
       _timer = null;

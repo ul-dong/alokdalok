@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../character/character_view.dart';
@@ -41,6 +42,12 @@ class _EyeGuardOverlayState extends State<EyeGuardOverlay>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    GestureBinding.instance.pointerRouter.addGlobalRoute(_onPointer);
+  }
+
+  /// 화면을 누르면 눈 지킴이에게 알린다 (누른 직후에는 카메라 창을 미룬다)
+  void _onPointer(PointerEvent e) {
+    if (e is PointerDownEvent) _eye?.touched();
   }
 
   @override
@@ -88,6 +95,7 @@ class _EyeGuardOverlayState extends State<EyeGuardOverlay>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    GestureBinding.instance.pointerRouter.removeGlobalRoute(_onPointer);
     _state?.removeListener(_blockChanged);
     _eye?.removeListener(_changed);
     _repeat?.cancel();

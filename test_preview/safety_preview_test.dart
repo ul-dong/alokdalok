@@ -6,6 +6,7 @@ import 'package:alokdalok/screens/settings_screen.dart';
 import 'package:alokdalok/services/audio_service.dart';
 import 'package:alokdalok/services/device_heat.dart';
 import 'package:alokdalok/services/eye_guard.dart';
+import 'package:alokdalok/services/perf_monitor.dart';
 import 'package:alokdalok/services/game_state.dart';
 import 'package:alokdalok/services/storage_service.dart';
 import 'package:alokdalok/widgets/common.dart';
@@ -22,10 +23,12 @@ class _PreviewSensor implements EyeSensor {
   String get mode => '카메라 유지 (stopImageStream)';
   @override
   bool get supported => true;
+
   @override
-  Future<FaceReading?> sampleOnce({
-    Duration budget = EyeRules.windowBudget,
-  }) => Completer<FaceReading?>().future;
+  EyeDetectStats? get detectStats => null;
+  @override
+  Future<FaceReading?> sampleOnce({Duration budget = EyeRules.windowBudget}) =>
+      Completer<FaceReading?>().future;
   @override
   Future<void> stop() async {}
   @override
@@ -34,8 +37,9 @@ class _PreviewSensor implements EyeSensor {
 
 /// 놀이 시간·눈 쉬기 덮개, 부모 확인, 설정 화면 미리보기
 void main() {
-  Future<(GameState, DateTime Function(), void Function(Duration))>
-  make({EyeGuard? eye}) async {
+  Future<(GameState, DateTime Function(), void Function(Duration))> make({
+    EyeGuard? eye,
+  }) async {
     var now = DateTime(2026, 10, 21, 9);
     final s = GameState(
       storage: MemoryStorage(),
@@ -260,6 +264,46 @@ void main() {
       await expectLater(
         find.byType(EyeDiagnosticsPanel),
         matchesGoldenFile('shots/settings_eye_diag_$w.png'),
+      );
+      await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('settings perf diagnostics $w', (t) async {
+      // 렉, 터치 진단 칸: 느린 프레임 몇 장, 최근 누름 두 번, 소리 플레이어
+      t.view.physicalSize = Size(size.width, 2400);
+      t.view.devicePixelRatio = 1;
+      final (s, _, _) = await make();
+      final now = DateTime.now();
+      final m = PerfMonitor(now: () => now);
+      for (final ms in [6.0, 8.0, 12.0, 18.0, 41.0, 9.0]) {
+        m.addFrame(ms);
+      }
+      t.binding.pointerRouter.addGlobalRoute(m.onPointer);
+      addTearDown(() => t.binding.pointerRouter.removeGlobalRoute(m.onPointer));
+      await t.pumpWidget(
+        AppScope(
+          state: s,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: buildAppTheme(),
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: PerfDiagnosticsPanel(monitor: m),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.tap(find.text('화면 그리기'));
+      await t.pump(const Duration(milliseconds: 500));
+      await t.longPress(find.text('가장 느린 장'));
+      await t.pump(const Duration(milliseconds: 500));
+      await expectLater(
+        find.byType(PerfDiagnosticsPanel),
+        matchesGoldenFile('shots/settings_perf_diag_$w.png'),
       );
       await t.pumpWidget(const SizedBox());
     });

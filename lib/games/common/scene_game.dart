@@ -1,5 +1,6 @@
 import 'dart:async' as async;
 import 'dart:math';
+import 'dart:ui' show Picture, PictureRecorder;
 
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
@@ -326,10 +327,55 @@ class _Landscape extends Component {
   @override
   void update(double dt) => _t += dt;
 
+  // 렉 줄이기: 풍경은 거의 그대로이고 해의 빛과 물결만 움직인다. 그대로인 부분(하늘 / 산·섬·바다 /
+  // 모래·집·나무·잔디·길)은 화면 크기마다 한 번만 그림(Picture)으로 떠 두고 다시 쓴다.
+  // 예전에는 초당 20번 매번 나무 잎(동그라미 합치기, Path.combine)까지 처음부터 다시 계산했다.
+  // 웹은 이 계산이 화면·터치와 같은 스레드라 더 무겁다.
+  final _cache = <int, Picture>{};
+  Size? _cacheSize;
+
+  /// 그림으로 떠 둔 부분 (0 하늘, 2 산·섬·바다, 4 나머지)
+  static const _still = [0, 2, 4];
+
+  @override
+  void onRemove() {
+    _dropCache();
+    super.onRemove();
+  }
+
+  void _dropCache() {
+    for (final p in _cache.values) {
+      p.dispose();
+    }
+    _cache.clear();
+  }
+
   @override
   void render(Canvas canvas) {
     final w = game.size.x, h = game.size.y;
     if (w <= 0 || h <= 0) return;
+    final size = Size(w, h);
+    if (_cacheSize != size) {
+      _dropCache();
+      _cacheSize = size;
+    }
+    for (var part = 0; part <= 4; part++) {
+      if (_still.contains(part)) {
+        final pic = _cache[part] ??= () {
+          final r = PictureRecorder();
+          _draw(Canvas(r), part);
+          return r.endRecording();
+        }();
+        canvas.drawPicture(pic);
+      } else {
+        _draw(canvas, part);
+      }
+    }
+  }
+
+  /// [part]: 0 하늘, 1 해(움직임), 2 산·섬·바다, 3 물결(움직임), 4 나머지
+  void _draw(Canvas canvas, int part) {
+    final w = game.size.x, h = game.size.y;
     final look = game.look;
     final season = game.season;
     final winter = season == Season.winter;
@@ -337,88 +383,95 @@ class _Landscape extends Component {
     final horizon = ground - h * .13;
     final u = unit(w, h); // 사물 크기 단위
 
-    // 하늘
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, w, horizon + 2),
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [look.skyTop, look.skyBottom],
-        ).createShader(Rect.fromLTWH(0, 0, w, horizon)),
-    );
-
-    // 해 (천천히 숨쉬는 빛). 여름은 조금 더 크고 진하게.
-    final sun = Offset(w * .16, h * .1);
-    final glow = 1 + sin(_t * .8) * .04;
-    final sunScale = season == Season.summer ? 1.15 : 1.0;
-    canvas.drawCircle(
-      sun,
-      70 * u * glow * sunScale,
-      Paint()..color = const Color(0x40FFF3B0),
-    );
-    canvas.drawCircle(
-      sun,
-      48 * u * glow * sunScale,
-      Paint()..color = const Color(0x70FFF0A0),
-    );
-    canvas.drawCircle(
-      sun,
-      34 * u * sunScale,
-      Paint()
-        ..color = season == Season.summer
-            ? const Color(0xFFFFE27A)
-            : const Color(0xFFFFF1A6),
-    );
-
-    // 먼 산 (하늘이 넓은 화면을 채운다, 겨울은 눈 모자)
-    _mountains(canvas, w, h, horizon, u, look, winter);
-
-    // 먼 섬
-    final island = Paint()..color = look.island;
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(w * .2, horizon + 2),
-        width: w * .42,
-        height: 40 * u,
-      ),
-      island,
-    );
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(w * .78, horizon + 2),
-        width: w * .36,
-        height: 34 * u,
-      ),
-      island,
-    );
-
-    // 바다
-    canvas.drawRect(
-      Rect.fromLTWH(0, horizon, w, ground - horizon + 4),
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [look.sea, look.seaDeep],
-        ).createShader(Rect.fromLTWH(0, horizon, w, ground - horizon)),
-    );
-    final wave = Paint()
-      ..color = Colors.white.withValues(alpha: .7)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3 * u
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i < 5; i++) {
-      final x = (w * (.1 + i * .21) + sin(_t * .6 + i) * 8 * u) % w;
-      final y = horizon + (ground - horizon) * (.3 + (i % 3) * .2);
-      canvas.drawArc(
-        Rect.fromCenter(center: Offset(x, y), width: 30 * u, height: 10 * u),
-        pi * 1.1,
-        pi * .8,
-        false,
-        wave,
+    if (part == 0) {
+      // 하늘
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, w, horizon + 2),
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [look.skyTop, look.skyBottom],
+          ).createShader(Rect.fromLTWH(0, 0, w, horizon)),
       );
     }
+    if (part == 1) {
+      // 해 (천천히 숨쉬는 빛). 여름은 조금 더 크고 진하게.
+      final sun = Offset(w * .16, h * .1);
+      final glow = 1 + sin(_t * .8) * .04;
+      final sunScale = season == Season.summer ? 1.15 : 1.0;
+      canvas.drawCircle(
+        sun,
+        70 * u * glow * sunScale,
+        Paint()..color = const Color(0x40FFF3B0),
+      );
+      canvas.drawCircle(
+        sun,
+        48 * u * glow * sunScale,
+        Paint()..color = const Color(0x70FFF0A0),
+      );
+      canvas.drawCircle(
+        sun,
+        34 * u * sunScale,
+        Paint()
+          ..color = season == Season.summer
+              ? const Color(0xFFFFE27A)
+              : const Color(0xFFFFF1A6),
+      );
+    }
+    if (part == 2) {
+      // 먼 산 (하늘이 넓은 화면을 채운다, 겨울은 눈 모자)
+      _mountains(canvas, w, h, horizon, u, look, winter);
+
+      // 먼 섬
+      final island = Paint()..color = look.island;
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(w * .2, horizon + 2),
+          width: w * .42,
+          height: 40 * u,
+        ),
+        island,
+      );
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(w * .78, horizon + 2),
+          width: w * .36,
+          height: 34 * u,
+        ),
+        island,
+      );
+
+      // 바다
+      canvas.drawRect(
+        Rect.fromLTWH(0, horizon, w, ground - horizon + 4),
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [look.sea, look.seaDeep],
+          ).createShader(Rect.fromLTWH(0, horizon, w, ground - horizon)),
+      );
+    }
+    if (part == 3) {
+      final wave = Paint()
+        ..color = Colors.white.withValues(alpha: .7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3 * u
+        ..strokeCap = StrokeCap.round;
+      for (var i = 0; i < 5; i++) {
+        final x = (w * (.1 + i * .21) + sin(_t * .6 + i) * 8 * u) % w;
+        final y = horizon + (ground - horizon) * (.3 + (i % 3) * .2);
+        canvas.drawArc(
+          Rect.fromCenter(center: Offset(x, y), width: 30 * u, height: 10 * u),
+          pi * 1.1,
+          pi * .8,
+          false,
+          wave,
+        );
+      }
+    }
+    if (part != 4) return;
     // 여름 바다의 작은 돛단배
     if (season == Season.summer) {
       _sailboat(canvas, Offset(w * .55, horizon + (ground - horizon) * .45), u);

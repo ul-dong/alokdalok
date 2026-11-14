@@ -8,10 +8,13 @@ import 'app.dart';
 import 'services/audio_service.dart';
 import 'services/device_heat.dart';
 import 'services/game_state.dart';
+import 'services/perf_monitor.dart';
 import 'services/storage_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 렉·터치 진단 (설정 '부모님께'를 길게 누르면 보이는 칸): 프레임 시간과 최근 누름
+  PerfMonitor.instance.start();
 
   // 번들 폰트(Jua, SIL OFL 1.1) 라이선스를 앱 라이선스 화면에 등록
   LicenseRegistry.addLicense(() async* {
