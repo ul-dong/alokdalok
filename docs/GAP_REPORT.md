@@ -244,7 +244,7 @@
 | 음성 언어별 폴더 | 있음 | `assets/voice/ko/` (git mv, 파일 이름 v0001… 그대로), `assets/voice/en/manifest.json`은 빈 `{}`. 웹 서비스 워커는 예전 앱이 찾는 옛 경로를 ko로 돌려준다 |
 | 녹음 없는 언어 → 기기 음성 | 있음 | `DeviceAudio.route`/`loadVoicePack`, 영어는 en-US TTS. `test/voice_locale_test.dart` |
 | 영어 음성 녹음 | 없음 | 생성 경로만 열어 둠: `tool/gen_voice.command en` (목록 `tool/voice/lines_en.json` 976문장) |
-| 영어 화면 넘침 | 있음 | `test/l10n_en_layout_test.dart` (568×320·844×390·1280×800, 화면 27종 × 한국어·영어), 미리보기 `test_preview/l10n_preview_test.dart` → `shots/l10n_<언어>_<화면>_<폭>.png` |
+| 영어 화면 넘침 | 있음 | `test/l10n_en_layout_test.dart` (568×320·844×390·1280×800, 화면 26종 × 한국어·영어), 미리보기 `test_preview/l10n_preview_test.dart` → `shots/l10n_<언어>_<화면>_<폭>.png` |
 | 글꼴 | 있음 | Jua에 기본 라틴 글자가 있고 영어 화면 그림에서 깨짐·폭 넘침 없음 → 글꼴 추가 안 함 |
 | 한국어로 남는 곳 | 허용 | `test/l10n_hangul_test.dart` 허용 목록: 한국어 원본 이름 자료(아이템·친구·탈것), 닉네임 비속어 거르기, 개발 진단 칸(`settings_diagnostics.dart`) |
 
