@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../core/palette.dart';
+import '../l10n/l10n.dart';
 import '../services/eye_guard.dart';
 import 'common.dart';
 import 'eye_guard_overlay.dart';
@@ -17,11 +18,11 @@ import 'eye_guard_overlay.dart';
 Future<bool> confirmParent(BuildContext context, {Random? random}) async {
   final state = context.getInheritedWidgetOfExactType<AppScope>()?.notifier;
   if (state != null && !state.parentGateOn) return true;
-  state?.audio.say('부모님을 불러 주세요.');
+  state?.audio.say(L10n.current.gate_callParentSay);
   final ok = await showGeneralDialog<bool>(
     context: context,
     barrierDismissible: false,
-    barrierLabel: '부모 확인',
+    barrierLabel: L10n.current.settings_gateSection,
     barrierColor: const Color(0x99402A1C),
     transitionDuration: const Duration(milliseconds: 200),
     pageBuilder: (ctx, _, _) => Material(
@@ -152,16 +153,16 @@ class _ParentalGateState extends State<ParentalGate> {
           children: [
             RoundIconButton(
               icon: Icons.close_rounded,
-              label: '닫기',
+              label: context.l10n.common_close,
               size: 60,
               onTap: () => widget.onResult(false),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: FitBox(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '부모님 확인',
+                  context.l10n.gate_title,
                   style: TextStyle(
                     fontSize: TextSizes.number,
                     color: Palette.text,
@@ -212,7 +213,7 @@ class _ParentalGateState extends State<ParentalGate> {
         FitBox(
           alignment: Alignment.centerLeft,
           child: Text(
-            _wrong ? '답이 달라요. 새 문제를 풀어 주세요.' : '두 수를 더한 답을 눌러 주세요.',
+            _wrong ? context.l10n.gate_wrong : context.l10n.gate_hint,
             style: TextStyle(
               fontSize: TextSizes.body,
               color: _wrong ? const Color(0xFFD9536F) : Palette.textSoft,
@@ -245,7 +246,7 @@ class _Keypad extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget digit(int d) => _Key(
       size: size,
-      label: '숫자 $d',
+      label: context.l10n.gate_digit(d),
       onTap: () => onDigit(d),
       child: Text(
         '$d',
@@ -259,7 +260,7 @@ class _Keypad extends StatelessWidget {
       [
         _Key(
           size: size,
-          label: '지우기',
+          label: context.l10n.gate_delete,
           color: Palette.creamDeep,
           onTap: onErase,
           child: Icon(
@@ -271,7 +272,7 @@ class _Keypad extends StatelessWidget {
         digit(0),
         _Key(
           size: size,
-          label: '확인',
+          label: context.l10n.gate_ok,
           color: Palette.mint,
           onTap: onOk,
           child: Icon(

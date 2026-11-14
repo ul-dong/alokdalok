@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../character/character_view.dart';
 import '../core/palette.dart';
+import '../l10n/l10n.dart';
 import '../services/game_state.dart';
 import '../services/play_clock.dart';
 import 'common.dart';
@@ -86,17 +87,17 @@ class _PlayGuardOverlayState extends State<PlayGuardOverlay>
     });
     switch (b) {
       case PlayBlock.limit:
-        state.audio.say('오늘은 여기까지! 내일 또 만나요.');
+        state.audio.say(L10n.current.play_limitSay);
       case PlayBlock.eyeBreak:
       case PlayBlock.eyeRest:
         if (was != PlayBlock.eyeBreak && was != PlayBlock.eyeRest) {
-          state.audio.say('창밖 먼 곳을 봐요.');
+          state.audio.say(L10n.current.play_breakSay);
         }
       case PlayBlock.none:
         if (was == PlayBlock.eyeBreak || was == PlayBlock.eyeRest) {
-          state.audio.say('잘 쉬었어요! 다시 놀아요.');
+          state.audio.say(L10n.current.play_restedSay);
         } else if (was == PlayBlock.limit) {
-          state.audio.say('15분 더 놀 수 있어요.');
+          state.audio.say(L10n.current.play_moreSay);
         }
     }
   }
@@ -189,16 +190,16 @@ class PlayLimitCard extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const FitBox(
+                    FitBox(
                       child: Text(
-                        '오늘은 여기까지!',
+                        context.l10n.play_limitTitle,
                         style: TextStyle(fontSize: 48, color: Palette.text),
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const FitBox(
+                    FitBox(
                       child: Text(
-                        '내일 또 만나요',
+                        context.l10n.play_limitSub,
                         style: TextStyle(
                           fontSize: TextSizes.heading,
                           color: Palette.textSoft,
@@ -210,9 +211,9 @@ class PlayLimitCard extends StatelessWidget {
                       child: PillButton(
                         height: 60,
                         onTap: onParent,
-                        semanticLabel: '부모님: 15분 더',
-                        child: const Text(
-                          '부모님: 15분 더',
+                        semanticLabel: context.l10n.play_parentMore,
+                        child: Text(
+                          context.l10n.play_parentMore,
                           style: TextStyle(
                             fontSize: TextSizes.button,
                             color: Palette.textSoft,
@@ -285,7 +286,11 @@ class _EyeBreakCardState extends State<EyeBreakCard> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _tap,
-      child: Semantics(button: true, label: '눌러서 다시 놀기', child: card),
+      child: Semantics(
+        button: true,
+        label: context.l10n.play_tapToPlay,
+        child: card,
+      ),
     );
   }
 
@@ -313,9 +318,9 @@ class _EyeBreakCardState extends State<EyeBreakCard> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const FitBox(
+                    FitBox(
                       child: Text(
-                        '창밖 먼 곳을 봐요',
+                        context.l10n.play_breakTitle,
                         style: TextStyle(fontSize: 40, color: Palette.text),
                       ),
                     ),
@@ -399,9 +404,9 @@ class _TapToPlay extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 10),
-      const FitBox(
+      FitBox(
         child: Text(
-          '다 쉬었으면 화면을 눌러요',
+          context.l10n.play_restDone,
           style: TextStyle(fontSize: 24, color: Palette.textSoft),
         ),
       ),

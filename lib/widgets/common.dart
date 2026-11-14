@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../core/palette.dart';
 import '../core/slow_clock.dart';
+import '../l10n/l10n.dart';
 import '../services/audio_service.dart';
 import '../services/game_state.dart';
 
@@ -519,7 +520,7 @@ class PawProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: '$total개 중 $done개 완료',
+    label: context.l10n.common_progress(total, done),
     child: Container(
       height: 58,
       padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -725,8 +726,8 @@ class _RotateHintState extends State<RotateHint> {
               ),
             ),
             const SizedBox(height: 28),
-            const Text(
-              '화면을 옆으로 돌려 주세요',
+            Text(
+              context.l10n.common_rotate,
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 26, color: Palette.text),
             ),

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../core/palette.dart';
+import '../l10n/l10n.dart';
 import 'common.dart';
 
 /// 칸 배치 계산 결과
@@ -338,7 +339,9 @@ class PageArrow extends StatelessWidget {
     child: Pressable(
       onTap: onTap,
       enabled: enabled,
-      semanticLabel: forward ? '다음 쪽' : '앞 쪽',
+      semanticLabel: forward
+          ? context.l10n.common_nextPage
+          : context.l10n.common_prevPage,
       child: Container(
         width: size,
         height: size,

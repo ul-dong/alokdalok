@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../character/character_view.dart';
 import '../core/palette.dart';
+import '../l10n/l10n.dart';
 import '../services/eye_guard.dart';
 import '../services/game_state.dart';
 import '../services/play_clock.dart';
@@ -114,7 +115,7 @@ class _EyeGuardOverlayState extends State<EyeGuardOverlay>
       _spoken = 0;
       // 쉬어 가기로 넘어간 것이면 그쪽 덮개가 안내한다
       if (was != EyeAlert.none && !_eye!.resting) {
-        state.audio.say('잘했어요! 다시 놀아요.');
+        state.audio.say(L10n.current.eye_backSay);
       }
       return;
     }
@@ -124,8 +125,8 @@ class _EyeGuardOverlayState extends State<EyeGuardOverlay>
       _spoken++;
       state.audio.say(
         a == EyeAlert.tooClose
-            ? '화면이 너무 가까워요. 조금 뒤로 가 볼까요?'
-            : '바르게 앉아서 봐요. 화면을 똑바로 봐 주세요.',
+            ? L10n.current.eye_tooCloseSay
+            : L10n.current.eye_postureSay,
       );
       return _spoken < EyeGuardOverlay.maxSpeaks;
     }
@@ -196,7 +197,9 @@ class _EyeGuardOverlayState extends State<EyeGuardOverlay>
                   children: [
                     FitBox(
                       child: Text(
-                        close ? '화면이 너무 가까워요!' : '바르게 앉아서 봐요!',
+                        close
+                            ? context.l10n.eye_tooCloseTitle
+                            : context.l10n.eye_postureTitle,
                         style: const TextStyle(
                           fontSize: 44,
                           color: Palette.text,
@@ -207,8 +210,8 @@ class _EyeGuardOverlayState extends State<EyeGuardOverlay>
                     FitBox(
                       child: Text(
                         close
-                            ? '한 뼘 더 뒤로 가면 다시 놀 수 있어요'
-                            : '화면을 똑바로 보면 다시 놀 수 있어요',
+                            ? context.l10n.eye_tooCloseHint
+                            : context.l10n.eye_postureHint,
                         style: const TextStyle(
                           fontSize: 26,
                           color: Palette.textSoft,
@@ -273,8 +276,8 @@ class _ParentContinueState extends State<_ParentContinue>
           ),
         ),
         alignment: Alignment.center,
-        child: const Text(
-          '부모님: 길게 눌러 계속하기',
+        child: Text(
+          context.l10n.eye_parentContinue,
           style: TextStyle(fontSize: TextSizes.body, color: Palette.textSoft),
         ),
       ),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../character/zodiac.dart';
 import '../core/slow_clock.dart';
+import '../l10n/l10n.dart';
 import 'common.dart';
 import 'live_transform.dart';
 
@@ -32,7 +33,7 @@ class PokeCharacter extends StatefulWidget {
   const PokeCharacter({
     super.key,
     required this.child,
-    this.semanticLabel = '내 친구',
+    this.semanticLabel,
     this.zodiac,
     this.onPoke,
     this.talk = true,
@@ -40,7 +41,7 @@ class PokeCharacter extends StatefulWidget {
 
   /// 캐릭터 그림 (보통 CharacterView)
   final Widget child;
-  final String semanticLabel;
+  final String? semanticLabel;
 
   /// "나는 ○○야!"에 쓸 동물 (없으면 지금 고른 동물)
   final Zodiac? zodiac;
@@ -58,7 +59,12 @@ class PokeCharacter extends StatefulWidget {
   static const minTouch = 60.0;
 
   /// 가끔 하는 짧은 말 (녹음 문장 목록에도 들어 있다). 동물 이름 인사는 [Zodiac.hello].
-  static const lines = ['안녕!', '간지러워!', '같이 놀자!', '또 만져 줘!'];
+  static List<String> get lines => [
+    L10n.current.poke_helloSay,
+    L10n.current.poke_ticklesSay,
+    L10n.current.poke_playSay,
+    L10n.current.poke_againSay,
+  ];
 
   /// [n]번째(0부터) 누름의 몸짓
   static PokeMotion motionFor(int n) =>
@@ -182,7 +188,7 @@ class PokeCharacterState extends State<PokeCharacter> {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: widget.semanticLabel,
+      label: widget.semanticLabel ?? context.l10n.poke_friend,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _poke,

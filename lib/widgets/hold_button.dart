@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../core/palette.dart';
+import '../l10n/l10n.dart';
 import '../services/audio_service.dart';
 import 'common.dart';
 
@@ -21,10 +22,10 @@ class HoldToConfirm extends StatefulWidget {
   });
 
   static const defaultHoldTime = Duration(milliseconds: 900);
-  static const hint = '꾹 누르고 있어요.';
+  static String get hint => L10n.current.hold_hintSay;
 
   /// 이름표 뒤에 붙는 표시 ("집으로 (꾹)")
-  static String shownLabel(String label) => '$label (꾹)';
+  static String shownLabel(String label) => L10n.current.hold_shownLabel(label);
 
   /// 짧게 톡 눌렀을 때 고리가 이만큼 차올랐다가 다시 줄어든다 (눌린 걸 눈으로 알게)
   static const nudge = .3;
@@ -95,7 +96,7 @@ class _HoldToConfirmState extends State<HoldToConfirm>
     final ring = widget.size + 20;
     return Semantics(
       button: true,
-      label: '${widget.label} (꾹 누르기)',
+      label: context.l10n.hold_semantic(widget.label),
       // 손가락이 조금 움직여도 끊기지 않도록 날 포인터 이벤트로 받는다
       child: Listener(
         behavior: HitTestBehavior.opaque,

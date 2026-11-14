@@ -817,6 +817,222 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'앞 쪽'**
   String get common_prevPage;
+
+  /// No description provided for @common_progress.
+  ///
+  /// In ko, this message translates to:
+  /// **'{total}개 중 {done}개 완료'**
+  String common_progress(Object total, Object done);
+
+  /// No description provided for @common_rotate.
+  ///
+  /// In ko, this message translates to:
+  /// **'화면을 옆으로 돌려 주세요'**
+  String get common_rotate;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'잘했어요! 다시 놀아요.'**
+  String get eye_backSay;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'화면이 너무 가까워요. 조금 뒤로 가 볼까요?'**
+  String get eye_tooCloseSay;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'바르게 앉아서 봐요. 화면을 똑바로 봐 주세요.'**
+  String get eye_postureSay;
+
+  /// No description provided for @eye_tooCloseTitle.
+  ///
+  /// In ko, this message translates to:
+  /// **'화면이 너무 가까워요!'**
+  String get eye_tooCloseTitle;
+
+  /// No description provided for @eye_postureTitle.
+  ///
+  /// In ko, this message translates to:
+  /// **'바르게 앉아서 봐요!'**
+  String get eye_postureTitle;
+
+  /// No description provided for @eye_tooCloseHint.
+  ///
+  /// In ko, this message translates to:
+  /// **'한 뼘 더 뒤로 가면 다시 놀 수 있어요'**
+  String get eye_tooCloseHint;
+
+  /// No description provided for @eye_postureHint.
+  ///
+  /// In ko, this message translates to:
+  /// **'화면을 똑바로 보면 다시 놀 수 있어요'**
+  String get eye_postureHint;
+
+  /// No description provided for @eye_parentContinue.
+  ///
+  /// In ko, this message translates to:
+  /// **'부모님: 길게 눌러 계속하기'**
+  String get eye_parentContinue;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'꾹 누르고 있어요.'**
+  String get hold_hintSay;
+
+  /// No description provided for @hold_shownLabel.
+  ///
+  /// In ko, this message translates to:
+  /// **'{label} (꾹)'**
+  String hold_shownLabel(Object label);
+
+  /// No description provided for @hold_semantic.
+  ///
+  /// In ko, this message translates to:
+  /// **'{label} (꾹 누르기)'**
+  String hold_semantic(Object label);
+
+  /// [음성] 다시 듣기 버튼
+  ///
+  /// In ko, this message translates to:
+  /// **'다시 듣기'**
+  String get common_listenAgain;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'부모님을 불러 주세요.'**
+  String get gate_callParentSay;
+
+  /// No description provided for @gate_title.
+  ///
+  /// In ko, this message translates to:
+  /// **'부모님 확인'**
+  String get gate_title;
+
+  /// No description provided for @gate_wrong.
+  ///
+  /// In ko, this message translates to:
+  /// **'답이 달라요. 새 문제를 풀어 주세요.'**
+  String get gate_wrong;
+
+  /// No description provided for @gate_hint.
+  ///
+  /// In ko, this message translates to:
+  /// **'두 수를 더한 답을 눌러 주세요.'**
+  String get gate_hint;
+
+  /// No description provided for @gate_digit.
+  ///
+  /// In ko, this message translates to:
+  /// **'숫자 {d}'**
+  String gate_digit(Object d);
+
+  /// No description provided for @gate_delete.
+  ///
+  /// In ko, this message translates to:
+  /// **'지우기'**
+  String get gate_delete;
+
+  /// No description provided for @gate_ok.
+  ///
+  /// In ko, this message translates to:
+  /// **'확인'**
+  String get gate_ok;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'오늘은 여기까지! 내일 또 만나요.'**
+  String get play_limitSay;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'창밖 먼 곳을 봐요.'**
+  String get play_breakSay;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'잘 쉬었어요! 다시 놀아요.'**
+  String get play_restedSay;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'15분 더 놀 수 있어요.'**
+  String get play_moreSay;
+
+  /// No description provided for @play_limitTitle.
+  ///
+  /// In ko, this message translates to:
+  /// **'오늘은 여기까지!'**
+  String get play_limitTitle;
+
+  /// No description provided for @play_limitSub.
+  ///
+  /// In ko, this message translates to:
+  /// **'내일 또 만나요'**
+  String get play_limitSub;
+
+  /// No description provided for @play_parentMore.
+  ///
+  /// In ko, this message translates to:
+  /// **'부모님: 15분 더'**
+  String get play_parentMore;
+
+  /// No description provided for @play_tapToPlay.
+  ///
+  /// In ko, this message translates to:
+  /// **'눌러서 다시 놀기'**
+  String get play_tapToPlay;
+
+  /// No description provided for @play_breakTitle.
+  ///
+  /// In ko, this message translates to:
+  /// **'창밖 먼 곳을 봐요'**
+  String get play_breakTitle;
+
+  /// No description provided for @play_restDone.
+  ///
+  /// In ko, this message translates to:
+  /// **'다 쉬었으면 화면을 눌러요'**
+  String get play_restDone;
+
+  /// No description provided for @poke_friend.
+  ///
+  /// In ko, this message translates to:
+  /// **'내 친구'**
+  String get poke_friend;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'안녕!'**
+  String get poke_helloSay;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'간지러워!'**
+  String get poke_ticklesSay;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'같이 놀자!'**
+  String get poke_playSay;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'또 만져 줘!'**
+  String get poke_againSay;
 }
 
 class _AppLocalizationsDelegate

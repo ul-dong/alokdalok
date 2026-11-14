@@ -399,4 +399,120 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get common_prevPage => '앞 쪽';
+
+  @override
+  String common_progress(Object total, Object done) {
+    return '$total개 중 $done개 완료';
+  }
+
+  @override
+  String get common_rotate => '화면을 옆으로 돌려 주세요';
+
+  @override
+  String get eye_backSay => '잘했어요! 다시 놀아요.';
+
+  @override
+  String get eye_tooCloseSay => '화면이 너무 가까워요. 조금 뒤로 가 볼까요?';
+
+  @override
+  String get eye_postureSay => '바르게 앉아서 봐요. 화면을 똑바로 봐 주세요.';
+
+  @override
+  String get eye_tooCloseTitle => '화면이 너무 가까워요!';
+
+  @override
+  String get eye_postureTitle => '바르게 앉아서 봐요!';
+
+  @override
+  String get eye_tooCloseHint => '한 뼘 더 뒤로 가면 다시 놀 수 있어요';
+
+  @override
+  String get eye_postureHint => '화면을 똑바로 보면 다시 놀 수 있어요';
+
+  @override
+  String get eye_parentContinue => '부모님: 길게 눌러 계속하기';
+
+  @override
+  String get hold_hintSay => '꾹 누르고 있어요.';
+
+  @override
+  String hold_shownLabel(Object label) {
+    return '$label (꾹)';
+  }
+
+  @override
+  String hold_semantic(Object label) {
+    return '$label (꾹 누르기)';
+  }
+
+  @override
+  String get common_listenAgain => '다시 듣기';
+
+  @override
+  String get gate_callParentSay => '부모님을 불러 주세요.';
+
+  @override
+  String get gate_title => '부모님 확인';
+
+  @override
+  String get gate_wrong => '답이 달라요. 새 문제를 풀어 주세요.';
+
+  @override
+  String get gate_hint => '두 수를 더한 답을 눌러 주세요.';
+
+  @override
+  String gate_digit(Object d) {
+    return '숫자 $d';
+  }
+
+  @override
+  String get gate_delete => '지우기';
+
+  @override
+  String get gate_ok => '확인';
+
+  @override
+  String get play_limitSay => '오늘은 여기까지! 내일 또 만나요.';
+
+  @override
+  String get play_breakSay => '창밖 먼 곳을 봐요.';
+
+  @override
+  String get play_restedSay => '잘 쉬었어요! 다시 놀아요.';
+
+  @override
+  String get play_moreSay => '15분 더 놀 수 있어요.';
+
+  @override
+  String get play_limitTitle => '오늘은 여기까지!';
+
+  @override
+  String get play_limitSub => '내일 또 만나요';
+
+  @override
+  String get play_parentMore => '부모님: 15분 더';
+
+  @override
+  String get play_tapToPlay => '눌러서 다시 놀기';
+
+  @override
+  String get play_breakTitle => '창밖 먼 곳을 봐요';
+
+  @override
+  String get play_restDone => '다 쉬었으면 화면을 눌러요';
+
+  @override
+  String get poke_friend => '내 친구';
+
+  @override
+  String get poke_helloSay => '안녕!';
+
+  @override
+  String get poke_ticklesSay => '간지러워!';
+
+  @override
+  String get poke_playSay => '같이 놀자!';
+
+  @override
+  String get poke_againSay => '또 만져 줘!';
 }

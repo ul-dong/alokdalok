@@ -410,4 +410,122 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get common_prevPage => 'Previous page';
+
+  @override
+  String common_progress(Object total, Object done) {
+    return '$done of $total done';
+  }
+
+  @override
+  String get common_rotate => 'Please turn the screen sideways';
+
+  @override
+  String get eye_backSay => 'Good job! Let\'s play again.';
+
+  @override
+  String get eye_tooCloseSay =>
+      'The screen is too close. Can you move back a little?';
+
+  @override
+  String get eye_postureSay =>
+      'Sit up nicely. Look straight at the screen, please.';
+
+  @override
+  String get eye_tooCloseTitle => 'Too close to the screen!';
+
+  @override
+  String get eye_postureTitle => 'Sit up nicely!';
+
+  @override
+  String get eye_tooCloseHint => 'Move back a hand away to play again';
+
+  @override
+  String get eye_postureHint => 'Look straight at the screen to play again';
+
+  @override
+  String get eye_parentContinue => 'Parents: hold to continue';
+
+  @override
+  String get hold_hintSay => 'Keep holding.';
+
+  @override
+  String hold_shownLabel(Object label) {
+    return '$label (hold)';
+  }
+
+  @override
+  String hold_semantic(Object label) {
+    return '$label (press and hold)';
+  }
+
+  @override
+  String get common_listenAgain => 'Listen again';
+
+  @override
+  String get gate_callParentSay => 'Please get a grown-up.';
+
+  @override
+  String get gate_title => 'Parent check';
+
+  @override
+  String get gate_wrong => 'That\'s not right. Please try a new one.';
+
+  @override
+  String get gate_hint => 'Enter the sum of the two numbers.';
+
+  @override
+  String gate_digit(Object d) {
+    return 'Number $d';
+  }
+
+  @override
+  String get gate_delete => 'Delete';
+
+  @override
+  String get gate_ok => 'OK';
+
+  @override
+  String get play_limitSay => 'That\'s all for today! See you tomorrow.';
+
+  @override
+  String get play_breakSay => 'Look far away out the window.';
+
+  @override
+  String get play_restedSay => 'Good rest! Let\'s play again.';
+
+  @override
+  String get play_moreSay => 'You can play 15 more minutes.';
+
+  @override
+  String get play_limitTitle => 'That\'s all for today!';
+
+  @override
+  String get play_limitSub => 'See you tomorrow';
+
+  @override
+  String get play_parentMore => 'Parents: 15 more min';
+
+  @override
+  String get play_tapToPlay => 'Tap to play again';
+
+  @override
+  String get play_breakTitle => 'Look far out the window';
+
+  @override
+  String get play_restDone => 'Tap the screen when you are rested';
+
+  @override
+  String get poke_friend => 'My friend';
+
+  @override
+  String get poke_helloSay => 'Hi!';
+
+  @override
+  String get poke_ticklesSay => 'That tickles!';
+
+  @override
+  String get poke_playSay => 'Let\'s play!';
+
+  @override
+  String get poke_againSay => 'Do it again!';
 }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../core/palette.dart';
 import '../core/slow_clock.dart';
+import '../l10n/l10n.dart';
 import 'common.dart';
 
 /// 큰 노란 "다시 듣기" 버튼 (62px). 눈에 띄도록 6초마다 한 번 통통 튄다.
@@ -15,7 +16,7 @@ class ListenAgainButton extends StatefulWidget {
     super.key,
     required this.onTap,
     this.size = defaultSize,
-    this.label = '다시 듣기',
+    this.label,
   });
 
   static const defaultSize = 62.0;
@@ -37,7 +38,7 @@ class ListenAgainButton extends StatefulWidget {
 
   final VoidCallback onTap;
   final double size;
-  final String label;
+  final String? label;
 
   @override
   State<ListenAgainButton> createState() => _ListenAgainButtonState();
@@ -94,7 +95,7 @@ class _ListenAgainButtonState extends State<ListenAgainButton> {
     offset: Offset(0, _offset),
     child: Pressable(
       onTap: widget.onTap,
-      semanticLabel: widget.label,
+      semanticLabel: widget.label ?? context.l10n.common_listenAgain,
       child: Container(
         width: widget.size,
         height: widget.size,
