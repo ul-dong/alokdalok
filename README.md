@@ -112,15 +112,32 @@ assets/
 ## 음성 안내
 
 - 기본은 **녹음 목소리**입니다. 무료 오픈소스 음성 모델 MeloTTS(MIT 라이선스, 한국어 모델)로 만든
-  문장 조각 576개(`assets/voice/*.mp3`, 약 4.5MB)를 이어 붙여 말합니다.
+  문장 조각(`assets/voice/ko/*.mp3`, 1044개)을 이어 붙여 말합니다. 녹음은 언어별 폴더
+  (`assets/voice/<언어>/` + `manifest.json`)에 두고, 녹음이 없는 언어(지금은 영어)는 모두 기기 음성으로 읽습니다.
   - "빨간 풍선이 / 세 개! / 정말 잘했어요!" 처럼 조각으로 나눠 녹음해서 수천 가지 문장을 만듭니다.
-  - 조각 목록은 `lib/services/voice_lines.dart`. 문장을 바꾸면 목록도 맞춰야 합니다
+  - 조각 목록은 언어별로 `lib/l10n/ko/voice_lines_ko.dart`, `lib/l10n/en/voice_lines_en.dart`
+    (`lib/services/voice_lines.dart`의 `VoiceLines.forLocale`). 문장을 바꾸면 목록도 맞춰야 합니다
     (`test/state_test.dart`의 '녹음 음성 팩' 테스트가 빠진 조각을 알려 줍니다).
-  - 다시 만들기: 맥에서 `tool/gen_voice.command`(Homebrew 필요). 문장 목록을 내보내고
-    (`tool/voice/export_lines_test.dart` → `tool/voice/lines.json`), 녹음이 없는 문장만 새로 만들어 `assets/voice`에 넣는다.
+  - 다시 만들기: 맥에서 `tool/gen_voice.command [ko|en]`(Homebrew 필요). 그 언어 문장 목록을 내보내고
+    (`tool/voice/export_lines_test.dart` → `tool/voice/lines_<언어>.json`), 녹음이 없는 문장만 새로 만들어
+    `assets/voice/<언어>`에 넣는다. 영어는 MeloTTS 영어 모델(EN-US)을 쓴다.
 - 녹음에 없는 말(아이 이름 등)과 설정에서 '기기'를 고르면 기기 음성 합성(TTS, `flutter_tts`)을 씁니다.
   음높이를 올리면 기계음이 일그러져 무섭게 들려서 올리지 않습니다.
-- 더 아이다운 목소리를 원하면 같은 파일 이름으로 사람 목소리를 녹음해 `assets/voice`를 바꾸면 됩니다.
+- 더 아이다운 목소리를 원하면 같은 파일 이름으로 사람 목소리를 녹음해 `assets/voice/ko`를 바꾸면 됩니다.
+
+## 다국어 (한국어 / English)
+
+- 화면 문구: `lib/l10n/app_ko.arb`(기준) · `app_en.arb` → `flutter gen-l10n`이 `lib/l10n/gen/`을 만든다.
+  키 이름은 `화면_용도`(예: `settings_language`, 말하는 문장은 끝에 `Say`, 설명에 `[음성]`).
+  위젯은 `context.l10n.키`, 화면 밖 코드는 `L10n.current.키`.
+- 문장 조립기: `lib/l10n/phrases.dart`(`Phrases.current`). 한국어(`ko/korean_phrases.dart`)는 조사(이/가, 을/를)와
+  셈 단위(개/마리), 영어(`en/english_phrases.dart`)는 관사와 복수형("1 balloon" / "3 balloons"). 아이템·친구·탈것
+  영어 이름도 여기 있다. 한국어 결과는 녹음 팩과 글자 하나까지 같아야 한다(`test/voice_ko_snapshot_test.dart`).
+- 언어 고르기: 설정(부모님용) → 언어: 자동 / 한국어 / English. 자동은 기기(웹은 브라우저) 언어, 지원하지 않는
+  언어면 한국어. 새로 설치하면 자동, 예전 저장값(v7 이하)은 한국어로 둔다(저장 v8).
+- 새 언어 더하기: `app_<언어>.arb`, `lib/l10n/<언어>/`에 `Phrases` 구현과 음성 목록, `AppLanguage.supported`,
+  `assets/voice/<언어>/manifest.json`(빈 `{}`면 기기 음성).
+- 한국어 문자열이 `lib/`에 새로 들어가면 `test/l10n_hangul_test.dart`가 알려 준다(허용 목록에 이유를 적는다).
 
 ## 배경 음악
 

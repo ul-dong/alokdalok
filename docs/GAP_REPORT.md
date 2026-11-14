@@ -230,3 +230,21 @@
 | 한 판이 길다 (마지막 단계 6쌍 × 5장 = 30짝) | 짝 맞추기만 한 판 3장(`Economy.matchQuestionsPerSession`). `QuizSession.questionCount`가 발자국(`PawProgress`)·골인 길(`JourneyTrail`)·결과 별 칸(`SessionSummary.total`) 수를 정한다. 별은 한 번에 맞힌 판마다 1개(3장 다 한 번에 → 별 3개 가득). 다른 놀이는 그대로 5문제 | 결과 화면 발자국 3칸·별 3칸 중 노란 별 2개·`+코인` = 실제 지급액. 크기 놀이는 별 5개·발자국 5칸 |
 | 쌍 수 | 2→2→3→3→4쌍. 2단계는 1단계(사과·오리·자동차)와 다른 물건(별·공·풍선·꽃·물고기). 5단계 4쌍은 같은 물건 다른 색, 색을 바꿀 수 있는 물건만(풍선·자동차·공·물고기·별) | `[2,2,3,3,4]`, 2단계 물건이 1단계와 겹치지 않음, 5단계 한 물건·4색·`tintable` |
 | 코인 | `core/economy.dart` 값 그대로 (한 번에 2, 다시 1, 한 판 3). 문제 수만 줄어 한 판 코인이 조금 적다 | 위 결과 화면 테스트 |
+
+## 15. 다국어 구조 (2026-11-14, l10n)
+
+사양(MASTER_PROMPT)은 아직 "한국어"만 적혀 있다. 이번 작업은 해외 출시를 위한 **구조**까지이고, 사양 문서는 바꾸지 않았다(사용자 승인 필요).
+
+| 항목 | 상태 | 현재 코드 / 메모 |
+|---|---|---|
+| ARB 화면 문구 (ko 기준, en) | 있음 | `lib/l10n/app_ko.arb`, `app_en.arb` (`l10n.yaml`, 생성 `lib/l10n/gen/`). 영어에 빠진 키·한글·Jua에 없는 글자 검사 `test/l10n_test.dart` |
+| 기기 언어 따르기 + 설정에서 수동 선택 | 있음 | 설정 → 언어: 자동 / 한국어 / English. `AppLanguage.resolve`, 저장 v8 `language` (새 설치 auto, 예전 저장값 ko) |
+| 문장 조립기 (조사·셈 단위 / 관사·복수형) | 있음 | `lib/l10n/phrases.dart`, `ko/korean_phrases.dart`, `en/english_phrases.dart`. `test/phrases_test.dart` |
+| 한국어 녹음 조각 선택이 그대로 | 있음 | `test/voice_ko_snapshot_test.dart`: 구조 바꾸기 전 코드로 만든 스냅숏(음성 문장 1044개 순서, 놀이 문제 12100문장, 1255문장의 mp3 조합·쉼)과 완전히 같음 |
+| 음성 언어별 폴더 | 있음 | `assets/voice/ko/` (git mv, 파일 이름 v0001… 그대로), `assets/voice/en/manifest.json`은 빈 `{}`. 웹 서비스 워커는 예전 앱이 찾는 옛 경로를 ko로 돌려준다 |
+| 녹음 없는 언어 → 기기 음성 | 있음 | `DeviceAudio.route`/`loadVoicePack`, 영어는 en-US TTS. `test/voice_locale_test.dart` |
+| 영어 음성 녹음 | 없음 | 생성 경로만 열어 둠: `tool/gen_voice.command en` (목록 `tool/voice/lines_en.json` 976문장) |
+| 영어 화면 넘침 | 있음 | `test/l10n_en_layout_test.dart` (568×320·844×390·1280×800, 화면 27종 × 한국어·영어), 미리보기 `test_preview/l10n_preview_test.dart` → `shots/l10n_<언어>_<화면>_<폭>.png` |
+| 글꼴 | 있음 | Jua에 기본 라틴 글자가 있고 영어 화면 그림에서 깨짐·폭 넘침 없음 → 글꼴 추가 안 함 |
+| 한국어로 남는 곳 | 허용 | `test/l10n_hangul_test.dart` 허용 목록: 한국어 원본 이름 자료(아이템·친구·탈것), 닉네임 비속어 거르기, 개발 진단 칸(`settings_diagnostics.dart`) |
+
