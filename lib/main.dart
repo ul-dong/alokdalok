@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app.dart';
+import 'l10n/l10n.dart';
 import 'services/audio_service.dart';
 import 'services/device_heat.dart';
 import 'services/game_state.dart';
@@ -35,7 +36,15 @@ Future<void> main() async {
 
   final audio = DeviceAudio();
   final state = GameState(storage: PrefsStorage(), audio: audio);
-  await Future.wait([state.load(), audio.init()]);
+  await state.load();
+  // 녹음 팩·기기 음성을 처음부터 맞는 언어로 연다 (앱이 뜬 뒤에는 MaterialApp이 다시 알려 준다)
+  state.applyLocale(
+    AppLanguage.resolve(
+      state.language,
+      WidgetsBinding.instance.platformDispatcher.locales,
+    ),
+  );
+  await audio.init();
 
   runApp(AlokdalokApp(state: state));
 }

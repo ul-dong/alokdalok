@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'core/app_theme.dart';
 import 'core/slow_clock.dart';
+import 'l10n/l10n.dart';
 import 'screens/zodiac_picker_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/eye_guard.dart';
@@ -21,38 +22,50 @@ class AlokdalokApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppScope(
       state: state,
-      child: MaterialApp(
-        title: '알록달록 꼬마 놀이터',
-        debugShowCheckedModeBanner: false,
-        theme: buildAppTheme(),
-        // 글자 크기 설정이 너무 크면 버튼이 깨지므로 1.3배까지만 따른다
-        builder: (context, child) {
-          final mq = MediaQuery.of(context);
-          return MediaQuery(
-            data: mq.copyWith(
-              textScaler: mq.textScaler.clamp(maxScaleFactor: 1.3),
-            ),
-            // 가로 전용 앱: 세로 창이면 돌려 달라는 안내만 보여 준다
-            child: mq.size.width < mq.size.height
-                ? const RotateHint()
-                // 높이 340 미만이면 화면 전체(덮개 포함)를 340 높이로 그려서 줄인다
-                : MinHeightScaler(
-                    child: Stack(
-                      children: [
-                        _StillWhenCovered(child: child!),
-                        // 놀이 시간 끝("오늘은 여기까지!")·눈 쉬기("창밖 먼 곳을 봐요") 덮개
-                        const Positioned.fill(child: PlayGuardOverlay()),
-                        // 화면이 너무 가깝거나 자세가 비뚤어지면 덮는 안내 (눈 지킴이)
-                        const Positioned.fill(child: EyeGuardOverlay()),
-                      ],
-                    ),
-                  ),
-          );
-        },
-        home: const RootGate(),
+      // 언어 설정(자동/한국어/English)이 바뀌면 앱 전체를 그 언어로 다시 그린다
+      child: ValueListenableBuilder<String>(
+        valueListenable: state.languageSetting,
+        builder: (context, language, _) => _app(language),
       ),
     );
   }
+
+  Widget _app(String language) => MaterialApp(
+    onGenerateTitle: (context) => L10n.of(context).app_title,
+    debugShowCheckedModeBanner: false,
+    theme: buildAppTheme(),
+    // 'auto'면 기기(웹은 브라우저) 언어, 지원하지 않는 언어면 한국어
+    locale: language == AppLanguage.auto ? null : Locale(language),
+    supportedLocales: AppLanguage.supported,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localeListResolutionCallback: (locales, _) =>
+        AppLanguage.resolve(AppLanguage.auto, locales),
+    // 글자 크기 설정이 너무 크면 버튼이 깨지므로 1.3배까지만 따른다
+    builder: (context, child) {
+      // 화면 밖 문장(놀이 문제)과 목소리도 같은 언어로
+      state.applyLocale(Localizations.localeOf(context));
+      final mq = MediaQuery.of(context);
+      return MediaQuery(
+        data: mq.copyWith(textScaler: mq.textScaler.clamp(maxScaleFactor: 1.3)),
+        // 가로 전용 앱: 세로 창이면 돌려 달라는 안내만 보여 준다
+        child: mq.size.width < mq.size.height
+            ? const RotateHint()
+            // 높이 340 미만이면 화면 전체(덮개 포함)를 340 높이로 그려서 줄인다
+            : MinHeightScaler(
+                child: Stack(
+                  children: [
+                    _StillWhenCovered(child: child!),
+                    // 놀이 시간 끝("오늘은 여기까지!")·눈 쉬기("창밖 먼 곳을 봐요") 덮개
+                    const Positioned.fill(child: PlayGuardOverlay()),
+                    // 화면이 너무 가깝거나 자세가 비뚤어지면 덮는 안내 (눈 지킴이)
+                    const Positioned.fill(child: EyeGuardOverlay()),
+                  ],
+                ),
+              ),
+      );
+    },
+    home: const RootGate(),
+  );
 }
 
 /// 처음 실행이면 닉네임 화면, 아니면 메인 화면

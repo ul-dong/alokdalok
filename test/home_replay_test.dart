@@ -64,7 +64,7 @@ void main() {
         'numberStageUnlocked': 3,
         'eyeGuardOn': false,
       });
-      expect(json['version'], 7);
+      expect(json['version'], SaveData.currentVersion); // v8(언어)까지 올라간다
       expect(json.containsKey('lastGame'), isFalse);
       final d = SaveData.fromJson(json);
       expect(d.lastGame, isNull);

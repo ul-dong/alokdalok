@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 
 /// 미리보기 그림을 실제 화면과 같게 만든다.
@@ -9,7 +10,9 @@ import 'package:flutter_test/flutter_test.dart';
 /// - MaterialIcons: 아이콘이 네모로 나오지 않게
 /// - Roboto: 글꼴을 따로 정하지 않은 글자의 기본 글꼴
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  // 한국어 기기로 돌린다 (언어 '자동'이 한국어가 되게). 영어는 테스트에서 직접 고른다.
+  TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher
+      .localesTestValue = const [Locale('ko', 'KR')];
   await _load('Jua', ['assets/fonts/Jua-Regular.ttf']);
 
   final root = _flutterRoot();

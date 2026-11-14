@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show Locale;
 
 import '../character/nickname.dart';
 import '../character/zodiac.dart';
@@ -8,6 +9,7 @@ import '../core/economy.dart';
 import '../data/item_catalog.dart';
 import '../data/stages.dart';
 import '../data/vehicles.dart';
+import '../l10n/l10n.dart';
 import 'audio_service.dart';
 import 'backup_code.dart';
 import 'eye_guard.dart';
@@ -189,6 +191,7 @@ class GameState extends ChangeNotifier {
     audio.sfxOn = _d.sfxOn;
     audio.voiceStyle = _d.voiceStyle;
     audio.musicOn = _d.musicOn;
+    languageSetting.value = _d.language;
   }
 
   void _applySafety() {
@@ -231,6 +234,27 @@ class GameState extends ChangeNotifier {
   }
 
   String get voiceStyle => _d.voiceStyle;
+
+  // ---------- 언어 ----------
+
+  /// 언어 설정: 'auto'(기기 언어) / 'ko' / 'en'. 앱(MaterialApp)이 이 값을 듣고 다시 그린다.
+  final ValueNotifier<String> languageSetting = ValueNotifier('auto');
+
+  String get language => _d.language;
+
+  Future<void> setLanguage(String language) async {
+    if (!SaveData.languages.contains(language)) return;
+    _d.language = language;
+    languageSetting.value = language;
+    await _commit();
+  }
+
+  /// 실제로 쓰는 언어가 정해졌을 때 (앱이 MaterialApp의 언어를 알려 준다).
+  /// 화면 밖 문장(놀이 문제 등)과 목소리 언어를 맞춘다.
+  void applyLocale(Locale locale) {
+    L10n.use(locale);
+    audio.locale = L10n.code;
+  }
 
   Future<void> setVoiceStyle(String style) async {
     if (!SaveData.voiceStyles.contains(style)) return;

@@ -1,0 +1,7 @@
+{
+  "@@locale": "en",
+  "app_title": "Balloon Playground",
+  "settings_language": "Language",
+  "settings_languageHint": "Words on screen and voice",
+  "settings_languageAuto": "Auto"
+}

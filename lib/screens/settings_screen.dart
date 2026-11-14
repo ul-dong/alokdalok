@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/palette.dart';
+import '../l10n/l10n.dart';
 import '../services/backup_code.dart';
 import '../services/eye_guard.dart';
 import '../services/perf_monitor.dart';
 import '../services/play_clock.dart';
+import '../services/save_data.dart';
 import '../widgets/common.dart';
 import '../widgets/eye_guard_overlay.dart';
 import 'nickname_screen.dart';
@@ -147,6 +149,8 @@ class SettingsScreen extends StatelessWidget {
                         '이 기기에서는 한국어 음성을 찾지 못했어요. 기기 설정에서 한국어 TTS를 설치하면 들을 수 있어요.',
                       ),
                     ),
+                  _Section(context.l10n.settings_language),
+                  const _LanguageCard(),
                   const _Section('부모 확인'),
                   _Panel(
                     children: [
@@ -747,7 +751,7 @@ class _Section extends StatelessWidget {
 }
 
 /// 하나만 고르는 알약 버튼 묶음 (좁으면 다음 줄로)
-class _Choices extends StatelessWidget {
+class _Choices<T> extends StatelessWidget {
   const _Choices({
     required this.values,
     required this.selected,
@@ -755,10 +759,10 @@ class _Choices extends StatelessWidget {
     required this.onPick,
   });
 
-  final List<int> values;
-  final int selected;
-  final String Function(int) label;
-  final ValueChanged<int> onPick;
+  final List<T> values;
+  final T selected;
+  final String Function(T) label;
+  final ValueChanged<T> onPick;
 
   @override
   Widget build(BuildContext context) => Wrap(
@@ -808,6 +812,37 @@ class _PlayLimitCard extends StatelessWidget {
                 '다 되면 "오늘은 여기까지!"가 화면을 덮어요. 부모 확인 후 15분 더 놀 수 있고, 다음 날 다시 풀려요.',
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 언어: 자동(기기 언어) / 한국어 / English
+class _LanguageCard extends StatelessWidget {
+  const _LanguageCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    final l = context.l10n;
+    return _Panel(
+      children: [
+        _RowTile(
+          icon: Icons.translate_rounded,
+          title: l.settings_language,
+          subtitle: l.settings_languageHint,
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 14, 14),
+          child: _Choices<String>(
+            values: SaveData.languages,
+            selected: state.language,
+            label: (v) => v == AppLanguage.auto
+                ? l.settings_languageAuto
+                : AppLanguage.nativeName(v),
+            onPick: (v) => state.setLanguage(v),
           ),
         ),
       ],

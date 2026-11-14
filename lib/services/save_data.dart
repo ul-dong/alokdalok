@@ -55,11 +55,12 @@ class SaveData {
     Set<int>? matchStageCleared,
     this.lastGame,
     this.lastStage = 1,
+    this.language = 'auto',
   }) : shapeStageCleared = shapeStageCleared ?? {},
        sizeStageCleared = sizeStageCleared ?? {},
        matchStageCleared = matchStageCleared ?? {};
 
-  static const int currentVersion = 7;
+  static const int currentVersion = 8;
 
   String nickname;
 
@@ -145,6 +146,12 @@ class SaveData {
 
   static const voiceStyles = ['pack', 'teacher'];
 
+  /// 앱 언어 (v8부터): 'auto'(기기·브라우저 언어를 따름), 'ko', 'en'.
+  /// 새로 설치하면 'auto', 예전 저장값은 'ko'(쓰던 그대로 한국어).
+  String language;
+
+  static const languages = ['auto', 'ko', 'en'];
+
   /// 가진 꾸미기 아이템 / 탈것 (둘 다 [owned]에 함께 저장)
   bool ownsVehicle(String id) => owned.contains(id) && Vehicles.exists(id);
 
@@ -220,6 +227,7 @@ class SaveData {
     },
     'paints': paints,
     'voiceStyle': voiceStyle,
+    'language': language,
   };
 
   String encode() => jsonEncode(toJson());
@@ -267,6 +275,7 @@ class SaveData {
     _v4to5,
     _v5to6,
     _v6to7,
+    _v7to8,
   ];
 
   /// 매번 도는 정리 단계 (버전과 무관, 멱등)
@@ -327,6 +336,10 @@ class SaveData {
   static SaveJson _v6to7(SaveJson json) => {...json}
     ..remove('lastGame')
     ..remove('lastStage');
+
+  // 버전 7: 언어 선택(자동/한국어/English)이 생겼다. 이미 쓰던 사람은 기기 언어가 영어여도
+  // 갑자기 바뀌지 않게 한국어로 둔다. 새로 설치하면 'auto'(기기 언어를 따름).
+  static SaveJson _v7to8(SaveJson json) => {...json, 'language': 'ko'};
 
   /// 없어진 탈것을 [Vehicles.retired]의 새 탈것으로 옮긴다: 가진 탈것, 타는 탈것,
   /// 붙인 스티커(새 탈것에 이미 있으면 합침), 칠한 색, 그 탈것용으로 산 색('paint_x@bicycle').
@@ -578,6 +591,8 @@ class SaveData {
     }
     final vs = json['voiceStyle'];
     d.voiceStyle = vs is String && voiceStyles.contains(vs) ? vs : 'pack';
+    final lang = json['language'];
+    d.language = lang is String && languages.contains(lang) ? lang : 'auto';
     return d;
   }
 

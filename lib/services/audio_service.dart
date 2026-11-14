@@ -42,6 +42,18 @@ abstract class AudioService {
   /// 목소리 종류가 바뀌었을 때 (기기 구현에서 톤을 다시 맞춘다)
   void onVoiceStyleChanged() {}
 
+  /// 말하는 언어 ('ko', 'en'). 앱이 화면 언어에 맞춰 바꾼다 (`GameState.applyLocale`).
+  String _locale = 'ko';
+  String get locale => _locale;
+  set locale(String v) {
+    if (v == _locale) return;
+    _locale = v;
+    onLocaleChanged();
+  }
+
+  /// 언어가 바뀌었을 때 (기기 구현에서 녹음 팩과 기기 음성 언어를 바꾼다)
+  void onLocaleChanged() {}
+
   /// 한국어 음성 합성을 쓸 수 있는지 (기기·브라우저에 따라 다름)
   bool get voiceAvailable;
 
