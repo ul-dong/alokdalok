@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/economy.dart';
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
+import '../../l10n/l10n.dart';
 import '../../services/audio_service.dart';
 import '../../services/game_state.dart';
 import '../common/object_art.dart';
@@ -92,7 +93,7 @@ class _MatchGameScreenState extends State<MatchGameScreen>
         onWrong(board.wrongLine(first!));
       case MatchOutcome.matched:
         state.audio.play(Sfx.correct);
-        setState(() => bubble = '똑같아요!');
+        setState(() => bubble = L10n.current.match_sameSay);
         state.audio.say(board.matchedLine(i));
       case MatchOutcome.finished:
         onSolved(

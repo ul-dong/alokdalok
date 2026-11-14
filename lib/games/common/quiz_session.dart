@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/economy.dart';
+import '../../l10n/l10n.dart';
 import '../../services/audio_service.dart';
 import '../../services/game_state.dart';
 import '../../widgets/common.dart';
@@ -89,7 +90,7 @@ mixin QuizSession<T extends StatefulWidget> on State<T> {
       cheer++;
       coinPopAmount = amount;
       coinPopTrigger++;
-      bubble = '정말 잘했어요!';
+      bubble = L10n.current.game_praiseSay;
     });
     final box = at?.currentContext?.findRenderObject() as RenderBox?;
     scene?.celebrate(
@@ -103,7 +104,7 @@ mixin QuizSession<T extends StatefulWidget> on State<T> {
   /// 오답: 혼내지 않고 "다시 찾아볼까요?" 하고 부드럽게 다시 이끈다.
   void onWrong(String line) {
     state.audio.play(Sfx.tryAgain);
-    setState(() => bubble = '다시 찾아볼까요?');
+    setState(() => bubble = L10n.current.game_tryAgainSay);
     state.audio.say(line);
   }
 
@@ -122,7 +123,7 @@ mixin QuizSession<T extends StatefulWidget> on State<T> {
     if (done >= questionCount) {
       final reward = await state.completeSession(kind, stageId);
       state.audio.play(Sfx.fanfare);
-      state.audio.say('정말 잘했어요! 코인을 받았어요.');
+      state.audio.say(L10n.current.game_doneSay);
       if (!mounted) return;
       setState(() {
         summary = SessionSummary(

@@ -179,5 +179,17 @@
   "garage_paints": "Paints",
   "garage_paint": "Paint",
   "garage_sticker": "Sticker",
-  "garage_color": "Color"
+  "garage_color": "Color",
+  "game_praiseSay": "Great job!",
+  "game_oneMore": "Shall we try once more?",
+  "game_doneSay": "Great job! You got coins.",
+  "game_pause": "Pause",
+  "game_resume": "Go on",
+  "game_stageOpened": "Step {n} is open!",
+  "game_nextStage": "Next step",
+  "game_goal": "Goal!",
+  "game_tryAgainSay": "Let's look again!",
+  "number_countTogetherSay": "Let's count together!",
+  "match_sameSay": "They match!",
+  "match_promptSay": "Can you find two pictures that match?"
 }

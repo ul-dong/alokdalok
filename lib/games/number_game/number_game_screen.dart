@@ -8,6 +8,7 @@ import '../../core/economy.dart';
 import '../../core/palette.dart';
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
+import '../../l10n/l10n.dart';
 import '../../services/audio_service.dart';
 import '../../services/game_state.dart';
 import '../../widgets/common.dart';
@@ -31,10 +32,10 @@ class NumberGameScreen extends StatefulWidget {
   final Random? random;
 
   /// 같이 세는 숫자판 제목 (틀렸을 때 말로도 읽어 준다)
-  static const boardTitle = '같이 세어 볼까요?';
+  static String get boardTitle => L10n.current.number_countTogetherSay;
 
   /// 정답 때 마지막 숫자에 이어 말하는 칭찬 ("셋, 정말 잘했어요!")
-  static const praise = '정말 잘했어요!';
+  static String get praise => L10n.current.game_praiseSay;
 
   @override
   State<NumberGameScreen> createState() => _NumberGameScreenState();
@@ -222,7 +223,7 @@ class _NumberGameScreenState extends State<NumberGameScreen> {
     if (done >= Economy.questionsPerSession) {
       final reward = await state.completeSession(GameKind.number, stage.id);
       state.audio.play(Sfx.fanfare);
-      state.audio.say('정말 잘했어요! 코인을 받았어요.');
+      state.audio.say(L10n.current.game_doneSay);
       if (!mounted) return;
       setState(() {
         summary = SessionSummary(
@@ -524,9 +525,7 @@ class CountBoard extends StatelessWidget {
     child: LayoutBuilder(
       builder: (context, c) {
         final h = c.maxHeight;
-        final color = number > 0
-            ? NumberColors.of(number)
-            : Palette.textSoft;
+        final color = number > 0 ? NumberColors.of(number) : Palette.textSoft;
         final reading = number > 0
             ? (praise != null
                   ? '${KoreanNumbers.count(number)}! $praise'

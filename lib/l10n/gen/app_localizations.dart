@@ -1177,6 +1177,78 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'색'**
   String get garage_color;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'정말 잘했어요!'**
+  String get game_praiseSay;
+
+  /// No description provided for @game_oneMore.
+  ///
+  /// In ko, this message translates to:
+  /// **'한 번 더 해 볼까요?'**
+  String get game_oneMore;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'정말 잘했어요! 코인을 받았어요.'**
+  String get game_doneSay;
+
+  /// No description provided for @game_pause.
+  ///
+  /// In ko, this message translates to:
+  /// **'잠깐 멈추기'**
+  String get game_pause;
+
+  /// No description provided for @game_resume.
+  ///
+  /// In ko, this message translates to:
+  /// **'계속'**
+  String get game_resume;
+
+  /// No description provided for @game_stageOpened.
+  ///
+  /// In ko, this message translates to:
+  /// **'{n}단계가 열렸어요!'**
+  String game_stageOpened(Object n);
+
+  /// No description provided for @game_nextStage.
+  ///
+  /// In ko, this message translates to:
+  /// **'다음 단계'**
+  String get game_nextStage;
+
+  /// No description provided for @game_goal.
+  ///
+  /// In ko, this message translates to:
+  /// **'골인!'**
+  String get game_goal;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'다시 찾아볼까요?'**
+  String get game_tryAgainSay;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'같이 세어 볼까요?'**
+  String get number_countTogetherSay;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'똑같아요!'**
+  String get match_sameSay;
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'똑같은 그림 두 장을 찾아볼까요?'**
+  String get match_promptSay;
 }
 
 class _AppLocalizationsDelegate

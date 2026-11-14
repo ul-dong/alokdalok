@@ -6,6 +6,7 @@ import '../../character/animal_painter.dart';
 import '../../character/character_view.dart';
 import '../../core/economy.dart';
 import '../../core/palette.dart';
+import '../../l10n/l10n.dart';
 import '../../services/audio_service.dart';
 import '../../services/eye_guard.dart';
 import '../../services/game_state.dart';
@@ -138,7 +139,7 @@ class _GameFrameState extends State<GameFrame> {
                                     children: [
                                       RoundIconButton(
                                         icon: Icons.pause_rounded,
-                                        label: '잠깐 멈추기',
+                                        label: context.l10n.game_pause,
                                         size: 58,
                                         onTap: () {
                                           state.audio.stopVoice();
@@ -162,7 +163,7 @@ class _GameFrameState extends State<GameFrame> {
                                         child: CountBadge(
                                           icon: const CoinIcon(size: 32),
                                           value: state.coins,
-                                          label: '코인',
+                                          label: context.l10n.common_coins,
                                         ),
                                       ),
                                     ],
@@ -238,7 +239,7 @@ class _PauseOverlay extends StatelessWidget {
             children: [
               _BigChoice(
                 icon: Icons.play_arrow_rounded,
-                label: '계속',
+                label: context.l10n.game_resume,
                 color: Palette.mint,
                 onTap: onResume,
               ),
@@ -246,7 +247,7 @@ class _PauseOverlay extends StatelessWidget {
               // 실수로 나가지 않게 약 1초 꾹 눌러야 집으로 간다 (고리가 차오름)
               HoldToConfirm(
                 icon: Icons.home_rounded,
-                label: '집으로',
+                label: context.l10n.common_home,
                 color: Palette.sky,
                 onConfirmed: () => Navigator.of(context).pop(),
               ),
@@ -463,7 +464,7 @@ class _ResultOverlayState extends State<_ResultOverlay> {
   Widget _content(SessionSummary s, int totalCoins) => Column(
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
-      const _Ribbon(text: '정말 잘했어요!'),
+      _Ribbon(text: context.l10n.game_praiseSay),
       const SizedBox(height: Gaps.sm),
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -518,7 +519,7 @@ class _ResultOverlayState extends State<_ResultOverlay> {
               ),
               const SizedBox(width: Gaps.xs),
               Text(
-                '${s.reward.unlockedStage}단계가 열렸어요!',
+                context.l10n.game_stageOpened(s.reward.unlockedStage!),
                 style: const TextStyle(
                   fontSize: TextSizes.label,
                   color: Color(0xFFE0607E),
@@ -534,7 +535,7 @@ class _ResultOverlayState extends State<_ResultOverlay> {
         children: [
           _BigChoice(
             icon: Icons.replay_rounded,
-            label: '또 하기',
+            label: context.l10n.home_replay,
             color: Palette.pink,
             onTap: widget.onReplay,
           ),
@@ -542,7 +543,7 @@ class _ResultOverlayState extends State<_ResultOverlay> {
             const SizedBox(width: Gaps.lg + 4),
             _BigChoice(
               icon: Icons.arrow_forward_rounded,
-              label: '다음 단계',
+              label: context.l10n.game_nextStage,
               color: Palette.mint,
               onTap: widget.onNext!,
             ),
@@ -550,7 +551,7 @@ class _ResultOverlayState extends State<_ResultOverlay> {
           const SizedBox(width: Gaps.lg + 4),
           _BigChoice(
             icon: Icons.home_rounded,
-            label: '집으로',
+            label: context.l10n.common_home,
             color: Palette.sky,
             onTap: () => Navigator.of(context).pop(),
           ),

@@ -603,4 +603,42 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get garage_color => '색';
+
+  @override
+  String get game_praiseSay => '정말 잘했어요!';
+
+  @override
+  String get game_oneMore => '한 번 더 해 볼까요?';
+
+  @override
+  String get game_doneSay => '정말 잘했어요! 코인을 받았어요.';
+
+  @override
+  String get game_pause => '잠깐 멈추기';
+
+  @override
+  String get game_resume => '계속';
+
+  @override
+  String game_stageOpened(Object n) {
+    return '$n단계가 열렸어요!';
+  }
+
+  @override
+  String get game_nextStage => '다음 단계';
+
+  @override
+  String get game_goal => '골인!';
+
+  @override
+  String get game_tryAgainSay => '다시 찾아볼까요?';
+
+  @override
+  String get number_countTogetherSay => '같이 세어 볼까요?';
+
+  @override
+  String get match_sameSay => '똑같아요!';
+
+  @override
+  String get match_promptSay => '똑같은 그림 두 장을 찾아볼까요?';
 }

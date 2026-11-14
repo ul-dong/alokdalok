@@ -7,6 +7,7 @@ import '../../character/walk_view.dart';
 import '../../core/slow_clock.dart';
 import '../../core/palette.dart';
 import '../../data/item_catalog.dart';
+import '../../l10n/l10n.dart';
 import '../../vehicle/ride_view.dart';
 import '../../widgets/common.dart';
 
@@ -300,9 +301,9 @@ class _GoalBurst extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white, width: 3),
         ),
-        child: const FitBox(
+        child: FitBox(
           child: Text(
-            '골인!',
+            context.l10n.game_goal,
             style: TextStyle(fontSize: TextSizes.label, color: Colors.white),
           ),
         ),

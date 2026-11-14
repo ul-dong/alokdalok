@@ -3,6 +3,7 @@ import 'dart:math';
 import '../../core/economy.dart';
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
+import '../../l10n/l10n.dart';
 
 /// 짝 맞추기 카드 한 장. 같은 [pair] 번호끼리 짝이다.
 class MatchCard {
@@ -43,7 +44,7 @@ class MatchBoard {
 
   String labelOf(int i) => cards[i].label(colorVariant);
 
-  static const prompt = '똑같은 그림 두 장을 찾아볼까요?';
+  static String get prompt => L10n.current.match_promptSay;
 
   /// 한 장을 골랐을 때: "사과! 똑같은 사과를 찾아볼까요?"
   String pickedLine(int i) =>

@@ -8,6 +8,7 @@ import '../../core/economy.dart';
 import '../../core/palette.dart';
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
+import '../../l10n/l10n.dart';
 import '../../services/audio_service.dart';
 import '../../services/game_state.dart';
 import '../../widgets/common.dart';
@@ -100,7 +101,7 @@ class _ColorGameScreenState extends State<ColorGameScreen> {
         cheer++;
         coinPopAmount = amount;
         coinPopTrigger++;
-        bubble = '정말 잘했어요!';
+        bubble = L10n.current.game_praiseSay;
       });
       final box =
           _tileKeys[index]?.currentContext?.findRenderObject() as RenderBox?;
@@ -117,7 +118,7 @@ class _ColorGameScreenState extends State<ColorGameScreen> {
       setState(() {
         wobbleIndex = index;
         wobbleTrigger++;
-        bubble = '한 번 더 해 볼까요?';
+        bubble = L10n.current.game_oneMore;
       });
       // 누른 색의 이름을 알려 주며 다시 찾아보게 한다 (틀렸다고 강조하지 않음)
       state.audio.say(
@@ -143,7 +144,7 @@ class _ColorGameScreenState extends State<ColorGameScreen> {
     if (done >= Economy.questionsPerSession) {
       final reward = await state.completeSession(GameKind.color, stage.id);
       state.audio.play(Sfx.fanfare);
-      state.audio.say('정말 잘했어요! 코인을 받았어요.');
+      state.audio.say(L10n.current.game_doneSay);
       if (!mounted) return;
       setState(() {
         summary = SessionSummary(

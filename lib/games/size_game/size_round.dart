@@ -3,6 +3,7 @@ import 'dart:math';
 import '../../core/economy.dart';
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
+import '../../l10n/l10n.dart';
 import '../number_game/number_round.dart' show AnswerOutcome;
 
 export '../number_game/number_round.dart' show AnswerOutcome;
@@ -48,7 +49,7 @@ class SizeQuestion {
   /// 틀렸을 때: "가장 큰 사과를 다시 찾아볼까요?"
   String get wrongLine => '$_target 다시 찾아볼까요?';
 
-  String get praise => '정말 잘했어요!';
+  String get praise => L10n.current.game_praiseSay;
 
   static SizeQuestion generate(
     SizeStage stage,

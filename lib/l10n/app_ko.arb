@@ -394,5 +394,40 @@
   "garage_paints": "물감",
   "garage_paint": "색칠",
   "garage_sticker": "스티커",
-  "garage_color": "색"
+  "garage_color": "색",
+  "game_praiseSay": "정말 잘했어요!",
+  "@game_praiseSay": {
+    "description": "[음성] 말한다"
+  },
+  "game_oneMore": "한 번 더 해 볼까요?",
+  "game_doneSay": "정말 잘했어요! 코인을 받았어요.",
+  "@game_doneSay": {
+    "description": "[음성] 말한다"
+  },
+  "game_pause": "잠깐 멈추기",
+  "game_resume": "계속",
+  "game_stageOpened": "{n}단계가 열렸어요!",
+  "@game_stageOpened": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "game_nextStage": "다음 단계",
+  "game_goal": "골인!",
+  "game_tryAgainSay": "다시 찾아볼까요?",
+  "@game_tryAgainSay": {
+    "description": "[음성] 말한다"
+  },
+  "number_countTogetherSay": "같이 세어 볼까요?",
+  "@number_countTogetherSay": {
+    "description": "[음성] 말한다"
+  },
+  "match_sameSay": "똑같아요!",
+  "@match_sameSay": {
+    "description": "[음성] 말한다"
+  },
+  "match_promptSay": "똑같은 그림 두 장을 찾아볼까요?",
+  "@match_promptSay": {
+    "description": "[음성] 말한다"
+  }
 }

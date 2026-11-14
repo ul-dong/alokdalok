@@ -618,4 +618,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get garage_color => 'Color';
+
+  @override
+  String get game_praiseSay => 'Great job!';
+
+  @override
+  String get game_oneMore => 'Shall we try once more?';
+
+  @override
+  String get game_doneSay => 'Great job! You got coins.';
+
+  @override
+  String get game_pause => 'Pause';
+
+  @override
+  String get game_resume => 'Go on';
+
+  @override
+  String game_stageOpened(Object n) {
+    return 'Step $n is open!';
+  }
+
+  @override
+  String get game_nextStage => 'Next step';
+
+  @override
+  String get game_goal => 'Goal!';
+
+  @override
+  String get game_tryAgainSay => 'Let\'s look again!';
+
+  @override
+  String get number_countTogetherSay => 'Let\'s count together!';
+
+  @override
+  String get match_sameSay => 'They match!';
+
+  @override
+  String get match_promptSay => 'Can you find two pictures that match?';
 }
