@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../l10n/l10n.dart';
 import 'save_data.dart';
 
 /// 백업 글자를 읽지 못한 이유
@@ -102,8 +103,8 @@ class BackupCode {
 
   /// 부모님께 보여 줄 안내 문구
   static String message(BackupError e) => switch (e) {
-    BackupError.notBackup => "백업 글자가 아니에요. 'ALOK1-'로 시작하는 글자를 붙여 넣어 주세요.",
-    BackupError.damaged => '글자가 일부 빠졌거나 바뀌었어요. 처음부터 끝까지 다시 복사해 주세요.',
-    BackupError.tooNew => '더 새 버전 앱에서 만든 백업이에요. 앱을 업데이트한 뒤 다시 해 주세요.',
+    BackupError.notBackup => L10n.current.backup_errNotBackup,
+    BackupError.damaged => L10n.current.backup_errDamaged,
+    BackupError.tooNew => L10n.current.backup_errTooNew,
   };
 }

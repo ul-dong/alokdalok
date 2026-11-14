@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
+import '../l10n/l10n.dart';
 import 'eye_guard.dart';
 
 EyeSensor createEyeSensor() => _MlKitEyeSensor();
@@ -123,7 +124,7 @@ class _MlKitEyeSensor implements EyeSensor {
       final cams = await availableCameras();
       final front = cams.firstWhere(
         (c) => c.lensDirection == CameraLensDirection.front,
-        orElse: () => throw const EyeSensorDenied('앞카메라가 없어요'),
+        orElse: () => throw EyeSensorDenied(L10n.current.eye_errNoFront),
       );
       if (gen != _gen) return null;
       cam = eyeCameraController(front, ios: Platform.isIOS);
@@ -147,8 +148,8 @@ class _MlKitEyeSensor implements EyeSensor {
       if (gen != _gen) return null;
       if (e is CameraException) {
         throw _denied(e)
-            ? const EyeSensorDenied('카메라 사용을 허용해 주세요')
-            : '카메라를 잠깐 쓸 수 없어요 (${e.code})';
+            ? EyeSensorDenied(L10n.current.eye_errPermission)
+            : L10n.current.eye_errBusy(e.code);
       }
       rethrow;
     }
@@ -179,7 +180,7 @@ class _MlKitEyeSensor implements EyeSensor {
           });
         } catch (e) {
           broken = true;
-          throw e is CameraException ? '카메라 이미지를 받지 못했어요 (${e.code})' : e;
+          throw e is CameraException ? L10n.current.eye_errNoImage(e.code) : e;
         }
       },
       close: () async {

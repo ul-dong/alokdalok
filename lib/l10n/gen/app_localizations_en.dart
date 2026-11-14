@@ -683,4 +683,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String match_card(Object name) {
     return 'Card: $name';
   }
+
+  @override
+  String get backup_errNotBackup =>
+      'That isn\'t backup text. Please paste text that starts with \'ALOK1-\'.';
+
+  @override
+  String get backup_errDamaged =>
+      'Some text is missing or changed. Please copy all of it again.';
+
+  @override
+  String get backup_errTooNew =>
+      'This backup is from a newer app. Please update the app and try again.';
+
+  @override
+  String get eye_errNoFront => 'No front camera';
+
+  @override
+  String get eye_errPermission => 'Please allow camera access';
+
+  @override
+  String eye_errBusy(Object code) {
+    return 'The camera can\'t be used right now ($code)';
+  }
+
+  @override
+  String eye_errNoImage(Object code) {
+    return 'Couldn\'t get a camera image ($code)';
+  }
+
+  @override
+  String get eye_errLoad => 'Couldn\'t load Eye Guard';
 }

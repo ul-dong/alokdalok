@@ -1291,6 +1291,54 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'카드 {name}'**
   String match_card(Object name);
+
+  /// No description provided for @backup_errNotBackup.
+  ///
+  /// In ko, this message translates to:
+  /// **'백업 글자가 아니에요. \'ALOK1-\'로 시작하는 글자를 붙여 넣어 주세요.'**
+  String get backup_errNotBackup;
+
+  /// No description provided for @backup_errDamaged.
+  ///
+  /// In ko, this message translates to:
+  /// **'글자가 일부 빠졌거나 바뀌었어요. 처음부터 끝까지 다시 복사해 주세요.'**
+  String get backup_errDamaged;
+
+  /// No description provided for @backup_errTooNew.
+  ///
+  /// In ko, this message translates to:
+  /// **'더 새 버전 앱에서 만든 백업이에요. 앱을 업데이트한 뒤 다시 해 주세요.'**
+  String get backup_errTooNew;
+
+  /// No description provided for @eye_errNoFront.
+  ///
+  /// In ko, this message translates to:
+  /// **'앞카메라가 없어요'**
+  String get eye_errNoFront;
+
+  /// No description provided for @eye_errPermission.
+  ///
+  /// In ko, this message translates to:
+  /// **'카메라 사용을 허용해 주세요'**
+  String get eye_errPermission;
+
+  /// No description provided for @eye_errBusy.
+  ///
+  /// In ko, this message translates to:
+  /// **'카메라를 잠깐 쓸 수 없어요 ({code})'**
+  String eye_errBusy(Object code);
+
+  /// No description provided for @eye_errNoImage.
+  ///
+  /// In ko, this message translates to:
+  /// **'카메라 이미지를 받지 못했어요 ({code})'**
+  String eye_errNoImage(Object code);
+
+  /// No description provided for @eye_errLoad.
+  ///
+  /// In ko, this message translates to:
+  /// **'눈 지킴이를 불러오지 못했어요'**
+  String get eye_errLoad;
 }
 
 class _AppLocalizationsDelegate

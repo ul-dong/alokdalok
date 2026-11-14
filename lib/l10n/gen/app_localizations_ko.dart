@@ -668,4 +668,33 @@ class AppLocalizationsKo extends AppLocalizations {
   String match_card(Object name) {
     return '카드 $name';
   }
+
+  @override
+  String get backup_errNotBackup =>
+      '백업 글자가 아니에요. \'ALOK1-\'로 시작하는 글자를 붙여 넣어 주세요.';
+
+  @override
+  String get backup_errDamaged => '글자가 일부 빠졌거나 바뀌었어요. 처음부터 끝까지 다시 복사해 주세요.';
+
+  @override
+  String get backup_errTooNew => '더 새 버전 앱에서 만든 백업이에요. 앱을 업데이트한 뒤 다시 해 주세요.';
+
+  @override
+  String get eye_errNoFront => '앞카메라가 없어요';
+
+  @override
+  String get eye_errPermission => '카메라 사용을 허용해 주세요';
+
+  @override
+  String eye_errBusy(Object code) {
+    return '카메라를 잠깐 쓸 수 없어요 ($code)';
+  }
+
+  @override
+  String eye_errNoImage(Object code) {
+    return '카메라 이미지를 받지 못했어요 ($code)';
+  }
+
+  @override
+  String get eye_errLoad => '눈 지킴이를 불러오지 못했어요';
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:js_interop';
 
+import '../l10n/l10n.dart';
 import 'eye_guard.dart';
 
 EyeSensor createEyeSensor() => _WebEyeSensor();
@@ -56,7 +57,7 @@ class _WebEyeSensor implements EyeSensor {
     Duration budget = EyeRules.windowBudget,
   }) async {
     final g = _guard;
-    if (g == null) throw const EyeSensorDenied('눈 지킴이를 불러오지 못했어요');
+    if (g == null) throw EyeSensorDenied(L10n.current.eye_errLoad);
     final gen = _gen;
     Timer? ticker;
     final w = _window = EyeWindow<int>(
