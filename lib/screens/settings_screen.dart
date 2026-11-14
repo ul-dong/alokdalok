@@ -841,11 +841,7 @@ class _LanguageCard extends StatelessWidget {
     final l = context.l10n;
     return _Panel(
       children: [
-        _RowTile(
-          icon: Icons.translate_rounded,
-          title: l.settings_language,
-          subtitle: l.settings_languageHint,
-        ),
+        _RowTile(icon: Icons.translate_rounded, title: l.settings_languageHint),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 14, 14),
           child: _Choices<String>(

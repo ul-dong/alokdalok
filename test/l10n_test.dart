@@ -8,6 +8,11 @@ import 'package:alokdalok/services/audio_service.dart';
 import 'package:alokdalok/services/game_state.dart';
 import 'package:alokdalok/services/save_data.dart';
 import 'package:alokdalok/services/storage_service.dart';
+import 'package:alokdalok/screens/settings_screen.dart';
+import 'package:alokdalok/widgets/common.dart';
+import 'package:flutter/material.dart'
+    show MaterialPageRoute, Navigator, Scrollable;
+import 'package:alokdalok/screens/home_screen.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -124,6 +129,15 @@ void main() {
       }
     });
 
+    test('영어 문구는 Jua 글꼴에 있는 글자(ASCII)만 쓴다', () {
+      // Jua에는 기본 라틴 글자만 있다 (’ – … 같은 글자는 다른 글꼴로 바뀌어 어색하다)
+      final en = _arb('en');
+      final ok = RegExp(r'^[ -~\n]*$');
+      for (final k in _keys(en)) {
+        expect(ok.hasMatch(en[k] as String), isTrue, reason: '$k: ${en[k]}');
+      }
+    });
+
     test('자리 표시자({name})가 두 언어에서 같다', () {
       final ko = _arb('ko'), en = _arb('en');
       final ph = RegExp(r'\{(\w+)');
@@ -147,6 +161,8 @@ void main() {
     Future<GameState> app(WidgetTester t, String language) async {
       final s = GameState(storage: MemoryStorage(), audio: RecordingAudio());
       await s.load();
+      await s.setNickname('보리');
+      await s.setParentGate(false);
       await s.setLanguage(language);
       await t.pumpWidget(AlokdalokApp(state: s));
       await t.pump(const Duration(milliseconds: 300));
@@ -178,6 +194,38 @@ void main() {
       await t.pump(const Duration(milliseconds: 300));
       expect(L10n.code, 'ko');
       expect(s.audio.locale, 'ko');
+      await close(t);
+    });
+
+    testWidgets('설정에서 English를 누르면 앱이 영어로, 자동을 누르면 기기 언어로', (t) async {
+      final s = await app(t, 'auto');
+      // 홈 위에 설정 화면을 연다 (부모 확인은 다른 테스트에서 본다)
+      Navigator.of(
+        t.element(find.byType(HomeScreen)),
+      ).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 500));
+      final english = find.byWidgetPredicate(
+        (w) => w is Pressable && w.semanticLabel == 'English',
+      );
+      await t.scrollUntilVisible(
+        english,
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await t.tap(english);
+      await t.pump(const Duration(milliseconds: 500));
+      expect(s.language, 'en');
+      expect(L10n.code, 'en');
+      expect(find.text('Settings'), findsOneWidget);
+      final auto = find.byWidgetPredicate(
+        (w) => w is Pressable && w.semanticLabel == 'Auto',
+      );
+      await t.tap(auto);
+      await t.pump(const Duration(milliseconds: 500));
+      expect(s.language, 'auto');
+      expect(L10n.code, 'ko', reason: '테스트 기기는 한국어');
+      expect(find.text('설정'), findsOneWidget);
       await close(t);
     });
 

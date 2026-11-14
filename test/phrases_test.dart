@@ -174,6 +174,11 @@ void main() {
         expect(n.trim(), isNotEmpty);
         expect(hangul.hasMatch(n), isFalse, reason: n);
         expect(n, isNot(contains('_')), reason: '아이디가 그대로 나오면 안 된다: $n');
+        expect(
+          RegExp(r'^[ -~]+$').hasMatch(n),
+          isTrue,
+          reason: 'Jua 글꼴 글자만: $n',
+        );
       }
     });
 

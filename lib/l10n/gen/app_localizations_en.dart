@@ -126,7 +126,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'On the child\'s screens (outside settings), checks distance (30 cm or more) and posture with the front camera';
 
   @override
-  String get settings_eyeSearching => 'Looking for a face…';
+  String get settings_eyeSearching => 'Looking for a face...';
 
   @override
   String get settings_eyePostureGood => 'good posture';
@@ -260,7 +260,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Coins are earned only by playing and spent only on dress-up items.';
 
   @override
-  String get settings_note4 => 'One round is 5 questions (about 1–2 minutes).';
+  String get settings_note4 => 'One round is 5 questions (about 1-2 minutes).';
 
   @override
   String get settings_note5 =>
@@ -608,7 +608,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get garage_stickers => 'Stickers';
 
   @override
-  String get garage_paints => 'Paints';
+  String get garage_paints => 'Colors';
 
   @override
   String get garage_paint => 'Paint';
