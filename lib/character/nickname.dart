@@ -1,5 +1,8 @@
 import 'dart:math';
 
+import '../l10n/l10n.dart';
+import '../l10n/phrases.dart';
+
 /// 닉네임 규칙과 검증. 닉네임은 기기 안에만 저장하고 어디에도 보내지 않는다.
 class Nickname {
   Nickname._();
@@ -27,8 +30,11 @@ class Nickname {
     '사랑이',
   ];
 
-  static String random([Random? rng]) =>
-      randomPool[(rng ?? Random()).nextInt(randomPool.length)];
+  /// 한국어 이름 목록은 [randomPool], 지금 언어 목록은 문장 조립기([Phrases.randomNames])
+  static String random([Random? rng]) {
+    final pool = Phrases.current.randomNames;
+    return pool[(rng ?? Random()).nextInt(pool.length)];
+  }
 
   /// 부적절한 단어 목록 (포함 여부로 검사). 필요하면 여기에 추가한다.
   static const _blocked = [
@@ -70,13 +76,15 @@ class Nickname {
   /// 검증 결과. 문제가 없으면 null, 있으면 부모가 읽을 짧은 안내 문구.
   static String? validate(String? raw) {
     final value = raw ?? '';
-    if (value.trim().isEmpty) return '닉네임을 입력해 주세요.';
-    if (value.contains(RegExp(r'\s'))) return '띄어쓰기 없이 입력해 주세요.';
-    if (value.runes.length > maxLength) return '$maxLength글자까지 쓸 수 있어요.';
-    if (!_allowed.hasMatch(value)) return '한글, 영문, 숫자만 쓸 수 있어요.';
+    if (value.trim().isEmpty) return L10n.current.nickname_errEmpty;
+    if (value.contains(RegExp(r'\s'))) return L10n.current.nickname_errSpace;
+    if (value.runes.length > maxLength) {
+      return L10n.current.nickname_errLength(maxLength);
+    }
+    if (!_allowed.hasMatch(value)) return L10n.current.nickname_errChars;
     final lower = value.toLowerCase();
     for (final word in _blocked) {
-      if (lower.contains(word)) return '다른 닉네임을 써 주세요.';
+      if (lower.contains(word)) return L10n.current.nickname_errBlocked;
     }
     return null;
   }

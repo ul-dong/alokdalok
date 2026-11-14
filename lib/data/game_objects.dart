@@ -1,41 +1,32 @@
 import 'dart:ui';
 
+import '../l10n/ko/korean_phrases.dart';
+import '../l10n/phrases.dart';
+
 /// 게임에 나오는 사물 종류. 모양은 lib/games/common/object_art.dart에서 그린다.
 enum ObjectKind { apple, car, star, fish, duck, balloon, ball, flower }
 
 extension ObjectKindInfo on ObjectKind {
-  /// 한국어 이름 (enum 기본 name과 겹치지 않게 ko)
-  String get ko => switch (this) {
-    ObjectKind.apple => '사과',
-    ObjectKind.car => '자동차',
-    ObjectKind.star => '별',
-    ObjectKind.fish => '물고기',
-    ObjectKind.duck => '오리',
-    ObjectKind.balloon => '풍선',
-    ObjectKind.ball => '공',
-    ObjectKind.flower => '꽃',
-  };
+  // 한국어 낱말·조사는 문장 조립기(lib/l10n/ko/korean_phrases.dart)에 있다.
+  // 아래 넷은 한국어 전용 바로가기 (한국어 음성 목록·테스트용). 화면과 말에는 [Phrases.current].
+
+  /// 한국어 이름 (사과)
+  String get ko => Phrases.ko.object(this);
 
   /// 받침에 맞는 주격 조사 (사과가 / 별이)
-  String get subject => '$ko${hasBatchim(ko) ? '이' : '가'}';
+  String get subject => KoreanPhrases.subject(ko);
 
   /// 받침에 맞는 보조사 (사과는 / 별은)
-  String get topic => '$ko${hasBatchim(ko) ? '은' : '는'}';
+  String get topic => KoreanPhrases.topic(ko);
 
   /// 받침에 맞는 목적격 조사 (자동차를 / 별을)
-  String get object => '$ko${hasBatchim(ko) ? '을' : '를'}';
+  String get object => KoreanPhrases.objectCase(ko);
 
-  /// 누르면 말해 주는 이름: "사과!" / 색이 있으면 "빨간 사과!" (둘 다 녹음 조각에 있다)
-  String sayName([GameColor? color]) =>
-      color != null && GameColor.extended.contains(color)
-      ? '${color.adjective} $ko!'
-      : '$ko!';
+  /// 누르면 말해 주는 이름 (지금 언어): "사과!" / 색이 있으면 "빨간 사과!"
+  String sayName([GameColor? color]) => Phrases.current.sayName(this, color);
 
-  /// 셀 때 붙이는 말: 동물은 '마리', 나머지는 '개'
-  String get counter => switch (this) {
-    ObjectKind.fish || ObjectKind.duck => '마리',
-    _ => '개',
-  };
+  /// 한국어 셈 단위: 동물은 '마리', 나머지는 '개'
+  String get counter => Phrases.ko.counter(this);
 
   /// 색을 바꿔 칠해도 되는 물건인지.
   /// 공·풍선·자동차·별·꽃·물고기처럼 원래 여러 색인 것만 바꾼다.
@@ -72,39 +63,31 @@ extension ObjectKindInfo on ObjectKind {
   };
 }
 
-/// 마지막 글자에 받침이 있는지 (조사 고르기용)
-bool hasBatchim(String word) {
-  if (word.isEmpty) return false;
-  final code = word.runes.last;
-  if (code < 0xAC00 || code > 0xD7A3) return false;
-  return (code - 0xAC00) % 28 != 0;
-}
-
 /// 색깔 놀이에서 쓰는 색. 새 색은 여기에 추가하고 color_stages에서 단계에 넣는다.
 class GameColor {
-  const GameColor(this.id, this.name, this.adjective, this.color);
+  const GameColor(this.id, this.color);
 
   final String id;
-
-  /// '빨간색'
-  final String name;
-
-  /// '빨간' (빨간 자동차)
-  final String adjective;
   final Color color;
 
-  static const red = GameColor('red', '빨간색', '빨간', Color(0xFFE8352B));
-  static const blue = GameColor('blue', '파란색', '파란', Color(0xFF1E6FE0));
-  static const yellow = GameColor('yellow', '노란색', '노란', Color(0xFFFFCC00));
-  static const green = GameColor('green', '초록색', '초록', Color(0xFF19A84A));
-  static const orange = GameColor('orange', '주황색', '주황', Color(0xFFFF7A00));
-  static const purple = GameColor('purple', '보라색', '보라', Color(0xFF7E3FD1));
+  /// 한국어 색 이름 '빨간색' (한국어 전용 바로가기. 화면과 말에는 [Phrases.current])
+  String get name => Phrases.ko.colorName(this);
 
-  static const pink = GameColor('pink', '분홍색', '분홍', Color(0xFFFF4F9A));
-  static const brown = GameColor('brown', '갈색', '갈색', Color(0xFF8B5A2B));
+  /// 한국어 꾸밈말 '빨간' (빨간 자동차)
+  String get adjective => Phrases.ko.colorAdjective(this);
+
+  static const red = GameColor('red', Color(0xFFE8352B));
+  static const blue = GameColor('blue', Color(0xFF1E6FE0));
+  static const yellow = GameColor('yellow', Color(0xFFFFCC00));
+  static const green = GameColor('green', Color(0xFF19A84A));
+  static const orange = GameColor('orange', Color(0xFFFF7A00));
+  static const purple = GameColor('purple', Color(0xFF7E3FD1));
+
+  static const pink = GameColor('pink', Color(0xFFFF4F9A));
+  static const brown = GameColor('brown', Color(0xFF8B5A2B));
 
   /// 힌트 견본용 회색 (보기 색으로는 쓰지 않는다)
-  static const gray = GameColor('gray', '회색', '회색', Color(0xFF9AA3AD));
+  static const gray = GameColor('gray', Color(0xFF9AA3AD));
 
   static const all = [red, blue, yellow, green, orange, purple];
 
@@ -119,20 +102,14 @@ class GameColor {
 enum ShapeKind { circle, triangle, square, star, heart, diamond }
 
 extension ShapeKindInfo on ShapeKind {
-  String get ko => switch (this) {
-    ShapeKind.circle => '동그라미',
-    ShapeKind.triangle => '세모',
-    ShapeKind.square => '네모',
-    ShapeKind.star => '별',
-    ShapeKind.heart => '하트',
-    ShapeKind.diamond => '다이아',
-  };
+  /// 한국어 이름 (동그라미). 한국어 전용 바로가기
+  String get ko => Phrases.ko.shape(this);
 
   /// 동그라미를 / 별을
-  String get object => '$ko${hasBatchim(ko) ? '을' : '를'}';
+  String get object => KoreanPhrases.objectCase(ko);
 
   /// "이건 세모예요." / "이건 별이에요."
-  String get thisIs => '이건 $ko${hasBatchim(ko) ? '이에요.' : '예요.'}';
+  String get thisIs => Phrases.ko.thisIsShape(this);
 
   /// 돌려도 모양이 그대로인지 (동그라미)
   bool get rotationFree => this == ShapeKind.circle;
@@ -142,6 +119,6 @@ extension ShapeKindInfo on ShapeKind {
 enum SizeAsk { big, small }
 
 extension SizeAskInfo on SizeAsk {
-  /// '큰' / '작은'
-  String get adjective => this == SizeAsk.big ? '큰' : '작은';
+  /// 한국어 '큰' / '작은' (한국어 전용 바로가기)
+  String get adjective => Phrases.ko.sizeAdjective(this);
 }

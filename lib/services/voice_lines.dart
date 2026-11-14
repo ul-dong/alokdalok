@@ -4,8 +4,9 @@ import '../data/game_objects.dart';
 import '../data/item_catalog.dart';
 import '../data/stages.dart';
 import '../data/vehicles.dart';
-import '../data/game_kinds.dart';
-import '../games/common/korean_numbers.dart';
+import '../l10n/ko/korean_numbers.dart';
+import '../l10n/ko/korean_phrases.dart';
+import '../l10n/phrases.dart';
 import 'game_state.dart';
 
 /// 녹음 음성 팩에 들어가는 모든 문장 조각.
@@ -138,31 +139,31 @@ class VoiceLines {
 
     // 상점: 아이템·탈것 이름
     for (final i in ItemCatalog.all) {
-      out.add(i.name);
+      out.add(i.nameKo);
     }
     for (final v in Vehicles.all) {
-      out.add(v.name);
+      out.add(v.nameKo);
     }
 
     // 색칠
     for (final p in Vehicles.paints) {
       out
-        ..add(p.name)
-        ..add('${p.name}으로 칠했어요!')
-        ..add(_topic(p.name));
+        ..add(p.nameKo)
+        ..add(Phrases.ko.paintedWith(p))
+        ..add(_topic(p.nameKo));
     }
 
     // 친구 고르기
     for (final z in Zodiac.values) {
-      out.add(z.hello);
+      out.add(Phrases.ko.friendHello(z));
     }
 
     // 놀이터 그림·이름표: "숫자 놀이!", "짝 맞추기!"
     // 길게 누르면(놀이터·홈 또 하기): "숫자 놀이야!", "짝 맞추기야!"
     for (final g in GameKind.values) {
       out
-        ..add(g.invite)
-        ..add(g.nameLine);
+        ..add(Phrases.ko.gameInvite(g))
+        ..add(Phrases.ko.gameNameLine(g));
     }
 
     // 이름을 비워 두면 지어 주는 이름 ("별이, 반가워!")
@@ -248,7 +249,7 @@ class VoiceLines {
 
     // 색칠 물감이 모자랄 때: "분홍색은 코인 10개가 필요해요."
     for (final p in Vehicles.paints) {
-      out.add('${p.name}은 코인 ${Vehicles.paintPrice}개가 필요해요.');
+      out.add(Phrases.ko.paintNeedsCoins(p, Vehicles.paintPrice));
     }
     return out.toList();
   }

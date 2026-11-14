@@ -1249,6 +1249,48 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'똑같은 그림 두 장을 찾아볼까요?'**
   String get match_promptSay;
+
+  /// No description provided for @nickname_errEmpty.
+  ///
+  /// In ko, this message translates to:
+  /// **'닉네임을 입력해 주세요.'**
+  String get nickname_errEmpty;
+
+  /// No description provided for @nickname_errSpace.
+  ///
+  /// In ko, this message translates to:
+  /// **'띄어쓰기 없이 입력해 주세요.'**
+  String get nickname_errSpace;
+
+  /// No description provided for @nickname_errLength.
+  ///
+  /// In ko, this message translates to:
+  /// **'{n}글자까지 쓸 수 있어요.'**
+  String nickname_errLength(Object n);
+
+  /// No description provided for @nickname_errChars.
+  ///
+  /// In ko, this message translates to:
+  /// **'한글, 영문, 숫자만 쓸 수 있어요.'**
+  String get nickname_errChars;
+
+  /// No description provided for @nickname_errBlocked.
+  ///
+  /// In ko, this message translates to:
+  /// **'다른 닉네임을 써 주세요.'**
+  String get nickname_errBlocked;
+
+  /// No description provided for @match_hintLabel.
+  ///
+  /// In ko, this message translates to:
+  /// **'찾는 그림 {name}'**
+  String match_hintLabel(Object name);
+
+  /// No description provided for @match_card.
+  ///
+  /// In ko, this message translates to:
+  /// **'카드 {name}'**
+  String match_card(Object name);
 }
 
 class _AppLocalizationsDelegate

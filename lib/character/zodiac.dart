@@ -1,5 +1,7 @@
 import 'dart:ui';
 
+import '../l10n/phrases.dart';
+
 /// 고를 수 있는 친구: 12지신 12마리 + 공룡 12마리. 저장값에는 [name](영문 id)을 쓴다.
 /// (이름은 예전 저장값과 맞추려고 Zodiac 그대로 둔다)
 enum Zodiac {
@@ -42,7 +44,7 @@ class ZodiacLook {
     required this.accent,
   });
 
-  /// 동물 이름 (쥐, 소 …)
+  /// 한국어 동물 이름 (쥐, 소 …). 화면과 말에는 [ZodiacInfo.animalName]
   final String animal;
 
   /// 아이가 부르기 쉬운 친구 이름 (찍찍이, 음매 …)
@@ -235,14 +237,11 @@ extension ZodiacInfo on Zodiac {
       index >= Zodiac.trex.index ? FriendGroup.dino : FriendGroup.zodiac;
   bool get isDino => group == FriendGroup.dino;
 
-  /// "나는 호랑이야!" (진짜 동물 이름. 받침이 있으면 "이야")
-  String get hello {
-    final b = look.animal;
-    final last = b.runes.last;
-    final batchim =
-        last >= 0xAC00 && last <= 0xD7A3 && (last - 0xAC00) % 28 != 0;
-    return '나는 $b${batchim ? '이야' : '야'}!';
-  }
+  /// 동물 이름 (지금 언어): 호랑이 / Tiger
+  String get animalName => Phrases.current.animal(this);
+
+  /// "나는 호랑이야!" / "I'm a tiger!" (지금 언어)
+  String get hello => Phrases.current.friendHello(this);
 
   static List<Zodiac> of(FriendGroup g) =>
       Zodiac.values.where((z) => z.group == g).toList(growable: false);

@@ -1,5 +1,7 @@
 import 'dart:ui';
 
+import '../l10n/phrases.dart';
+
 /// 탈것 종류. 그림은 lib/vehicle/vehicle_painter.dart
 enum VehicleKind { car, rocket, tank, motorcycle, train, balloon, airplane }
 
@@ -8,14 +10,19 @@ class Vehicle {
   const Vehicle({
     required this.id,
     required this.kind,
-    required this.name,
+    required String name,
     required this.price,
     required this.defaultPaint,
-  });
+  }) : nameKo = name;
 
   final String id;
   final VehicleKind kind;
-  final String name;
+
+  /// 한국어 이름 (원본 자료)
+  final String nameKo;
+
+  /// 이름 (지금 언어)
+  String get name => Phrases.current.vehicleName(this);
   final int price;
 
   /// 처음 살 때 칠해져 있는 색 (이 탈것에는 공짜)
@@ -26,15 +33,18 @@ class Vehicle {
 class VehiclePaint {
   const VehiclePaint({
     required this.id,
-    required this.name,
+    required String name,
     required this.body,
     required this.trim,
-  });
+  }) : nameKo = name;
 
   final String id;
 
-  /// 말할 때 쓰는 색 이름 ("빨간색")
-  final String name;
+  /// 한국어 색 이름 ("빨간색", 원본 자료)
+  final String nameKo;
+
+  /// 말할 때 쓰는 색 이름 (지금 언어)
+  String get name => Phrases.current.paintName(this);
 
   /// 차체 색
   final Color body;

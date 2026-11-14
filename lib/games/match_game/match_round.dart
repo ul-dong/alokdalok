@@ -3,7 +3,9 @@ import 'dart:math';
 import '../../core/economy.dart';
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
+import '../../l10n/ko/korean_phrases.dart';
 import '../../l10n/l10n.dart';
+import '../../l10n/phrases.dart';
 
 /// 짝 맞추기 카드 한 장. 같은 [pair] 번호끼리 짝이다.
 class MatchCard {
@@ -12,15 +14,17 @@ class MatchCard {
   final ObjectKind kind;
   final GameColor color;
 
-  /// '사과' / (색 단계) '빨간 사과'
-  String label(bool withColor) =>
-      withColor ? '${color.adjective} ${kind.ko}' : kind.ko;
+  /// 이름에 붙이는 색 (같은 물건 다른 색 단계만)
+  GameColor? colorIf(bool withColor) => withColor ? color : null;
 
-  /// '사과를' / '빨간 사과를'
-  String objectLabel(bool withColor) {
-    final l = label(withColor);
-    return '$l${hasBatchim(l) ? '을' : '를'}';
-  }
+  /// '사과' / (색 단계) '빨간 사과' (지금 언어)
+  String label(bool withColor) =>
+      Phrases.current.objectLabel(kind, colorIf(withColor));
+
+  /// 한국어 '사과를' / '빨간 사과를' (한국어 전용 바로가기)
+  String objectLabel(bool withColor) => KoreanPhrases.objectCase(
+    Phrases.ko.objectLabel(kind, colorIf(withColor)),
+  );
 }
 
 /// 짝 맞추기 판 하나 (= 문제 하나). 카드는 뒤집지 않고 모두 보인다.
@@ -47,15 +51,32 @@ class MatchBoard {
   static String get prompt => L10n.current.match_promptSay;
 
   /// 한 장을 골랐을 때: "사과! 똑같은 사과를 찾아볼까요?"
-  String pickedLine(int i) =>
-      '${labelOf(i)}! 똑같은 ${cards[i].objectLabel(colorVariant)} 찾아볼까요?';
+  String pickedLine(int i) => Phrases.current.matchPicked(
+    cards[i].kind,
+    cards[i].colorIf(colorVariant),
+  );
+
+  /// 한 장을 골랐을 때 문제 글: "똑같은 사과를 찾아볼까요?"
+  String findLine(int i) =>
+      Phrases.current.matchFind(cards[i].kind, cards[i].colorIf(colorVariant));
 
   /// 짝이 아닐 때: "똑같은 사과를 다시 찾아볼까요?"
-  String wrongLine(int selected) =>
-      '똑같은 ${cards[selected].objectLabel(colorVariant)} 다시 찾아볼까요?';
+  String wrongLine(int selected) => Phrases.current.matchWrong(
+    cards[selected].kind,
+    cards[selected].colorIf(colorVariant),
+  );
 
   /// 짝을 맞췄을 때: "사과! 똑같아요!"
-  String matchedLine(int i) => '${labelOf(i)}! 똑같아요!';
+  String matchedLine(int i) => Phrases.current.matchMatched(
+    cards[i].kind,
+    cards[i].colorIf(colorVariant),
+  );
+
+  /// 마지막 짝을 맞췄을 때: "사과! 똑같아요! 정말 잘했어요!"
+  String finishedLine(int i) => Phrases.current.matchFinished(
+    cards[i].kind,
+    cards[i].colorIf(colorVariant),
+  );
 
   static MatchBoard generate(
     MatchStage stage,

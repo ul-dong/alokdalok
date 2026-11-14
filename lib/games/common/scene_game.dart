@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/palette.dart';
 import '../../core/slow_clock.dart';
+import '../../l10n/phrases.dart';
 
 /// 계절 테마. 배경 색과 떨어지는 것(꽃잎·낙엽·눈)이 바뀐다.
 enum Season { spring, summer, autumn, winter }
@@ -28,12 +29,8 @@ Season seasonForStage(int stageId) => Season.values[(stageId - 1) % 4];
 extension SeasonMusic on Season {
   String get track => name;
 
-  String get ko => switch (this) {
-    Season.spring => '봄',
-    Season.summer => '여름',
-    Season.autumn => '가을',
-    Season.winter => '겨울',
-  };
+  /// 계절 이름 (지금 언어)
+  String get label => Phrases.current.season(this);
 }
 
 class SeasonLook {

@@ -6,6 +6,7 @@ import '../../core/economy.dart';
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
 import '../../l10n/l10n.dart';
+import '../../l10n/phrases.dart';
 import '../../services/audio_service.dart';
 import '../../services/game_state.dart';
 import '../common/object_art.dart';
@@ -98,7 +99,7 @@ class _MatchGameScreenState extends State<MatchGameScreen>
       case MatchOutcome.finished:
         onSolved(
           firstTry: round.firstTry,
-          praise: '${board.matchedLine(i)} 정말 잘했어요!',
+          praise: board.finishedLine(i),
           at: _tileKeys[i],
         );
     }
@@ -111,17 +112,15 @@ class _MatchGameScreenState extends State<MatchGameScreen>
     return quizFrame(
       context,
       card: QuizCard(
-        prompt: sel == null
-            ? MatchBoard.prompt
-            : '똑같은 ${board.cards[sel].objectLabel(board.colorVariant)} 찾아볼까요?',
+        prompt: sel == null ? MatchBoard.prompt : board.findLine(sel),
         onReplay: ask,
         coinPopAmount: coinPopAmount,
         coinPopTrigger: coinPopTrigger,
         hintId: sel,
         hint: round.showHint
             ? QuizHintBox(
-                label: '찾는 그림 ${board.labelOf(sel!)}',
-                say: '${board.labelOf(sel)}!',
+                label: context.l10n.match_hintLabel(board.labelOf(sel!)),
+                say: Phrases.current.exclaim(board.labelOf(sel)),
                 child: ObjectIcon(
                   board.cards[sel].kind,
                   color: board.cards[sel].color.color,
@@ -139,7 +138,7 @@ class _MatchGameScreenState extends State<MatchGameScreen>
               width: w,
               height: h,
               color: const Color(0xFFFDEFF6),
-              semanticLabel: '카드 ${board.labelOf(i)}',
+              semanticLabel: context.l10n.match_card(board.labelOf(i)),
               selected: sel == i,
               done: round.matched.contains(i),
               faded: round.wrongPicks.contains(i),

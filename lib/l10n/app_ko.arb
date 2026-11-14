@@ -429,5 +429,27 @@
   "match_promptSay": "똑같은 그림 두 장을 찾아볼까요?",
   "@match_promptSay": {
     "description": "[음성] 말한다"
+  },
+  "nickname_errEmpty": "닉네임을 입력해 주세요.",
+  "nickname_errSpace": "띄어쓰기 없이 입력해 주세요.",
+  "nickname_errLength": "{n}글자까지 쓸 수 있어요.",
+  "@nickname_errLength": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "nickname_errChars": "한글, 영문, 숫자만 쓸 수 있어요.",
+  "nickname_errBlocked": "다른 닉네임을 써 주세요.",
+  "match_hintLabel": "찾는 그림 {name}",
+  "match_card": "카드 {name}",
+  "@match_hintLabel": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "@match_card": {
+    "placeholders": {
+      "name": {}
+    }
   }
 }

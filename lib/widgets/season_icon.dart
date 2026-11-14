@@ -31,7 +31,7 @@ class SeasonIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: season.ko,
+    label: season.label,
     child: SizedBox.square(
       dimension: size,
       child: CustomPaint(painter: _SeasonPainter(season, dim)),

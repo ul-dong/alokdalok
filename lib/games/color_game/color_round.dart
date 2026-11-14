@@ -3,6 +3,7 @@ import 'dart:math';
 import '../../core/economy.dart';
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
+import '../../l10n/phrases.dart';
 import '../number_game/number_round.dart' show AnswerOutcome;
 
 export '../number_game/number_round.dart' show AnswerOutcome;
@@ -23,7 +24,7 @@ class ColorQuestion {
   ColorChoice get target => choices[answerIndex];
 
   /// 예: "빨간 자동차를 찾아볼까요?"
-  String get prompt => '${target.color.adjective} ${target.kind.object} 찾아볼까요?';
+  String get prompt => Phrases.current.findColored(target.color, target.kind);
 
   static ColorQuestion generate(
     ColorStage stage,

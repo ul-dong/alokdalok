@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
+import '../../l10n/phrases.dart';
 import '../../services/game_state.dart';
 import '../common/object_art.dart';
 import '../common/quiz_session.dart';
@@ -91,7 +92,7 @@ class _SizeGameScreenState extends State<SizeGameScreen>
         hintId: '${q.kind.name}-${q.ask.name}',
         hint: round.showHint
             ? QuizHintBox(
-                label: '${q.ask.adjective} 쪽',
+                label: Phrases.current.sizeSide(q.ask),
                 say: q.kind.sayName(q.color),
                 child: SizeHint(kind: q.kind, color: q.color, ask: q.ask),
               )
@@ -104,7 +105,7 @@ class _SizeGameScreenState extends State<SizeGameScreen>
             width: w,
             height: h,
             color: const Color(0xFFEFF8FF),
-            semanticLabel: '${q.kind.ko} ${i + 1}',
+            semanticLabel: '${Phrases.current.object(q.kind)} ${i + 1}',
             faded: round.wrongPicks.contains(i),
             glow: round.highlightAnswer && i == q.answerIndex && !round.solved,
             wobble: wobbleIndex == i ? wobbleTrigger : 0,

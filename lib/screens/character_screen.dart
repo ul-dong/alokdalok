@@ -7,6 +7,7 @@ import '../data/item_catalog.dart';
 import '../games/common/scene_game.dart';
 import '../data/vehicles.dart';
 import '../l10n/l10n.dart';
+import '../l10n/phrases.dart';
 import '../shop/item_widgets.dart';
 import '../vehicle/garage_screen.dart';
 import '../vehicle/vehicle_painter.dart';
@@ -99,7 +100,7 @@ class _CharacterScreenState extends State<CharacterScreen> with ScreenMusic {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  state.nickname,
+                                  Phrases.current.nickname(state.nickname),
                                   style: const TextStyle(
                                     fontSize: TextSizes.label,
                                     color: Palette.text,
@@ -137,7 +138,7 @@ class _CharacterScreenState extends State<CharacterScreen> with ScreenMusic {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  state.zodiac.look.animal,
+                                  state.zodiac.animalName,
                                   style: const TextStyle(
                                     fontSize: TextSizes.label,
                                     color: Palette.text,

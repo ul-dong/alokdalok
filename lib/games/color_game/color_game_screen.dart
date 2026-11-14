@@ -6,9 +6,9 @@ import 'package:flutter/services.dart';
 
 import '../../core/economy.dart';
 import '../../core/palette.dart';
-import '../../data/game_objects.dart';
 import '../../data/stages.dart';
 import '../../l10n/l10n.dart';
+import '../../l10n/phrases.dart';
 import '../../services/audio_service.dart';
 import '../../services/game_state.dart';
 import '../../widgets/common.dart';
@@ -112,7 +112,7 @@ class _ColorGameScreenState extends State<ColorGameScreen> {
       );
       state.audio.play(Sfx.correct);
       HapticFeedback.lightImpact(); // 맞혔을 때 살짝 '톡' (휴대폰·태블릿)
-      _afterSpeech(state.audio.say('${target.color.name}! 정말 잘했어요!'));
+      _afterSpeech(state.audio.say(Phrases.current.colorPraise(target.color)));
     } else {
       state.audio.play(Sfx.tryAgain);
       setState(() {
@@ -121,9 +121,7 @@ class _ColorGameScreenState extends State<ColorGameScreen> {
         bubble = L10n.current.game_oneMore;
       });
       // 누른 색의 이름을 알려 주며 다시 찾아보게 한다 (틀렸다고 강조하지 않음)
-      state.audio.say(
-        '이건 ${picked.color.name}이에요. ${target.color.name}을 찾아볼까요?',
-      );
+      state.audio.say(Phrases.current.colorWrong(picked.color, target.color));
     }
   }
 
@@ -398,7 +396,7 @@ class _ChoiceTile extends StatelessWidget {
       onTap: onTap,
       enabled: enabled,
       sound: null,
-      semanticLabel: '${choice.color.adjective} ${choice.kind.ko}',
+      semanticLabel: Phrases.current.objectLabel(choice.kind, choice.color),
       child: TweenAnimationBuilder<double>(
         key: ValueKey(wobble),
         tween: Tween(begin: wobble == 0 ? 1 : 0, end: 1),

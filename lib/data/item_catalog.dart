@@ -1,16 +1,13 @@
 import 'dart:ui';
 
+import '../l10n/phrases.dart';
+
 /// 꾸미기 아이템을 장착하는 부위. 그리는 순서(레이어)는 AnimalPainter가 정한다.
 enum ItemSlot { head, outfit, shoes, accessory, back }
 
 extension ItemSlotInfo on ItemSlot {
-  String get label => switch (this) {
-    ItemSlot.head => '머리',
-    ItemSlot.outfit => '옷',
-    ItemSlot.shoes => '신발',
-    ItemSlot.accessory => '장식',
-    ItemSlot.back => '등',
-  };
+  /// 부위 이름 (지금 언어)
+  String get label => Phrases.current.itemSlot(this);
 }
 
 /// 옷 테마 (상점·옷장의 탭). 새 테마는 여기에 추가하고 아이템 목록에 넣으면 된다.
@@ -35,25 +32,8 @@ enum OutfitTheme {
 }
 
 extension OutfitThemeInfo on OutfitTheme {
-  String get label => switch (this) {
-    OutfitTheme.robot => '로봇',
-    OutfitTheme.princess => '공주',
-    OutfitTheme.fire => '소방관',
-    OutfitTheme.police => '경찰',
-    OutfitTheme.army => '군인',
-    OutfitTheme.caveman => '원시인',
-    OutfitTheme.astronaut => '우주비행사',
-    OutfitTheme.doctor => '의사',
-    OutfitTheme.chef => '요리사',
-    OutfitTheme.farmer => '농부',
-    OutfitTheme.train => '기관사',
-    OutfitTheme.pirate => '해적',
-    OutfitTheme.wizard => '마법사',
-    OutfitTheme.dino => '공룡',
-    OutfitTheme.hero => '슈퍼히어로',
-    OutfitTheme.soccer => '축구선수',
-    OutfitTheme.ballet => '발레리나',
-  };
+  /// 테마 이름 (지금 언어)
+  String get label => Phrases.current.outfitTheme(this);
 
   /// 탭 그림으로 쓸 대표 아이템
   String get sampleId => switch (this) {
@@ -86,16 +66,21 @@ class Item {
   const Item({
     required this.id,
     required this.slot,
-    required this.name,
+    required String name,
     required this.price,
     required this.style,
     required this.colors,
     required this.theme,
-  });
+  }) : nameKo = name;
 
   final String id;
   final ItemSlot slot;
-  final String name;
+
+  /// 한국어 이름 (원본 자료. 다른 언어 이름은 lib/l10n/<언어>/ 의 문장 조립기)
+  final String nameKo;
+
+  /// 이름 (지금 언어)
+  String get name => Phrases.current.itemName(this);
   final int price;
   final String style;
   final List<Color> colors;

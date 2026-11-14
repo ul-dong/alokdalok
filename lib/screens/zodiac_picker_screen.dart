@@ -93,7 +93,7 @@ class _ZodiacPickerScreenState extends State<ZodiacPickerScreen> {
                     builder: (context, c) => Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        _NamePlate(text: selected.look.animal),
+                        _NamePlate(text: selected.animalName),
                         const SizedBox(height: 6),
                         CharacterView(
                           zodiac: selected,
@@ -430,7 +430,7 @@ class ZodiacTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Pressable(
     onTap: onTap,
-    semanticLabel: zodiac.look.animal,
+    semanticLabel: zodiac.animalName,
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(

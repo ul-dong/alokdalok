@@ -656,4 +656,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get match_promptSay => 'Can you find two pictures that match?';
+
+  @override
+  String get nickname_errEmpty => 'Please enter a nickname.';
+
+  @override
+  String get nickname_errSpace => 'Please write it without spaces.';
+
+  @override
+  String nickname_errLength(Object n) {
+    return 'Up to $n letters.';
+  }
+
+  @override
+  String get nickname_errChars => 'Only letters and numbers, please.';
+
+  @override
+  String get nickname_errBlocked => 'Please choose a different nickname.';
+
+  @override
+  String match_hintLabel(Object name) {
+    return 'Find: $name';
+  }
+
+  @override
+  String match_card(Object name) {
+    return 'Card: $name';
+  }
 }

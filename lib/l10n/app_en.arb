@@ -191,5 +191,12 @@
   "game_tryAgainSay": "Let's look again!",
   "number_countTogetherSay": "Let's count together!",
   "match_sameSay": "They match!",
-  "match_promptSay": "Can you find two pictures that match?"
+  "match_promptSay": "Can you find two pictures that match?",
+  "nickname_errEmpty": "Please enter a nickname.",
+  "nickname_errSpace": "Please write it without spaces.",
+  "nickname_errLength": "Up to {n} letters.",
+  "nickname_errChars": "Only letters and numbers, please.",
+  "nickname_errBlocked": "Please choose a different nickname.",
+  "match_hintLabel": "Find: {name}",
+  "match_card": "Card: {name}"
 }

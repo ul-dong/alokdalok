@@ -3,7 +3,7 @@ import 'dart:math';
 import '../../core/economy.dart';
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
-import '../common/korean_numbers.dart';
+import '../../l10n/phrases.dart';
 
 /// 흩어 놓은 화면 속 물건 하나. 위치는 화면 칸 안의 비율(0~1).
 class SceneObject {
@@ -59,20 +59,14 @@ class NumberQuestion {
   bool get scattered => scene.isNotEmpty;
 
   /// "빨간 풍선" / "사과"
-  String get label =>
-      color == null ? kind.ko : '${color!.adjective} ${kind.ko}';
+  String get label => Phrases.current.objectLabel(kind, color);
 
-  String get prompt {
-    if (!scattered) return '${kind.subject} 몇 ${kind.counter} 있을까요?';
-    final topic = '$label${hasBatchim(label) ? '은' : '는'}';
-    return '$topic 몇 ${kind.counter} 있을까요?';
-  }
+  /// "사과가 몇 개 있을까요?" / "빨간 풍선은 몇 개 있을까요?" (지금 언어)
+  String get prompt =>
+      Phrases.current.howMany(kind, color, scattered: scattered);
 
-  /// 맞혔을 때: "빨간 풍선이 세 개!"
-  String get answerLine {
-    final subject = '$label${hasBatchim(label) ? '이' : '가'}';
-    return '$subject ${KoreanNumbers.pieces(count, kind.counter)}!';
-  }
+  /// 맞혔을 때: "빨간 풍선이 세 개!" / "Three red balloons!"
+  String get answerLine => Phrases.current.countAnswer(kind, color, count);
 
   /// 세는 물건만, 읽는 순서(위→아래, 왼→오른)로
   List<SceneObject> get targetsInOrder {

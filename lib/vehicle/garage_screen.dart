@@ -6,6 +6,7 @@ import '../core/palette.dart';
 import '../data/vehicles.dart';
 import '../games/common/scene_game.dart';
 import '../l10n/l10n.dart';
+import '../l10n/phrases.dart';
 import '../services/audio_service.dart';
 import '../character/animal_painter.dart';
 import '../services/game_state.dart';
@@ -531,7 +532,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
       setState(() => wanted = null);
       await state.setPaint(v.id, p.id);
       state.audio.play(Sfx.tap);
-      state.audio.say('${p.name}으로 칠했어요!');
+      state.audio.say(Phrases.current.paintedWith(p));
       if (mounted) setState(() => cheer++);
       return;
     }
@@ -539,7 +540,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
       // 결제 화면 대신 놀이로 모으자고 안내한다 (탈것 아래에 진행 막대)
       setState(() => wanted = p);
       state.audio.say(
-        '${p.name}은 코인 ${Vehicles.paintPrice}개가 필요해요. 놀이하면서 모아 볼까요?',
+        Phrases.current.paintNeedsCoinsAsk(p, Vehicles.paintPrice),
       );
       return;
     }
@@ -561,7 +562,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
     if (await state.buyPaint(v.id, p.id) == PurchaseResult.ok) {
       await state.setPaint(v.id, p.id);
       state.audio.play(Sfx.buy);
-      state.audio.say('${p.name}으로 칠했어요!');
+      state.audio.say(Phrases.current.paintedWith(p));
       if (mounted) setState(() => cheer++);
     }
   }

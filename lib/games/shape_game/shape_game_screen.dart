@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
+import '../../l10n/phrases.dart';
 import '../../services/game_state.dart';
 import '../common/quiz_session.dart';
 import '../common/quiz_widgets.dart';
@@ -94,8 +95,8 @@ class _ShapeGameScreenState extends State<ShapeGameScreen>
         hintId: '${q.shape.name}-${q.sampleColor.id}',
         hint: round.showSample
             ? QuizHintBox(
-                label: '견본 ${q.shape.ko}',
-                say: '${q.shape.ko}!',
+                label: Phrases.current.shapeSample(q.shape),
+                say: Phrases.current.sayShape(q.shape),
                 child: ShapeIcon(
                   q.shape,
                   color: q.sampleColor.color,
@@ -112,7 +113,7 @@ class _ShapeGameScreenState extends State<ShapeGameScreen>
               width: w,
               height: h,
               color: sandTile,
-              semanticLabel: '${c.color.adjective} ${c.shape.ko}',
+              semanticLabel: Phrases.current.coloredShape(c.color, c.shape),
               faded: round.wrongPicks.contains(i),
               glow:
                   round.highlightAnswer && i == q.answerIndex && !round.solved,

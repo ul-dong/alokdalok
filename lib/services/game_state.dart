@@ -10,6 +10,7 @@ import '../data/item_catalog.dart';
 import '../data/stages.dart';
 import '../data/vehicles.dart';
 import '../l10n/l10n.dart';
+import '../l10n/phrases.dart';
 import 'audio_service.dart';
 import 'backup_code.dart';
 import 'eye_guard.dart';
@@ -21,14 +22,8 @@ import 'storage_service.dart';
 enum GameKind { number, color, shape, size, match }
 
 extension GameKindInfo on GameKind {
-  /// 화면에 쓰는 이름 (부모님용 보조 글자)
-  String get title => switch (this) {
-    GameKind.number => '숫자 놀이',
-    GameKind.color => '색깔 놀이',
-    GameKind.shape => '모양 놀이',
-    GameKind.size => '크기 놀이',
-    GameKind.match => '짝 맞추기',
-  };
+  /// 화면에 쓰는 이름 (부모님용 보조 글자, 지금 언어)
+  String get title => Phrases.current.gameTitle(this);
 
   /// 단계 수
   int get stageCount => switch (this) {
@@ -250,10 +245,11 @@ class GameState extends ChangeNotifier {
   }
 
   /// 실제로 쓰는 언어가 정해졌을 때 (앱이 MaterialApp의 언어를 알려 준다).
-  /// 화면 밖 문장(놀이 문제 등)과 목소리 언어를 맞춘다.
-  void applyLocale(Locale locale) {
-    L10n.use(locale);
+  /// 화면 밖 문장(놀이 문제 등)과 목소리 언어를 맞춘다. 언어가 바뀌었으면 true.
+  bool applyLocale(Locale locale) {
+    final changed = L10n.use(locale);
     audio.locale = L10n.code;
+    return changed;
   }
 
   Future<void> setVoiceStyle(String style) async {

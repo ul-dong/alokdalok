@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../core/palette.dart';
 import '../l10n/l10n.dart';
+import '../l10n/phrases.dart';
 import '../services/backup_code.dart';
 import '../services/eye_guard.dart';
 import '../services/perf_monitor.dart';
@@ -174,7 +175,7 @@ class SettingsScreen extends StatelessWidget {
                     children: [
                       _RowTile(
                         icon: Icons.badge_rounded,
-                        title: state.nickname,
+                        title: Phrases.current.nickname(state.nickname),
                         subtitle: context.l10n.settings_nickname,
                         trailing: _SmallButton(
                           icon: Icons.edit_rounded,

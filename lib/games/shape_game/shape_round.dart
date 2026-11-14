@@ -3,6 +3,7 @@ import 'dart:math';
 import '../../core/economy.dart';
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
+import '../../l10n/phrases.dart';
 import '../number_game/number_round.dart' show AnswerOutcome;
 
 export '../number_game/number_round.dart' show AnswerOutcome;
@@ -40,17 +41,16 @@ class ShapeQuestion {
   ShapeKind get shape => target.shape;
 
   /// 예: "동그라미를 찾아볼까요?" / "똑같은 모양을 찾아볼까요?"
-  String get prompt =>
-      matchSample ? '똑같은 모양을 찾아볼까요?' : '${shape.object} 찾아볼까요?';
+  String get prompt => matchSample
+      ? Phrases.current.findSameShape()
+      : Phrases.current.findShape(shape);
 
   /// 틀렸을 때: "이건 세모예요. 동그라미를 다시 찾아볼까요?"
-  String wrongLine(int picked) {
-    final p = choices[picked].shape;
-    return '${p.thisIs} ${shape.object} 다시 찾아볼까요?';
-  }
+  String wrongLine(int picked) =>
+      Phrases.current.shapeWrong(choices[picked].shape, shape);
 
   /// 맞혔을 때: "동그라미! 정말 잘했어요!"
-  String get praise => '${shape.ko}! 정말 잘했어요!';
+  String get praise => Phrases.current.shapePraise(shape);
 
   /// 기울기 후보: 네모·다이아는 조금만 (많이 돌리면 서로 닮아 보인다)
   static const _smallTilt = [-18.0, -12.0, 12.0, 18.0];

@@ -42,8 +42,13 @@ class AlokdalokApp extends StatelessWidget {
         AppLanguage.resolve(AppLanguage.auto, locales),
     // 글자 크기 설정이 너무 크면 버튼이 깨지므로 1.3배까지만 따른다
     builder: (context, child) {
-      // 화면 밖 문장(놀이 문제)과 목소리도 같은 언어로
-      state.applyLocale(Localizations.localeOf(context));
+      // 화면 밖 문장(놀이 문제)과 목소리도 같은 언어로. 언어가 바뀌면 L10n.current·
+      // Phrases.current만 읽는 위젯(놀이 문제 글 등)도 다시 그리게 한 번 전부 다시 만든다.
+      if (state.applyLocale(Localizations.localeOf(context))) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) _rebuildAll(context);
+        });
+      }
       final mq = MediaQuery.of(context);
       return MediaQuery(
         data: mq.copyWith(textScaler: mq.textScaler.clamp(maxScaleFactor: 1.3)),
@@ -66,6 +71,16 @@ class AlokdalokApp extends StatelessWidget {
     },
     home: const RootGate(),
   );
+}
+
+/// [context] 아래 위젯을 모두 다시 그린다 (언어가 바뀌었을 때 한 번)
+void _rebuildAll(BuildContext context) {
+  void mark(Element e) {
+    e.markNeedsBuild();
+    e.visitChildren(mark);
+  }
+
+  (context as Element).visitChildren(mark);
 }
 
 /// 처음 실행이면 닉네임 화면, 아니면 메인 화면

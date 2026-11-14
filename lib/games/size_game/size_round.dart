@@ -4,6 +4,7 @@ import '../../core/economy.dart';
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
 import '../../l10n/l10n.dart';
+import '../../l10n/phrases.dart';
 import '../number_game/number_round.dart' show AnswerOutcome;
 
 export '../number_game/number_round.dart' show AnswerOutcome;
@@ -39,15 +40,13 @@ class SizeQuestion {
     return best;
   }
 
-  /// '큰 사과를' / '가장 작은 오리를'
-  String get _target =>
-      '${superlative ? '가장 ' : ''}${ask.adjective} ${kind.object}';
-
   /// 예: "큰 사과를 찾아볼까요?" / "가장 작은 오리를 찾아볼까요?"
-  String get prompt => '$_target 찾아볼까요?';
+  String get prompt =>
+      Phrases.current.findSize(ask, kind, superlative: superlative);
 
   /// 틀렸을 때: "가장 큰 사과를 다시 찾아볼까요?"
-  String get wrongLine => '$_target 다시 찾아볼까요?';
+  String get wrongLine =>
+      Phrases.current.sizeWrong(ask, kind, superlative: superlative);
 
   String get praise => L10n.current.game_praiseSay;
 

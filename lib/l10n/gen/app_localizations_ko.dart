@@ -641,4 +641,31 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get match_promptSay => '똑같은 그림 두 장을 찾아볼까요?';
+
+  @override
+  String get nickname_errEmpty => '닉네임을 입력해 주세요.';
+
+  @override
+  String get nickname_errSpace => '띄어쓰기 없이 입력해 주세요.';
+
+  @override
+  String nickname_errLength(Object n) {
+    return '$n글자까지 쓸 수 있어요.';
+  }
+
+  @override
+  String get nickname_errChars => '한글, 영문, 숫자만 쓸 수 있어요.';
+
+  @override
+  String get nickname_errBlocked => '다른 닉네임을 써 주세요.';
+
+  @override
+  String match_hintLabel(Object name) {
+    return '찾는 그림 $name';
+  }
+
+  @override
+  String match_card(Object name) {
+    return '카드 $name';
+  }
 }

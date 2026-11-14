@@ -9,12 +9,12 @@ import '../../core/palette.dart';
 import '../../data/game_objects.dart';
 import '../../data/stages.dart';
 import '../../l10n/l10n.dart';
+import '../../l10n/phrases.dart';
 import '../../services/audio_service.dart';
 import '../../services/game_state.dart';
 import '../../widgets/common.dart';
 import '../../widgets/listen_again_button.dart';
 import '../common/game_frame.dart';
-import '../common/korean_numbers.dart';
 import '../common/number_colors.dart';
 import '../common/object_art.dart';
 import '../common/quiz_widgets.dart';
@@ -188,7 +188,7 @@ class _NumberGameScreenState extends State<NumberGameScreen> {
       await Future<void>.delayed(Stamped.impactDelay);
       if (!_alive(token)) return false;
       final last = i == n;
-      final word = KoreanNumbers.count(i);
+      final word = Phrases.current.count(i);
       setState(() {
         boardNumber = i;
         if (fast && last) boardPraise = NumberGameScreen.praise;
@@ -528,8 +528,8 @@ class CountBoard extends StatelessWidget {
         final color = number > 0 ? NumberColors.of(number) : Palette.textSoft;
         final reading = number > 0
             ? (praise != null
-                  ? '${KoreanNumbers.count(number)}! $praise'
-                  : KoreanNumbers.count(number))
+                  ? '${Phrases.current.count(number)}! $praise'
+                  : Phrases.current.count(number))
             : '';
         final compact = h < CountBoard.compactBelow;
         final numberText = TweenAnimationBuilder<double>(

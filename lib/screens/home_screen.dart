@@ -9,6 +9,7 @@ import '../data/game_kinds.dart';
 import '../games/common/scene_game.dart';
 import '../games/game_entry.dart';
 import '../l10n/l10n.dart';
+import '../l10n/phrases.dart';
 import '../services/game_state.dart';
 import '../shop/shop_screen.dart';
 import '../widgets/common.dart';
@@ -107,8 +108,8 @@ class _HomeScreenState extends State<HomeScreen> with ScreenMusic {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             _NamePill(
-                              name: state.nickname,
-                              animal: state.zodiac.look.animal,
+                              name: Phrases.current.nickname(state.nickname),
+                              animal: state.zodiac.animalName,
                             ),
                             const SizedBox(height: Gaps.sm),
                             PokeCharacter(
