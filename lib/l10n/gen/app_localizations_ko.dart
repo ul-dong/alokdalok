@@ -568,4 +568,39 @@ class AppLocalizationsKo extends AppLocalizations {
   String shop_coins(Object coins) {
     return '코인 $coins';
   }
+
+  @override
+  String get garage_fullSay => '스티커가 가득 찼어요. 지우개로 떼어 볼까요?';
+
+  @override
+  String get garage_empty => '상점에서 탈것을 사면\n스티커를 붙이고 색칠할 수 있어요';
+
+  @override
+  String garage_tapToSticker(Object name) {
+    return '$name, 눌러서 스티커 붙이기';
+  }
+
+  @override
+  String get garage_pickColor => '오른쪽에서 색을 골라요';
+
+  @override
+  String get garage_eraser => '지우개';
+
+  @override
+  String get garage_riding => '타는 중';
+
+  @override
+  String get garage_stickers => '스티커';
+
+  @override
+  String get garage_paints => '물감';
+
+  @override
+  String get garage_paint => '색칠';
+
+  @override
+  String get garage_sticker => '스티커';
+
+  @override
+  String get garage_color => '색';
 }

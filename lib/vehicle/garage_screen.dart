@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../core/palette.dart';
 import '../data/vehicles.dart';
 import '../games/common/scene_game.dart';
+import '../l10n/l10n.dart';
 import '../services/audio_service.dart';
 import '../character/animal_painter.dart';
 import '../services/game_state.dart';
@@ -94,7 +95,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
     if (ok) {
       state.audio.play(Sfx.tap);
     } else {
-      state.audio.say('스티커가 가득 찼어요. 지우개로 떼어 볼까요?');
+      state.audio.say(L10n.current.garage_fullSay);
     }
   }
 
@@ -129,13 +130,15 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
                   children: [
                     RoundIconButton(
                       icon: Icons.home_rounded,
-                      label: '집으로',
+                      label: context.l10n.common_home,
                       size: 60,
                       onTap: () => Navigator.of(context).pop(),
                     ),
                     const SizedBox(width: 10),
                     if (!narrow) ...[
-                      const FitBox(child: TitleChip('탈것 꾸미기')),
+                      FitBox(
+                        child: TitleChip(context.l10n.character_decorateRide),
+                      ),
                       const SizedBox(width: 12),
                     ],
                     Expanded(child: _chooser(state, mine)),
@@ -224,8 +227,8 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            '상점에서 탈것을 사면\n스티커를 붙이고 색칠할 수 있어요',
+          Text(
+            context.l10n.garage_empty,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: TextSizes.label,
@@ -239,9 +242,9 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
             onTap: () => Navigator.of(context).pushReplacement(
               softRoute(const ShopScreen(startWithVehicles: true)),
             ),
-            semanticLabel: '상점 가기',
-            child: const Text(
-              '상점 가기',
+            semanticLabel: context.l10n.character_goShop,
+            child: Text(
+              context.l10n.character_goShop,
               style: TextStyle(fontSize: TextSizes.label, color: Palette.text),
             ),
           ),
@@ -259,7 +262,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
           onTapUp: (d) =>
               painting ? null : _tap(d.localPosition, Size(w, w * 2 / 3), v),
           child: Semantics(
-            label: '${v.name}, 눌러서 스티커 붙이기',
+            label: context.l10n.garage_tapToSticker(v.name),
             child: RideView(width: w, cheer: cheer, vehicleId: v.id),
           ),
         ),
@@ -279,10 +282,10 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
           child: short
               ? _NeedCoins(coins: state.coins, price: Vehicles.paintPrice)
               : painting
-              ? const Center(
+              ? Center(
                   child: FitBox(
                     child: Text(
-                      '오른쪽에서 색을 골라요',
+                      context.l10n.garage_pickColor,
                       style: TextStyle(
                         fontSize: TextSizes.body,
                         color: Palette.textSoft,
@@ -294,9 +297,9 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
                   height: 52,
                   glow: eraser,
                   onTap: () => setState(() => eraser = !eraser),
-                  semanticLabel: '지우개',
+                  semanticLabel: context.l10n.garage_eraser,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: const FitBox(
+                  child: FitBox(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -307,7 +310,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
                         ),
                         SizedBox(width: 4),
                         Text(
-                          '지우개',
+                          context.l10n.garage_eraser,
                           style: TextStyle(
                             fontSize: TextSizes.button,
                             color: Palette.text,
@@ -330,13 +333,17 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
             padding: const EdgeInsets.symmetric(horizontal: 10),
             onTap: () {
               state.setRide(riding ? null : v.id);
-              if (!riding) state.audio.say('출발!');
+              if (!riding) state.audio.say(context.l10n.character_goSay);
               setState(() => cheer++);
             },
-            semanticLabel: riding ? '내리기' : '탑승',
+            semanticLabel: riding
+                ? context.l10n.character_getOff
+                : context.l10n.character_ride,
             child: FitBox(
               child: Text(
-                riding ? '타는 중' : '탑승!',
+                riding
+                    ? context.l10n.garage_riding
+                    : context.l10n.character_rideButton,
                 style: TextStyle(
                   fontSize: TextSizes.button,
                   color: riding ? Colors.white : Palette.text,
@@ -383,7 +390,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
       final picking = split && choosingColor && !painting;
       final tabs = <(String, bool, VoidCallback)>[
         (
-          '스티커',
+          context.l10n.garage_stickers,
           !painting && !picking,
           () => setState(() {
             painting = false;
@@ -394,7 +401,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
         ),
         if (split)
           (
-            '물감',
+            context.l10n.garage_paints,
             picking,
             () => setState(() {
               painting = false;
@@ -404,7 +411,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
             }),
           ),
         (
-          '색칠',
+          context.l10n.garage_paint,
           painting,
           () => setState(() {
             painting = true;
@@ -433,7 +440,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           // 물감 탭에는 지금 고른 색을 작은 동그라미로
-                          if (label == '물감') ...[
+                          if (label == context.l10n.garage_paints) ...[
                             Container(
                               width: 16,
                               height: 16,
@@ -564,7 +571,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
       kind = k;
       eraser = false;
     }),
-    semanticLabel: '스티커',
+    semanticLabel: context.l10n.garage_sticker,
     child: Container(
       width: cell,
       height: cell,
@@ -589,7 +596,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
       });
       then?.call();
     },
-    semanticLabel: '색',
+    semanticLabel: context.l10n.garage_color,
     child: SizedBox.square(
       dimension: cell,
       child: Center(
@@ -620,7 +627,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
       );
 
   /// 스티커 10종과 색 6가지. 밀어서 보기 없이 칸 크기를 맞춘다.
-  /// [split]이면(좁은 판) 스티커만 크게 놓고, 색은 '물감' 탭에서 고른다.
+  /// [split]이면(좁은 판) 스티커만 크게 놓고, 색은 context.l10n.garage_paints 탭에서 고른다.
   Widget _stickerPanel({required bool split}) => CreamCard(
     padding: const EdgeInsets.all(6),
     child: LayoutBuilder(
@@ -670,7 +677,7 @@ class _GarageScreenState extends State<GarageScreen> with ScreenMusic {
     ),
   );
 
-  /// 좁은 판의 '물감' 탭: 색 6가지를 크게. 고르면 바로 스티커 탭으로 돌아간다.
+  /// 좁은 판의 context.l10n.garage_paints 탭: 색 6가지를 크게. 고르면 바로 스티커 탭으로 돌아간다.
   Widget _colorPanel() => CreamCard(
     padding: const EdgeInsets.all(6),
     child: LayoutBuilder(
@@ -722,7 +729,7 @@ class _NeedCoins extends StatelessWidget {
                 child: FitBox(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    '놀이하면서 코인을 모아요 ($coins/$price)',
+                    context.l10n.shop_needCoins(coins, price),
                     style: const TextStyle(
                       fontSize: TextSizes.small,
                       color: Palette.textSoft,
@@ -768,7 +775,7 @@ class _PaintChip extends StatelessWidget {
     onTap: onTap,
     semanticLabel: usable
         ? paint.name
-        : '${paint.name}, 코인 ${Vehicles.paintPrice}개',
+        : context.l10n.shop_tilePrice(paint.name, Vehicles.paintPrice),
     child: Container(
       width: size,
       height: size,

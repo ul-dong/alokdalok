@@ -1111,6 +1111,72 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'코인 {coins}'**
   String shop_coins(Object coins);
+
+  /// [음성] 말한다
+  ///
+  /// In ko, this message translates to:
+  /// **'스티커가 가득 찼어요. 지우개로 떼어 볼까요?'**
+  String get garage_fullSay;
+
+  /// No description provided for @garage_empty.
+  ///
+  /// In ko, this message translates to:
+  /// **'상점에서 탈것을 사면\n스티커를 붙이고 색칠할 수 있어요'**
+  String get garage_empty;
+
+  /// No description provided for @garage_tapToSticker.
+  ///
+  /// In ko, this message translates to:
+  /// **'{name}, 눌러서 스티커 붙이기'**
+  String garage_tapToSticker(Object name);
+
+  /// No description provided for @garage_pickColor.
+  ///
+  /// In ko, this message translates to:
+  /// **'오른쪽에서 색을 골라요'**
+  String get garage_pickColor;
+
+  /// No description provided for @garage_eraser.
+  ///
+  /// In ko, this message translates to:
+  /// **'지우개'**
+  String get garage_eraser;
+
+  /// No description provided for @garage_riding.
+  ///
+  /// In ko, this message translates to:
+  /// **'타는 중'**
+  String get garage_riding;
+
+  /// No description provided for @garage_stickers.
+  ///
+  /// In ko, this message translates to:
+  /// **'스티커'**
+  String get garage_stickers;
+
+  /// No description provided for @garage_paints.
+  ///
+  /// In ko, this message translates to:
+  /// **'물감'**
+  String get garage_paints;
+
+  /// No description provided for @garage_paint.
+  ///
+  /// In ko, this message translates to:
+  /// **'색칠'**
+  String get garage_paint;
+
+  /// No description provided for @garage_sticker.
+  ///
+  /// In ko, this message translates to:
+  /// **'스티커'**
+  String get garage_sticker;
+
+  /// No description provided for @garage_color.
+  ///
+  /// In ko, this message translates to:
+  /// **'색'**
+  String get garage_color;
 }
 
 class _AppLocalizationsDelegate

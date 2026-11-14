@@ -581,4 +581,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String shop_coins(Object coins) {
     return '$coins coins';
   }
+
+  @override
+  String get garage_fullSay =>
+      'No more room for stickers. Shall we use the eraser?';
+
+  @override
+  String get garage_empty =>
+      'Buy a ride in the shop\nto add stickers and paint it';
+
+  @override
+  String garage_tapToSticker(Object name) {
+    return '$name, tap to add a sticker';
+  }
+
+  @override
+  String get garage_pickColor => 'Pick a color on the right';
+
+  @override
+  String get garage_eraser => 'Eraser';
+
+  @override
+  String get garage_riding => 'Riding';
+
+  @override
+  String get garage_stickers => 'Stickers';
+
+  @override
+  String get garage_paints => 'Paints';
+
+  @override
+  String get garage_paint => 'Paint';
+
+  @override
+  String get garage_sticker => 'Sticker';
+
+  @override
+  String get garage_color => 'Color';
 }

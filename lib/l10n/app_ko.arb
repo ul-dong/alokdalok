@@ -375,5 +375,24 @@
     "placeholders": {
       "coins": {}
     }
-  }
+  },
+  "garage_fullSay": "스티커가 가득 찼어요. 지우개로 떼어 볼까요?",
+  "@garage_fullSay": {
+    "description": "[음성] 말한다"
+  },
+  "garage_empty": "상점에서 탈것을 사면\n스티커를 붙이고 색칠할 수 있어요",
+  "garage_tapToSticker": "{name}, 눌러서 스티커 붙이기",
+  "@garage_tapToSticker": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "garage_pickColor": "오른쪽에서 색을 골라요",
+  "garage_eraser": "지우개",
+  "garage_riding": "타는 중",
+  "garage_stickers": "스티커",
+  "garage_paints": "물감",
+  "garage_paint": "색칠",
+  "garage_sticker": "스티커",
+  "garage_color": "색"
 }

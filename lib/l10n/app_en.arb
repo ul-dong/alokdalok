@@ -168,5 +168,16 @@
   "shop_putOn": "Put on",
   "shop_needCoins": "Play to collect coins ({coins}/{price})",
   "shop_buyFor": "Buy for {price} coins",
-  "shop_coins": "{coins} coins"
+  "shop_coins": "{coins} coins",
+  "garage_fullSay": "No more room for stickers. Shall we use the eraser?",
+  "garage_empty": "Buy a ride in the shop\nto add stickers and paint it",
+  "garage_tapToSticker": "{name}, tap to add a sticker",
+  "garage_pickColor": "Pick a color on the right",
+  "garage_eraser": "Eraser",
+  "garage_riding": "Riding",
+  "garage_stickers": "Stickers",
+  "garage_paints": "Paints",
+  "garage_paint": "Paint",
+  "garage_sticker": "Sticker",
+  "garage_color": "Color"
 }
