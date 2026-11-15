@@ -30,16 +30,24 @@
     <h1>알록달록 꼬마 놀이터 개인정보처리방침</h1>
     <p class="meta">시행일: 2026년 11월 15일 · 대상: Android 앱, 웹 버전</p>
     <p>알록달록 꼬마 놀이터(이하 “앱”)는 만 3~4세 어린이를 위한 숫자·색깔 놀이 앱입니다.
-      앱은 어린이와 보호자의 개인정보를 <strong>수집하지 않고, 어디로도 보내지 않습니다.</strong></p>
+      앱은 어린이와 보호자의 개인정보를 <strong>수집하지 않고, 어디로도 보내지 않습니다.</strong>
+      다만 Android에서 얼굴 인식에 쓰는 Google ML Kit이 Google Play 서비스를 통해 진단 정보를 수집할 수 있습니다(아래 2절).</p>
 
     <h2>1. 회원가입·로그인이 없습니다</h2>
     <p>계정을 만들거나 이메일·전화번호·이름을 입력하는 과정이 없습니다.</p>
 
-    <h2>2. 서버가 없고, 수집·전송하는 정보가 없습니다</h2>
+    <h2>2. 서버가 없고, 앱은 정보를 수집·전송하지 않습니다</h2>
     <ul>
       <li>앱을 만든 사람이 운영하는 서버가 없습니다. 놀이 기록, 사용 통계, 위치, 연락처, 사진, 광고 식별자를 모으거나 보내지 않습니다.</li>
       <li>광고, 결제(인앱 구매), 분석·추적 도구가 없습니다. 앱 안의 코인은 놀이용이며 돈으로 살 수 없습니다.</li>
       <li>Android 앱은 인터넷 권한을 요청하지 않습니다.</li>
+      <li><strong>Google ML Kit의 진단 정보:</strong> 앱은 아무것도 보내지 않지만, Android에서 얼굴 인식에 쓰는 Google ML Kit이
+        Google Play 서비스를 통해 진단 정보를 수집할 수 있습니다. Google 문서에 따르면 그 내용은 기기 정보(제조사, 모델, OS 버전),
+        앱 정보(패키지 이름, 버전), 기기 식별자와 설치별 식별자, 성능 지표(처리 시간, 오류 코드 등)이며, 진단과 사용 분석에 쓰이고
+        HTTPS로 암호화되어 전송되며 제3자에게 넘기지 않는다고 합니다. 카메라 사진·영상과 얼굴 정보는 여기에 들어가지 않습니다.
+        이 정보는 광고나 추적에 쓰이지 않고 판매되지 않습니다. 이 정보는 Google이 관리하며 <a href="https://policies.google.com/privacy">Google 개인정보처리방침</a>을 따릅니다.
+        삭제 요청도 Google이 처리합니다. 눈 지킴이를 끄면 ML Kit을 쓰지 않습니다.
+        (참고: <a href="https://developers.google.com/ml-kit/android-data-disclosure">ML Kit 데이터 공개 문서</a>)</li>
     </ul>
 
     <h2>3. 기기 안에만 저장되는 것</h2>
@@ -53,7 +61,8 @@
 
     <h2>4. 눈 지킴이와 카메라</h2>
     <p>‘눈 지킴이’는 앞쪽 카메라로 아이 얼굴이 화면에 너무 가까운지와 자세를 확인해 뒤로 가거나 바르게 앉도록 알려 주는 기능입니다.
-      처음에는 켜져 있으며, 이를 위해 카메라 권한을 요청합니다. 보호자는 설정에서 언제든 끌 수 있고, 권한을 허용하지 않거나 끄면 카메라를 쓰지 않습니다.
+      처음에는 켜져 있습니다. 카메라 권한은 앱을 처음 열 때 보호자용 안내 화면을 보여 준 뒤, 보호자가 [허용하고 시작]을 누를 때만 요청합니다.
+      [나중에]를 고르거나 권한을 허용하지 않으면 눈 지킴이만 꺼지고 앱은 그대로 쓸 수 있습니다. 보호자는 설정에서 언제든 끄거나 다시 켤 수 있고, 꺼져 있으면 카메라를 쓰지 않습니다.
       설정 화면, 멈춤 화면, 앱이 뒤로 가 있을 때는 카메라를 끕니다.</p>
     <ul>
       <li>카메라 영상은 <strong>기기 안에서만</strong> 얼굴의 크기·기울기를 계산하는 데 쓰고 바로 버립니다.</li>
@@ -68,31 +77,40 @@
       이 경우 음성 합성은 기기나 브라우저 제공자의 정책을 따릅니다.</p>
 
     <h2>6. 어린이의 개인정보</h2>
-    <p>이 앱은 어린이를 위한 앱이며, 어린이로부터 어떤 개인정보도 수집하지 않습니다.
+    <p>이 앱은 어린이를 위한 앱이며, 앱은 어린이로부터 어떤 개인정보도 수집하지 않습니다(Google ML Kit의 진단 정보는 2절 참고).
       앱에는 바깥 웹사이트로 가는 링크가 없고, 설정은 보호자 확인(간단한 문제, 처음에는 켜져 있음) 뒤에 열립니다.</p>
 
     <h2>7. 바뀌는 경우</h2>
     <p>이 방침이 바뀌면 이 페이지에 새 내용과 시행일을 적습니다.</p>
 
     <h2>8. 문의</h2>
-    <p>문의: [문의 이메일 — 출시 전 입력]<br>
-      또는 GitHub 이슈: <a href="https://github.com/ul-dong/alokdalok/issues">github.com/ul-dong/alokdalok/issues</a></p>
+    <p>문의: [앱 전용 문의 이메일 — 출시 전 입력]<br>
+      개발 관련 보조 창구(GitHub 이슈): <a href="https://github.com/ul-dong/alokdalok/issues">github.com/ul-dong/alokdalok/issues</a></p>
   </section>
 
   <section id="en" lang="en">
     <h1>Balloon Playground (알록달록 꼬마 놀이터) — Privacy Policy</h1>
     <p class="meta">Effective date: November 15, 2026 · Applies to: Android app, web version</p>
     <p>Balloon Playground (“the app”) is a number and color play app for children aged 3–4.
-      The app <strong>does not collect personal information from children or parents, and does not send it anywhere.</strong></p>
+      The app <strong>does not collect personal information from children or parents, and does not send it anywhere.</strong>
+      However, on Android, Google ML Kit, which the app uses for face detection, may collect diagnostic information through Google Play services (see section 2).</p>
 
     <h2>1. No sign-up or login</h2>
     <p>There is no account, and the app never asks for an email address, phone number, or name.</p>
 
-    <h2>2. No servers; nothing is collected or transmitted</h2>
+    <h2>2. No servers; the app itself collects and transmits nothing</h2>
     <ul>
       <li>The developer runs no servers. The app does not collect or send play history, usage statistics, location, contacts, photos, or advertising identifiers.</li>
       <li>There are no ads, no in-app purchases, and no analytics or tracking tools. In-app coins are only for play and cannot be bought with money.</li>
       <li>The Android app does not request the Internet permission.</li>
+      <li><strong>Diagnostic information from Google ML Kit:</strong> the app itself sends nothing, but on Android, Google ML Kit, which the app uses for face detection,
+        may collect diagnostic information through Google Play services. According to Google, this includes device information (manufacturer, model, OS version),
+        app information (package name, version), device and per-installation identifiers, and performance metrics (such as processing time and error codes).
+        Google states that it is used for diagnostics and usage analytics, encrypted in transit with HTTPS, and not transferred to third parties.
+        It does not include camera images, video, or face data. It is not used for ads or tracking and is not sold.
+        This information is handled by Google under the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>, and deletion requests are handled by Google.
+        When Eye Guard is off, ML Kit is not used.
+        (See the <a href="https://developers.google.com/ml-kit/android-data-disclosure">ML Kit data disclosure</a>.)</li>
     </ul>
 
     <h2>3. What is stored only on the device</h2>
@@ -106,7 +124,8 @@
 
     <h2>4. Eye Guard and the camera</h2>
     <p>“Eye Guard” uses the front camera to check whether the child’s face is too close to the screen or their posture is off, and asks the child to move back or sit up straight.
-      It is on by default, so the app asks for camera permission. A parent can turn it off in Settings at any time; if permission is denied or Eye Guard is off, the camera is not used.
+      It is on by default. The app asks for camera permission only after showing a notice for parents the first time the app opens, and only when the parent taps [Allow and start].
+      If the parent chooses [Later] or denies permission, only Eye Guard is turned off and the rest of the app works as usual. A parent can turn it off or back on in Settings at any time; when it is off, the camera is not used.
       The camera is also off on the Settings screen, the pause screen, and while the app is in the background.</p>
     <ul>
       <li>Camera frames are processed <strong>only on the device</strong> to estimate the size and angle of a face, and are discarded immediately.</li>
@@ -121,15 +140,15 @@
       which follows the policy of the device or browser provider.</p>
 
     <h2>6. Children’s privacy</h2>
-    <p>This app is made for children and collects no personal information from them.
+    <p>This app is made for children, and the app itself collects no personal information from them (for Google ML Kit diagnostic information, see section 2).
       The app has no links to outside websites, and Settings open after a parent check (a simple question, on by default).</p>
 
     <h2>7. Changes</h2>
     <p>If this policy changes, the new text and effective date will be posted on this page.</p>
 
     <h2>8. Contact</h2>
-    <p>Contact: [Contact email — to be filled in before release]<br>
-      or GitHub Issues: <a href="https://github.com/ul-dong/alokdalok/issues">github.com/ul-dong/alokdalok/issues</a></p>
+    <p>Contact: [App contact email — to be filled in before release]<br>
+      Secondary channel for development issues (GitHub Issues): <a href="https://github.com/ul-dong/alokdalok/issues">github.com/ul-dong/alokdalok/issues</a></p>
   </section>
 </main>
 </body>

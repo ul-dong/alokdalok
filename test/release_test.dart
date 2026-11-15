@@ -44,14 +44,28 @@ void main() {
     );
   });
 
-  test('개인정보처리방침 페이지: 한국어·영어, 카메라 처리 공개, 이메일은 자리표시', () {
+  test('개인정보처리방침 페이지: 한국어·영어, 카메라 처리·ML Kit 진단 정보 공개, 이메일은 자리표시', () {
     final h = File('web/privacy.html').readAsStringSync();
     expect(h, contains('lang="ko"'));
     expect(h, contains('lang="en"'));
     expect(h, contains('카메라'));
     expect(h, contains('camera'));
     expect(h, contains('저장하지 않고, 어디로도 전송하지 않습니다'));
-    expect(h, contains('[문의 이메일 — 출시 전 입력]'));
+    expect(h, contains('[앱 전용 문의 이메일 — 출시 전 입력]'));
+    expect(h, contains('[App contact email — to be filled in before release]'));
+    expect(h, isNot(contains('[문의 이메일 — 출시 전 입력]')));
+    // 데이터 안전성 B안: 앱은 보내지 않지만 ML Kit이 진단 정보를 수집할 수 있다
+    expect(h, contains('Google ML Kit이 Google Play 서비스를 통해 진단 정보를 수집할 수 있습니다'));
+    expect(
+      h,
+      contains(
+        'may collect diagnostic information through Google Play services',
+      ),
+    );
+    expect(h, contains('ml-kit/android-data-disclosure'));
+    // 권한은 부모님 안내 뒤에
+    expect(h, contains('[허용하고 시작]'));
+    expect(h, contains('[Allow and start]'));
     expect(RegExp(r'[\w.+-]+@[\w-]+\.[\w.]+').hasMatch(h), isFalse);
   });
 
