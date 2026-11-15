@@ -1,12 +1,39 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- 눈 지킴이: 앞카메라로 화면 거리·자세 확인 (부모님이 설정에서 켤 때만, 기기 안에서만 처리) -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- camera 플러그인(camera_android_camerax)이 camera.any 를 '필수'로 넣는다. 눈 지킴이는 선택 기능이라
+         카메라 없는 기기(일부 크롬북·태블릿)도 설치할 수 있게 필수를 끈다. -->
+    <uses-feature android:name="android.hardware.camera.any" android:required="false"
+        tools:replace="android:required" />
+    <!-- 플러그인 병합으로 들어오지만 쓰지 않는 권한을 뺀다 (아동용 앱: 꼭 필요한 권한만, docs/RELEASE.md).
+         - RECORD_AUDIO·저장소: camera 플러그인의 동영상 녹화용. 이 앱은 사진·녹화 없이 enableAudio: false 로
+           얼굴 위치만 본다.
+         - INTERNET: ML Kit 사용 통계 전송(datatransport)용. 얼굴 인식은 기기 안에서 돌고, 모델은 Play 서비스가
+           따로 받는다. 앱이 직접 인터넷을 쓰는 곳은 없다.
+         - AD_ID: 지금 병합 결과에는 없지만, 의존성이 바뀌어 들어오더라도 빠지게 막아 둔다
+           (가족 정책: 아동 대상 앱은 광고 ID 를 요청하면 안 된다). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher">
+        <!-- allowBackup=false: Google 드라이브 자동 백업(클라우드)을 끈다 → 저장값이 기기 밖으로 나가지 않는다.
+             Android 12+ 의 기기 간 직접 옮기기(케이블·무선)는 이 값과 상관없이 그대로 된다.
+             기기·플랫폼을 바꿀 때는 설정의 '백업 글자'로 옮긴다 (판단 근거: docs/RELEASE.md). -->
+        <!-- Android 16(targetSdk 36): 큰 화면(sw600dp 이상)에서는 screenOrientation 을 무시하고 세로로도 띄운다.
+             이 속성으로 targetSdk 36 동안은 가로 고정을 지킨다 (Android 17 대상부터는 안 먹는다).
+             세로 창이 되더라도 app.dart 가 "화면을 옆으로 돌려 주세요" 안내를 띄운다. -->
+        <property
+            android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
+            android:value="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

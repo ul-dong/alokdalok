@@ -700,7 +700,9 @@ class _RotateHintState extends State<RotateHint> {
   }
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
+  // MaterialApp.builder 안(Navigator 밖)이라 Material 이 없다 → 직접 깔아야 글자가 앱 글꼴(Jua)로,
+  // 노란 밑줄 없이 나온다 (Android 16 큰 화면 세로 창에서도 보이는 화면).
+  Widget build(BuildContext context) => Material(
     color: Palette.skyBottom,
     child: Center(
       child: Padding(

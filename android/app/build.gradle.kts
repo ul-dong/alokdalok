@@ -19,7 +19,9 @@ val hasReleaseKey = keyProps.getProperty("storeFile") != null && storePw != null
 
 android {
     namespace = "io.github.uldong.alokdalok"
-    compileSdk = flutter.compileSdkVersion
+    // SDK 수준은 Flutter 기본값에 맡기지 않고 고정한다 (Flutter 버전이 바뀌어도 흔들리지 않게).
+    // Play: 2026-08-31 부터 신규 앱·업데이트는 targetSdk 36 이상이어야 제출할 수 있다 (docs/RELEASE.md).
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -29,13 +31,15 @@ android {
 
     defaultConfig {
         applicationId = "io.github.uldong.alokdalok"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = 24
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        // arm 기기 전용 (에뮬레이터용 x86_64 제외 → 용량 절약)
+        // arm 기기 + x86_64(크롬북). AAB 는 Play 가 기기 ABI 별로 나눠 내려보내므로
+        // x86_64 를 넣어도 arm 기기 다운로드 크기는 그대로다 (측정·근거: docs/RELEASE.md).
+        // 직접 설치용 APK(install_and_build.command)는 --target-platform 으로 arm 만 만든다.
         ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
         }
     }
 

@@ -41,6 +41,7 @@ $F analyze
 ## 빌드
 
 - **웹:** `tool/build_web.sh`로 빌드한다 (`flutter build web`만 하면 오프라인 서비스 워커 목록 `offline_files.json`이 빠진다).
+- **안드로이드(Google Play):** `tool/build_android.sh`로 AAB를 만든다 (출시 키 없으면 멈춤, `--debug-signed`는 점검용). 스토어 스크린샷은 `tool/store_shots.sh`. 콘솔 입력값·권한·일정은 `docs/RELEASE.md`.
 - **iOS 시뮬레이터:** ML Kit에 arm64 시뮬레이터 조각이 없어서, `pod install` 때 `tool/ios/mlkit_sim_slices.py`가 만드는 `ios/Pods/MLKitSim` 사본으로 처리한다 (`ios/Podfile` post_install). arm64를 빼는(EXCLUDED_ARCHS) 방식은 iOS 27 시뮬레이터에서 실행되지 않는다.
 
 ## 커밋
