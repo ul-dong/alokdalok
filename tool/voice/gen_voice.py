@@ -19,8 +19,8 @@ import child_voice  # noqa: E402  (설정값만 먼저 읽는다. 무거운 모�
 
 melo = child_voice.VOICES[lang]["melo"]
 speaker = melo["speaker"]
-# 한국어는 빠르게(1.1) 만든 뒤 child_voice 가 PSOLA 로 1.34배 늘인다 (말 속도 약 3.9음절/초)
-speed = float(args[2]) if len(args) > 2 else melo["speed"]
+# 한국어는 빠르게(1.1) 만든 뒤 child_voice 가 PSOLA 로 1.34배 늘인다. 질문은 더 천천히(melo_speed)
+speed = float(args[2]) if len(args) > 2 else None  # None: 문장마다 child_voice.melo_speed (질문은 천천히)
 lines = json.load(open(lines_path, encoding="utf-8"))
 os.makedirs(out_dir, exist_ok=True)
 
@@ -56,6 +56,7 @@ print(f"전체 {len(lines)}문장, 새로 만들 문장 {len(todo)}개", flush=T
 
 t0 = time.time()
 if todo:
+    import numpy as np
     import soundfile as sf
     import torch
     from melo.api import TTS
@@ -63,23 +64,48 @@ if todo:
     model = TTS(language=lang, device="cpu")
     spk = model.hps.data.spk2id[speaker]
     tmp = os.path.join(out_dir, "_tmp.wav")
-    for i, item in enumerate(todo):
-        mp3 = os.path.join(out_dir, item["file"])
-        torch.manual_seed(child_voice.SEED)
-        model.tts_to_file(item["text"], spk, tmp, speed=speed, quiet=True,
+    def synth(text, seed):
+        torch.manual_seed(seed)
+        model.tts_to_file(text, spk, tmp, quiet=True,
+                          speed=speed or child_voice.melo_speed(text, lang),
                           sdp_ratio=melo["sdp_ratio"],
                           noise_scale=melo["noise_scale"],
                           noise_scale_w=melo["noise_scale_w"])
         y, sr = sf.read(tmp)
         if y.ndim > 1:
             y = y.mean(axis=1)
-        sf.write(tmp, child_voice.process(y, sr, item["text"], lang=lang), sr, subtype="PCM_16")
-        subprocess.run(
-            ["ffmpeg", "-y", "-loglevel", "error", "-i", tmp,
-             "-ac", "1", "-ar", "24000", "-b:a", "40k", mp3],
-            check=True,
-        )
-        print(f"{i + 1}/{len(todo)} {item['file']} {item['text']}", flush=True)
+        return y, sr
+
+    def encode(z, sr, mp3):
+        """mp3(24kHz 모노 64kbps)로 저장하고, 다시 읽은 소리를 돌려준다"""
+        sf.write(tmp, z, sr, subtype="PCM_16")
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", tmp,
+                        "-ac", "1", "-ar", "24000", "-b:a", "64k", mp3], check=True)
+        raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", mp3, "-f", "f32le",
+                              "-ac", "1", "-ar", "24000", "-"], capture_output=True, check=True).stdout
+        return np.frombuffer(raw, np.float32).astype(np.float64), 24000
+
+    # 처음 한 번은 모델 안쪽(BERT)을 불러오느라 난수를 써서 결과가 달라진다.
+    # 버리는 문장을 먼저 한 번 만들어, 몇 번째로 만들든 같은 문장은 같은 녹음이 나오게 한다.
+    synth("warm up" if lang == "EN" else "준비", child_voice.SEED)
+    for i, item in enumerate(todo):
+        mp3 = os.path.join(out_dir, item["file"])
+        # MeloTTS 가 어떤 문장(s, sh, ch 가 많은 짧은 말)은 쉰 소리로 만든다.
+        # 정해 둔 씨앗들로 다시 만들어 보고 가장 맑은(HNR 높은) 것을 고른다 (늘 같은 순서라 결과도 같다).
+        best = None
+        for seed in [child_voice.SEED] + child_voice.RETRY_SEEDS:
+            y, sr = synth(item["text"], seed)
+            z = child_voice.process(y, sr, item["text"], lang=lang)
+            # mp3 로 바꾼 소리로도 튀는 곳을 다시 잰다 (점검 기준: 6반음, 3곳 이상이면 탈락)
+            ok = child_voice.jumps(z, sr) <= child_voice.MAX_JUMPS and \
+                child_voice.jumps(*encode(z, sr, mp3), semitones=6.0) < 3
+            score = (ok, child_voice.hnr(z, sr))
+            if best is None or score > best[0]:
+                best = (score, z, seed)
+            if score[0] and score[1] >= child_voice.HNR_GOAL:
+                break
+        encode(best[1], sr, mp3)
+        print(f"{i + 1}/{len(todo)} {item['file']} {item['text']} (씨앗 {best[2]}, HNR {best[0][1]:.1f})", flush=True)
     if os.path.exists(tmp):
         os.remove(tmp)
 

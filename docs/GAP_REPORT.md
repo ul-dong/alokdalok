@@ -131,7 +131,7 @@
 
 | # | 사양 | 상태 | 메모 |
 |---|---|---|---|
-| 1 | 목소리 먼저: 모든 문제·칭찬·안내 음성 | 있음 | `services/audio_service.dart`, `voice_lines.dart`, 녹음 1039개 = 문장 목록 1039 = manifest 1039 (놀이 문제 통문장 464개 포함, 2026-11-15 만화 캐릭터 느낌 목소리(약 310Hz, 서울 말투 억양)로 1044개 전부 다시 녹음. 놀이터 인사말은 "뭘 하고 놀까요?" 한 문장) |
+| 1 | 목소리 먼저: 모든 문제·칭찬·안내 음성 | 있음 | `services/audio_service.dart`, `voice_lines.dart`, 녹음 1039개 = 문장 목록 1039 = manifest 1039 (놀이 문제 통문장 464개 포함, 2026-11-15 만화 캐릭터 느낌 목소리(약 310Hz, 서울 말투 억양)로 1044개 전부 다시 녹음, 같은 날 튐·깨짐 고친 설정(옥타브 오류 보정, 무성음 보호, 질문 천천히, 64kbps)으로 한 번 더. 놀이터 인사말은 "뭘 하고 놀까요?" 한 문장) |
 | 1 | 물건·탈것·옷 누르면 이름 말하기 | 있음 | `Pressable(speak:)` / `RoundIconButton(speakLabel:)`: 홈 버튼·놀이터 기구·옷·탈것. 놀이 화면은 `SayName`(widgets/common.dart): 숫자 놀이 세는 물건("사과!", 섞인 물건은 "빨간 사과!"), 모양·크기·짝 견본 그림, 색깔 견본. 보기 칸에는 붙이지 않아 답 고르기와 겹치지 않고, 같이 세는 중에는 말하지 않는다 |
 | 1 | 큰 노란 "다시 듣기" 62px, 6초마다 통통 | 있음 | 공용 위젯 `widgets/listen_again_button.dart`(공용 20fps 시계, 튈 때만 구독). 모양·크기·짝의 `ReplayButton`(`games/common/quiz_widgets.dart`)과 숫자·색깔 화면 모두 이 위젯 하나를 쓴다 |
 | 2 | 놀이를 기구 그림으로 고르기, 단계 카드에 문제 그림 | 있음 | 놀이터 기구(트랙 A), 단계 카드 그림 |
@@ -243,7 +243,7 @@
 | 한국어 녹음 조각 선택이 그대로 | 있음 | `test/voice_ko_snapshot_test.dart`: 구조 바꾸기 전 코드로 만든 스냅숏(음성 문장 1044개 순서, 놀이 문제 12100문장, 1255문장의 mp3 조합·쉼)과 완전히 같음 |
 | 음성 언어별 폴더 | 있음 | `assets/voice/ko/` (git mv, 파일 이름 v0001… 그대로), `assets/voice/en/`도 같은 구조(976개). 웹 서비스 워커는 예전 앱이 찾는 옛 경로를 ko로 돌려준다 |
 | 녹음 없는 언어·문장 → 기기 음성 | 있음 | `DeviceAudio.route`/`loadVoicePack`. 영어도 녹음 조각, 녹음 없는 문장만 en-US TTS. `test/voice_locale_test.dart` |
-| 영어 음성 녹음 | 있음 (2026-11-15) | `tool/gen_voice.command en`으로 976문장 = manifest 976 = mp3 976. MeloTTS EN-US + 만화 캐릭터 느낌 억양(약 390Hz, `tool/voice/child_voice.py` `VOICES["EN"]`). 실제 manifest로 놀이·화면 말이 모두 녹음 조각으로 나오는지 `test/voice_locale_test.dart`에서 확인 |
+| 영어 음성 녹음 | 있음 (2026-11-15) | `tool/gen_voice.command en`으로 976문장 = manifest 976 = mp3 976. MeloTTS EN-US + 만화 캐릭터 느낌 억양(약 370Hz, 튐·깨짐 고친 설정, 질문 3.2음절/초 이하, `tool/voice/child_voice.py` `VOICES["EN"]`). 실제 manifest로 놀이·화면 말이 모두 녹음 조각으로 나오는지 `test/voice_locale_test.dart`에서 확인 |
 | 영어 화면 넘침 | 있음 | `test/l10n_en_layout_test.dart` (568×320·844×390·1280×800, 화면 26종 × 한국어·영어), 미리보기 `test_preview/l10n_preview_test.dart` → `shots/l10n_<언어>_<화면>_<폭>.png` |
 | 글꼴 | 있음 | Jua에 기본 라틴 글자가 있고 영어 화면 그림에서 깨짐·폭 넘침 없음 → 글꼴 추가 안 함 |
 | 한국어로 남는 곳 | 허용 | `test/l10n_hangul_test.dart` 허용 목록: 한국어 원본 이름 자료(아이템·친구·탈것), 닉네임 비속어 거르기, 개발 진단 칸(`settings_diagnostics.dart`) |

@@ -32,7 +32,7 @@ TARGET_LUFS = -16.0
 PEAK_DBFS = -1.5
 SILENCE_DB = -45.0  # 앞뒤 무음 자르기 기준 (최대값 대비, 예전 방식 trim)
 PAD_SEC = 0.03  # 예전 방식 trim 에서 앞뒤로 남기는 여유
-SEED = 1234  # 같은 문장은 늘 같은 녹음이 나오게
+SEED = 1234  # 같은 문장은 늘 같은 녹음이 나오게 (쉰 소리면 RETRY_SEEDS 차례로)
 
 # 말끝 덜 자르기
 GENTLE_DB = -55.0
@@ -50,21 +50,32 @@ POST = ("highpass=f=90:poles=2,"
 #   fr: 포먼트 비율, rng/up: 낮은 쪽/높은 쪽 억양 폭, acc: 강세(반음), Q: 질문 끝 올림(반음)
 #   RF/RFE: 감탄 끝을 올렸다가(RF) 끝은 음절 시작보다 RFE, RFw/RFEw: 약한 감탄(평서)용
 #   strx: 마지막 음절 늘이기, lift: 칭찬은 전체를 이만큼 높게, ceil/top: 천장(반음/Hz)
-#   tempo: PSOLA 로 길이를 몇 배 늘일지 (빠르게 만든 원음을 늘인다)
+#   tempo: PSOLA 로 길이를 몇 배 늘일지 (빠르게 만든 원음을 늘인다), qslow: 질문은 이만큼 더 천천히
+#   melo.q_speed: 질문 문장은 MeloTTS 에서부터 이 속도로 천천히 만든다
+#   ap: 한국어 어절마다 넣는 약한 억양 굽이(반음). 말끝만 올라가지 않고 문장 전체가 고르게 움직이게
+#   (2026-11-15 수정: 튐·전자음 깨짐 때문에 억양 확대·높이·포먼트를 줄이고, 옥타브 오류 보정·
+#    무성음 구간 보호·곡선 다듬기·변화 속도 제한을 넣었다. 질문은 천천히)
 VOICES = {
     "KR": dict(
-        melo=dict(speaker="KR", speed=1.1, sdp_ratio=0.8, noise_scale=0.7, noise_scale_w=1.0),
-        ref=190.0, target_hz=305.0, pitch=0.0, fr=1.07, rng=1.3, up=1.7, acc=3.0, decl=1.0,
-        Q=8.0, RF=5.5, RFE=-1.5, RFw=2.5, RFEw=-0.3, strx=1.25, lift=1.0,
-        ceil=8.0, top=620.0, tempo=1.34),
+        melo=dict(speaker="KR", speed=1.1, q_speed=0.95, sdp_ratio=0.8, noise_scale=0.7, noise_scale_w=1.0),
+        ref=190.0, target_hz=300.0, pitch=0.0, fr=1.06, rng=1.15, up=1.3, acc=2.0, decl=1.5,
+        ap=2.6, Q=5.5, RF=3.5, RFE=-1.0, RFw=2.0, RFEw=-0.3, strx=1.2, lift=0.7,
+        ceil=6.0, top=520.0, tempo=1.34, qslow=1.38),
     "EN": dict(
-        melo=dict(speaker="EN-US", speed=0.92, sdp_ratio=0.8, noise_scale=0.7, noise_scale_w=1.0),
-        ref=295.0, target_hz=None, pitch=3.2, fr=1.05, rng=1.35, up=1.75, acc=3.0, decl=1.0,
-        Q=7.0, RF=5.5, RFE=-1.5, RFw=2.5, RFEw=-0.3, strx=1.25, lift=1.0,
-        ceil=8.0, top=600.0, tempo=1.0),
+        melo=dict(speaker="EN-US", speed=0.92, q_speed=0.68, sdp_ratio=0.8, noise_scale=0.7, noise_scale_w=1.0),
+        ref=295.0, target_hz=None, pitch=2.0, fr=1.03, rng=1.15, up=1.3, acc=1.8, decl=1.0,
+        ap=0.0, Q=6.0, RF=3.5, RFE=-1.0, RFw=2.0, RFEw=-0.3, strx=1.2, lift=0.7,
+        ceil=6.0, top=540.0, tempo=1.0, qslow=1.6),
 }
-# 예전 이름 (gen_voice.py 가 읽는다): 한국어 MeloTTS 설정
-MELO = {k: v for k, v in VOICES["KR"]["melo"].items() if k != "speaker"}
+# 예전 이름: 한국어 MeloTTS 설정
+MELO = {k: v for k, v in VOICES["KR"]["melo"].items() if k not in ("speaker", "q_speed")}
+
+
+def melo_speed(text, lang="KR"):
+    """MeloTTS 속도. 질문은 처음부터 천천히 만든다 (PSOLA 로 많이 늘이면 소리가 거칠어진다).
+    만 3세가 따라오게 질문 말 속도는 3.2음절/초 이하가 목표."""
+    m = VOICES[lang]["melo"]
+    return m["q_speed"] if text.strip().endswith("?") else m["speed"]
 
 # 숫자 세기 조각: 도장 박자에 맞춰 한 마디씩 이어 말하므로 억양을 약하게
 COUNTING = {"하나", "둘", "셋", "넷", "다섯", "여섯", "일곱", "여덟", "아홉", "열",
@@ -222,6 +233,41 @@ def final_shape(kind, x, q, rf, rfe):
     return 1.0 * _smooth(x)
 
 
+def _fix_octaves(ts, hz):
+    """피치 추정의 옥타브 오류(앞뒤 80ms 값보다 2배·반으로 뛴 점)를 제자리로 접는다"""
+    hz = hz.copy()
+    for i in range(len(hz)):
+        near = hz[(np.abs(ts - ts[i]) <= 0.08) & (np.arange(len(hz)) != i)]
+        if len(near) < 2:
+            continue
+        ref = float(np.median(near))
+        while hz[i] > ref * 1.6:
+            hz[i] /= 2
+        while hz[i] < ref / 1.6:
+            hz[i] *= 2
+    return hz
+
+
+def _tidy(ts, st, win=0.05, max_step=1.2):
+    """곡선 다듬기: 이어진 유성음 구간 안에서만 50ms 평균, 10ms 에 1.2반음 넘게 바뀌지 않게"""
+    st = np.asarray(st, dtype=np.float64).copy()
+    seg = np.concatenate([[0], np.cumsum(np.diff(ts) > 0.025)])  # 25ms 넘게 비면 다른 구간
+    out = st.copy()
+    for g in np.unique(seg):
+        idx = np.where(seg == g)[0]
+        for i in idx:
+            m = idx[np.abs(ts[idx] - ts[i]) <= win / 2]
+            out[i] = np.mean(st[m])
+        for _ in range(2):  # 앞으로·뒤로 변화 속도 제한
+            for a, b in zip(idx[:-1], idx[1:]):
+                lim = max_step * max(1.0, (ts[b] - ts[a]) / 0.01)
+                out[b] = min(max(out[b], out[a] - lim), out[a] + lim)
+            for a, b in zip(idx[::-1][:-1], idx[::-1][1:]):
+                lim = max_step * max(1.0, (ts[a] - ts[b]) / 0.01)
+                out[b] = min(max(out[b], out[a] - lim), out[a] + lim)
+    return out
+
+
 def cartoon_voice(y, sr, text, lang="KR", v=None):
     """한 번의 PSOLA 로 음색(높이·포먼트)·억양·말끝 늘이기·길이를 함께 한다."""
     import parselmouth
@@ -239,7 +285,7 @@ def cartoon_voice(y, sr, text, lang="KR", v=None):
         st = v["pitch"] if not v["target_hz"] else 12 * math.log2(v["target_hz"] / v["ref"])
         return change_voice(y, sr, st, f, v["rng"])
     ts = np.array([call(pt, "Get time from index", i) for i in range(1, n + 1)])
-    hz = np.array([call(pt, "Get value at index", i) / f for i in range(1, n + 1)])
+    hz = _fix_octaves(ts, np.array([call(pt, "Get value at index", i) / f for i in range(1, n + 1)]))
     med = float(np.median(hz))
     lift = v["lift"] if k == "praise" else 0.0
     if v["target_hz"]:
@@ -275,6 +321,37 @@ def cartoon_voice(y, sr, text, lang="KR", v=None):
             h = c2 * 2 ** (3 * math.tanh(12 * math.log2(h / c2) / 3) / 12)
         return 12 * math.log2(h / target)
 
+    # 한국어 어절 굽이: 어절마다 낮게 시작해 가운데쯤 올랐다 내려온다 (서울 말투, 약하게)
+    words = []
+    if v["ap"] and lang == "KR":
+        counts = [syllables(w, lang) for w in text.split()]
+        tot = max(1, sum(counts))
+        acc_t = t0
+        for c in counts[:-1]:  # 마지막 어절은 말끝 모양이 맡는다
+            dur = span * c / tot
+            words.append((acc_t, acc_t + dur))
+            acc_t += dur
+
+    def phrase(t):
+        c = 0.0
+        for j, (a0, a1) in enumerate(words):
+            if a0 <= t <= a1:
+                x = (t - a0) / max(1e-3, a1 - a0)
+                c += v["ap"] * (1.25 if j == 0 else 1.0) * math.sin(math.pi * x) ** 2
+        return c
+
+    # 각 점이 얼마나 "또렷한 유성음"인지 (0~1). 무성음(s, z, ch)·약한 소리 쪽은 원래 높이 모양을 지킨다
+    inten = call(snd, "To Intensity", 100, 0, "yes")
+    imax = call(inten, "Get maximum", 0, 0, "Parabolic")
+    harm = call(snd, "To Harmonicity (cc)", 0.01, 75 * f, 0.1, 1.0)
+    w = np.empty(n)
+    for i, t in enumerate(ts):
+        iv = call(inten, "Get value at time", float(t), "Cubic")
+        hv = call(harm, "Get value at time", float(t), "Cubic")
+        iv = imax - 60 if iv is None or math.isnan(iv) else iv
+        hv = -10 if hv is None or math.isnan(hv) else hv
+        w[i] = max(0.0, min(1.0, (iv - (imax - 28)) / 10)) * max(0.0, min(1.0, (hv - 1.0) / 6))
+
     st0 = 12 * np.log2(hz / med)
     sts = np.where(st0 > 0, st0 * up, st0 * v["rng"])  # 강세는 위로 더, 낮은 쪽은 덜
     fin = ts >= win0
@@ -282,20 +359,35 @@ def cartoon_voice(y, sr, text, lang="KR", v=None):
     if strong:
         base = max(base, -1.0)  # 감탄 말끝이 바닥에서 시작하지 않게
     rf, rfe = (v["RF"], v["RFE"]) if strong else (v["RFw"], v["RFEw"])
-    newpt = call("Create PitchTier", "p", snd.xmin, snd.xmax)
-    for t, s0 in zip(ts, sts):
-        st = s0 + body(t)
+    shaped = np.empty(n)
+    for i, (t, s0) in enumerate(zip(ts, sts)):
+        st = s0 + body(t) + phrase(t)
         if t >= win0:
             # 마지막 음절은 MeloTTS 의 툭 떨어지거나 뾰족하게 튀는 끝 대신 정해 둔 모양으로
             x = (t - win0) / (t1 - win0 + 1e-6)
             a = _smooth(x / (0.25 if k == "q" else 0.4))
             st = (1 - a) * st + a * (base + body(win0) + final_shape(k, x, v["Q"], rf, rfe))
+        shaped[i] = st
+    # 약한 소리(z, 말끝 숨소리 등)는 억양 확대를 하지 않고, 가까운 또렷한 모음의 높이를 이어 받는다.
+    # (원래 낮은 높이로 두면 "apples" 의 -s 처럼 모음 뒤에서 뚝 떨어져 튀게 들린다)
+    strong_i = np.where(w >= 0.6)[0]
+    out_st = np.empty(n)
+    for i in range(n):
+        if w[i] >= 0.999 or len(strong_i) == 0:
+            out_st[i] = shaped[i] if len(strong_i) else st0[i]
+            continue
+        j = strong_i[np.argmin(np.abs(ts[strong_i] - ts[i]))]
+        anchor = shaped[j]  # 말끝을 늘인 -s/-z 처럼 모음에서 멀어도 모음 높이를 잇는다
+        out_st[i] = w[i] * shaped[i] + (1 - w[i]) * anchor
+    out_st = _tidy(ts, out_st)
+    newpt = call("Create PitchTier", "p", snd.xmin, snd.xmax)
+    for t, st in zip(ts, out_st):
         call(newpt, "Add point", float(t), float(target * 2 ** (lim(st) / 12)))
     call([man, newpt], "Replace pitch tier")
 
     # 길이: f배로 빨라진 것을 되돌리고(×tempo 만큼 더 늘이고) 마지막 음절만 더 늘인다
     stretch = v["strx"] if k in ("q", "e", "praise") else 1.1
-    d = f * v["tempo"]
+    d = f * v["tempo"] * (v["qslow"] if k == "q" else 1.0)
     dt = call("Create DurationTier", "d", snd.xmin, snd.xmax)
     call(dt, "Add point", t0, d)
     call(dt, "Add point", max(t0, win0 - 0.03), d)
@@ -322,10 +414,48 @@ def warm(y, sr):
     return np.asarray(z, dtype=np.float64)
 
 
+def jumps(y, sr, semitones=5.0):
+    """20ms 안에 음높이가 semitones 반음 넘게 뛰는 곳의 수 (튀는 소리 점검).
+    점검 기준은 6반음이지만 mp3 로 바꾸며 조금 달라지므로 5반음으로 여유 있게 잰다."""
+    import parselmouth
+    from parselmouth.praat import call
+
+    fr = call(parselmouth.Sound(np.asarray(y, dtype=np.float64), sampling_frequency=sr),
+              "To Pitch", 0.01, 75, 800).selected_array["frequency"]
+    a, b = fr[:-2], fr[2:]
+    ok = (a > 0) & (b > 0)
+    return int(np.sum(np.abs(12 * np.log2(b[ok] / a[ok])) > semitones))
+
+
+# 튀는 곳이 남으면 차례로 더 순하게 다시 만든다 (억양 확대 없이 → 높이만)
+SAFER = [
+    dict(rng=1.0, up=1.0, acc=0.8, ap=1.0, Q=4.0, RF=2.0, RFE=-0.5, ceil=5.0),
+    dict(rng=1.0, up=1.0, acc=0.0, ap=0.0, Q=2.5, RF=1.0, RFE=0.0, RFw=1.0, ceil=4.0, decl=0.5),
+]
+MAX_JUMPS = 1  # 이보다 많으면 순한 설정으로 다시
+RETRY_SEEDS = [1, 2, 3, 4, 5]  # gen_voice.py: 소리가 쉬면(HNR < HNR_GOAL) 이 씨앗들로 다시 만들어 본다
+HNR_GOAL = 14.5
+
+
+def hnr(y, sr):
+    """소리의 맑기(HNR, dB). 높을수록 쉰 소리·잡음이 적다"""
+    import parselmouth
+    from parselmouth.praat import call
+
+    s = parselmouth.Sound(np.asarray(y, dtype=np.float64), sampling_frequency=sr)
+    return float(call(call(s, "To Harmonicity (cc)", 0.01, 75, 0.1, 1.0), "Get mean", 0, 0))
+
+
 def process(y, sr, text, lang="KR"):
     """MeloTTS 결과 → 만화 캐릭터 느낌 목소리, 말끝 덜 자르기, 따뜻한 EQ, 음량 맞추기"""
     y = gentle_trim(np.asarray(y, dtype=np.float64), sr)
-    y = cartoon_voice(y, sr, text, lang)
-    y = warm(y, sr)
-    y = gentle_trim(y, sr)
-    return normalize(y, sr)
+    v = dict(VOICES[lang])
+    z = cartoon_voice(y, sr, text, lang, v)
+    for safer in SAFER:
+        if jumps(z, sr) <= MAX_JUMPS:
+            break
+        v.update(safer)
+        z = cartoon_voice(y, sr, text, lang, v)
+    z = warm(z, sr)
+    z = gentle_trim(z, sr)
+    return normalize(z, sr)
