@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show Locale;
@@ -13,6 +14,7 @@ import '../l10n/l10n.dart';
 import '../l10n/phrases.dart';
 import 'audio_service.dart';
 import 'backup_code.dart';
+import 'entitlement.dart';
 import 'eye_guard.dart';
 import 'play_clock.dart';
 import 'save_data.dart';
@@ -35,7 +37,8 @@ extension GameKindInfo on GameKind {
   };
 }
 
-enum PurchaseResult { ok, alreadyOwned, notEnoughCoins, unknownItem }
+/// 코인으로 사기 결과. [locked]: 1회 전체 해금이 있어야 살 수 있는 것 (코인으로는 열 수 없다).
+enum PurchaseResult { ok, alreadyOwned, notEnoughCoins, unknownItem, locked }
 
 /// 한 판을 끝냈을 때 받은 보상 내역
 class SessionReward {
@@ -63,10 +66,23 @@ class GameState extends ChangeNotifier {
     required this.audio,
     EyeGuard? eyeGuard,
     DateTime Function()? now,
+    Entitlement? entitlement,
   }) : eye = eyeGuard ?? EyeGuard(),
-       play = PlayClock(now: now) {
+       play = PlayClock(now: now),
+       entitlement = entitlement ?? Entitlement() {
     // 눈 지킴이가 "쉬어 가기"로 넘어가거나 돌아오면 덮개([playBlock])가 바뀐다
     eye.addListener(_eyeChanged);
+    this.entitlement.onChanged = _entitlementChanged;
+  }
+
+  /// 1회 전체 해금 (결제 기능 플래그가 꺼져 있으면 항상 전부 열림, 스토어도 건드리지 않음)
+  final Entitlement entitlement;
+
+  /// 스토어에서 해금을 받았다: 기기에 저장해서 다음 실행(오프라인 포함)에도 열려 있게 한다
+  void _entitlementChanged(bool unlocked) {
+    if (_d.unlocked == unlocked) return;
+    _d.unlocked = unlocked;
+    unawaited(_commit());
   }
 
   bool _eyeResting = false;
@@ -100,7 +116,12 @@ class GameState extends ChangeNotifier {
   bool get sfxOn => _d.sfxOn;
   int get sessionsPlayed => _d.sessionsPlayed;
 
-  int unlockedStage(GameKind g) => switch (g) {
+  /// 지금 놀 수 있는 가장 높은 단계: 깬 만큼 열린 단계([progressStage])와 해금 범위([stageCap]) 중 작은 쪽.
+  /// 결제가 꺼져 있으면 [progressStage]와 같다.
+  int unlockedStage(GameKind g) => math.min(progressStage(g), stageCap(g));
+
+  /// 깬 만큼 열린 단계 (해금 범위와 상관없이)
+  int progressStage(GameKind g) => switch (g) {
     GameKind.number => _d.numberStageUnlocked,
     GameKind.color => _d.colorStageUnlocked,
     GameKind.shape => _d.shapeStageUnlocked,
@@ -127,6 +148,41 @@ class GameState extends ChangeNotifier {
   };
 
   bool owns(String itemId) => _d.owned.contains(itemId);
+
+  // ---------- 1회 전체 해금 (docs/MONETIZATION.md) ----------
+
+  /// 모든 단계·아이템·탈것을 쓸 수 있는지 (결제가 꺼져 있으면 항상 true)
+  bool get fullAccess => entitlement.fullAccess;
+
+  /// 결제 없이 놀 수 있는 가장 높은 단계: 무료 범위, 그리고 결제가 처음 켜졌을 때 이미 열려 있던 단계
+  int stageCap(GameKind g) {
+    if (fullAccess) return g.stageCount;
+    final keep = _d.keepStages?[g.name] ?? 0;
+    return math.max(FreeTier.stages(g), keep).clamp(1, g.stageCount);
+  }
+
+  /// 이 단계는 1회 해금이 있어야 놀 수 있는지 (누르면 부모 확인 → 부모용 결제 화면)
+  bool stageNeedsUnlock(GameKind g, int stageId) => stageId > stageCap(g);
+
+  /// 이 아이템을 코인으로 사려면 해금이 필요한지. 이미 가진 것은 언제나 쓸 수 있다.
+  bool itemLocked(String itemId) {
+    if (fullAccess || _d.owned.contains(itemId)) return false;
+    final item = ItemCatalog.byId(itemId);
+    return item != null && !FreeTier.themes.contains(item.theme);
+  }
+
+  /// 이 탈것을 코인으로 사려면 해금이 필요한지. 이미 가진 탈것은 타기·꾸미기·색칠 모두 된다.
+  bool vehicleLocked(String vehicleId) =>
+      !fullAccess &&
+      !_d.owned.contains(vehicleId) &&
+      !FreeTier.vehicles.contains(vehicleId);
+
+  /// 결제가 처음 켜진 실행에서 한 번: 지금 열려 있는 단계를 기억해 계속 놀 수 있게 한다
+  bool _keepOpenStages() {
+    if (!entitlement.enabled || _d.keepStages != null) return false;
+    _d.keepStages = {for (final g in GameKind.values) g.name: progressStage(g)};
+    return true;
+  }
 
   // ---------- 또 하기 (홈의 가장 큰 자리) ----------
 
@@ -162,6 +218,9 @@ class GameState extends ChangeNotifier {
 
   Future<void> load() async {
     _d = await storage.load();
+    // 결제가 꺼져 있으면 아래 두 줄은 아무 일도 하지 않는다 (스토어 연결 없음)
+    entitlement.restoreCached(_d.unlocked);
+    if (_keepOpenStages()) await storage.save(_d);
     _applyAudio();
     _applySafety();
     play.restore(
@@ -174,6 +233,21 @@ class GameState extends ChangeNotifier {
     // 첫 실행 부모님 안내를 보기 전에는 켜지 않는다 (카메라 권한 창이 먼저 뜨지 않게).
     eye.enabled = _eyeEnabled;
     _loaded = true;
+    notifyListeners();
+    // 스토어는 뒤에서 조용히 연결한다 (오프라인이면 캐시된 해금 그대로)
+    if (entitlement.enabled) {
+      _lastAccess = entitlement.fullAccess;
+      entitlement
+        ..removeListener(_accessChanged)
+        ..addListener(_accessChanged);
+      unawaited(entitlement.start());
+    }
+  }
+
+  bool _lastAccess = true;
+  void _accessChanged() {
+    if (entitlement.fullAccess == _lastAccess) return;
+    _lastAccess = entitlement.fullAccess;
     notifyListeners();
   }
 
@@ -338,9 +412,10 @@ class GameState extends ChangeNotifier {
 
     int? unlocked;
     final next = stageId + 1;
-    if (next <= stageCount(game) && unlockedStage(game) < next) {
+    if (next <= stageCount(game) && progressStage(game) < next) {
       _setUnlocked(game, next);
-      unlocked = next;
+      // 해금이 있어야 하는 단계면 "열렸어요"라고 하지 않는다 (진행은 기억해 둔다)
+      if (!stageNeedsUnlock(game, next)) unlocked = next;
     }
 
     final reward = SessionReward(
@@ -367,6 +442,8 @@ class GameState extends ChangeNotifier {
     final item = ItemCatalog.byId(itemId);
     if (item == null) return PurchaseResult.unknownItem;
     if (_d.owned.contains(itemId)) return PurchaseResult.alreadyOwned;
+    // 해금이 필요한 아이템은 코인이 많아도 살 수 없다 (코인으로 결제 상품을 사는 길은 없다)
+    if (itemLocked(itemId)) return PurchaseResult.locked;
     if (_d.coins < item.price) return PurchaseResult.notEnoughCoins;
     _d.coins -= item.price;
     _d.owned.add(itemId);
@@ -387,6 +464,7 @@ class GameState extends ChangeNotifier {
     final v = Vehicles.byId(id);
     if (v == null) return PurchaseResult.unknownItem;
     if (_d.owned.contains(id)) return PurchaseResult.alreadyOwned;
+    if (vehicleLocked(id)) return PurchaseResult.locked;
     if (_d.coins < v.price) return PurchaseResult.notEnoughCoins;
     _d.coins -= v.price;
     _d.owned.add(id);
@@ -614,7 +692,10 @@ class GameState extends ChangeNotifier {
       // 안내 없이 권한 창이 뜨지 않으므로 이 기기 값을 그대로 쓴다.
       ..cameraNoticeSeen = _d.cameraNoticeSeen
       ..cameraPermission = _d.cameraPermission
-      ..eyeGuardOn = _d.eyeGuardOn;
+      ..eyeGuardOn = _d.eyeGuardOn
+      // 결제 해금은 이 기기(스토어 계정) 것. 지켜 주는 단계는 둘 중 더 높은 쪽.
+      ..unlocked = _d.unlocked
+      ..keepStages = _mergeKeep(_d.keepStages, data.keepStages);
     _d = data;
     _applyAudio();
     _applySafety();
@@ -629,10 +710,24 @@ class GameState extends ChangeNotifier {
     eye.enabled = _eyeEnabled;
   }
 
-  /// 부모용: 모든 진행 기록 지우기
+  static Map<String, int>? _mergeKeep(
+    Map<String, int>? a,
+    Map<String, int>? b,
+  ) {
+    if (a == null || b == null) return a ?? b;
+    return {
+      for (final k in {...a.keys, ...b.keys})
+        k: math.max(a[k] ?? 1, b[k] ?? 1),
+    };
+  }
+
+  /// 부모용: 모든 진행 기록 지우기 (산 해금과 지켜 주는 단계는 기록이 아니라 그대로 둔다)
   Future<void> resetAll() async {
     await storage.clear();
-    _d = SaveData.initial();
+    final unlocked = _d.unlocked, keep = _d.keepStages;
+    _d = SaveData.initial()
+      ..unlocked = unlocked
+      ..keepStages = keep;
     _applyAudio();
     _applySafety();
     _applyEyeRunning();

@@ -748,4 +748,88 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cameraNotice_ok => 'OK';
+
+  @override
+  String get unlock_title => 'Unlock everything';
+
+  @override
+  String get unlock_forParents =>
+      'This screen is for parents. Prices and buy buttons never appear on your child\'s screens.';
+
+  @override
+  String get unlock_body =>
+      'Opens all 8 Numbers steps and all 5 steps of Colors, Shapes, Sizes and Matching, and lets coins buy all 17 outfit themes and all 7 rides.';
+
+  @override
+  String get unlock_terms =>
+      'One payment only. No subscription and no ads. Coins are still earned only by playing and are never sold for money.';
+
+  @override
+  String unlock_buy(Object price) {
+    return 'Unlock all for $price';
+  }
+
+  @override
+  String get unlock_connecting => 'Connecting to the store';
+
+  @override
+  String get unlock_unavailable =>
+      'Can\'t reach the store right now. Check your internet connection and try again. Anything already unlocked keeps working.';
+
+  @override
+  String get unlock_retry => 'Try again';
+
+  @override
+  String get unlock_purchasing => 'Waiting for the payment window';
+
+  @override
+  String get unlock_pending =>
+      'Waiting for payment approval. Everything opens by itself once it\'s approved.';
+
+  @override
+  String get unlock_restore => 'Restore purchase';
+
+  @override
+  String get unlock_restoring => 'Looking for your purchase';
+
+  @override
+  String get unlock_nothing => 'No purchase was found for this store account.';
+
+  @override
+  String get unlock_canceled => 'The payment was canceled.';
+
+  @override
+  String get unlock_failed =>
+      'The payment didn\'t go through. Please try again later.';
+
+  @override
+  String get unlock_done => 'Everything is unlocked. Thank you!';
+
+  @override
+  String get settings_unlockSection => 'Unlock everything';
+
+  @override
+  String get settings_unlockFree => 'Only the free part is open';
+
+  @override
+  String get settings_unlockFreeHint =>
+      'Numbers steps 1-3, Colors 1-2, step 1 of the others, robot outfits and the hot-air balloon';
+
+  @override
+  String get settings_unlockAll => 'Everything is open';
+
+  @override
+  String get settings_unlockOpen => 'Open';
+
+  @override
+  String get settings_note1Billing =>
+      'No sign-up, servers, ads, tracking or subscriptions. The only payment is the one-time \'Unlock everything\' on this parents\' screen.';
+
+  @override
+  String shop_tileLocked(Object name) {
+    return '$name, locked';
+  }
+
+  @override
+  String get shop_lockedHint => 'Show a grown-up';
 }

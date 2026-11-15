@@ -221,10 +221,11 @@ void main() {
       expect(bad, isEmpty);
     });
 
-    test('세로로 미는 목록도 부모님 화면(설정·이름 입력·카메라 안내)과 안 쓰는 내 가방에만', () {
+    test('세로로 미는 목록도 부모님 화면(설정·이름 입력·카메라 안내·전체 놀이 열기)과 안 쓰는 내 가방에만', () {
       const allowed = {
         'settings_screen.dart',
         'camera_notice_screen.dart',
+        'unlock_screen.dart',
         'nickname_screen.dart',
         'bag_screen.dart',
       };

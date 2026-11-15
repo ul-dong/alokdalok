@@ -16,6 +16,7 @@
 | 홈·놀이터 진입 개선 (2026-11-13, home3) | `flutter test` **513개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **218개 통과** (홈 기록 있음·없음, 놀이터 568·844·1280, `playground_items.png`), 터치 칸 감사 통과. 문장 목록 1044 = manifest 1044 = mp3 1044 |
 | 렉·터치 점검 (2026-11-14, perf) | `flutter test` **540개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **225개 통과** (`settings_perf_diag_*` 렉·터치 진단 칸). 홈 1초 다시 그리기 2880 → 172 (`test/perf_test.dart`), 웹 얼굴 인식은 Web Worker(`web/eye_worker.js`), 웹 녹음 조각은 최근 48개만 풀어 둠 |
 | 부모님 카메라 안내 (2026-11-15, consent) | `flutter test` **786개 전부 통과** (`test/camera_notice_test.dart` 22개 추가), `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **430개 통과** (`shots/camera_notice_<ko·en>_<ask·later·denied·settings>_<568·844·1280>.png`, `l10n_<ko·en>_camera_notice*`). `flutter build apk --debug`, `flutter build ios --simulator` 성공 |
+| 1회 해금 골격 (2026-11-15, monet) | `flutter test` **845개 전부 통과** (`test/billing_test.dart` 59개 추가, 플래그 꺼짐에서 기존 786개는 저장 버전 숫자 3곳·부모 화면 허용 목록 1곳만 고침), `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **466개 통과** (`shots/billing_<stage·shop·unlock_*·settings_*>_*.png`). release AAB 매니페스트: INTERNET·AD_ID 없음, BILLING 추가 |
 | 점검 수정 (2026-10-22, release2) | `flutter test` **395개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **187개 통과**. 문장 목록 577 = manifest 577 = mp3 577 (14장) |
 | 기준선 `flutter test` (test/) | **120개 전부 통과** (소스상 `test`/`testWidgets` 72곳: state 33·widget 19·logic 14·eye_guard 6, 화면 크기 반복 포함 실행 120건). 사양 목표 142 |
 | 기준선 `flutter test test_preview` | 그대로 돌리면 9 통과 / 32 실패 (골든 비교: `shots/` 없음 + 저장된 PNG 픽셀 차이). 미리보기 생성기이므로 `--update-goldens`로 돌리면 **41개 전부 통과** |
@@ -262,4 +263,8 @@
 | 확률형 뽑기 없음 (영구) | 있음 | 상점은 고른 물건을 정해진 코인 값에 산다 |
 | 코인 현금 판매 없음 (영구), 틀려도 차감 없음 | 있음 | 코인은 `Economy` 보상으로만 늘어난다 |
 | 구독 없음 | 있음 | |
-| 1회성 전체 해금 결제 (부모 확인 뒤, 아이 화면에 가격 없음) | 없음 | 아직 코드 없음 (다음 단계에서 기능 플래그로 꺼진 골격) |
+| 1회성 전체 해금 결제 (부모 확인 뒤, 아이 화면에 가격 없음) | 부분 (골격, 기능 플래그 꺼짐) | `core/features.dart` `kBillingEnabled = false`(웹은 항상 꺼짐). `services/entitlement.dart`(비소모성 `full_unlock`, 보류·복원·오프라인 캐시, `FreeTier`), `services/billing_store.dart`(in_app_purchase 3.3.1), `screens/unlock_screen.dart`(`openUnlock` → `confirmParent(force: true)` → 부모용 화면, ARB ko/en, 스토어 현지 가격). 꺼져 있으면 스토어 초기화·연결 없음, 전부 열림 |
+| 무료 범위: 숫자 1~3·색깔 1~2·나머지 1단계, 로봇 옷, 열기구 | 있음 (플래그 켜졌을 때만) | `GameState.stageCap/unlockedStage/progressStage/stageNeedsUnlock/itemLocked/vehicleLocked`, `PurchaseResult.locked` |
+| 잠긴 단계: 자물쇠만, 누르면 부모 확인 | 있음 (플래그 켜졌을 때만) | `stage_picker.dart` `_tap`, 자물쇠는 공용 `widgets/big_lock.dart`. 상점 잠긴 옷·탈것은 가격 대신 자물쇠, 입어 보기 없음 |
+| 기존 사용자 보호 (산 것 계속 사용, 결제가 처음 켜질 때 열린 단계 유지) | 있음 | 저장 v10 `keepStages`(백업 포함), `unlocked`(백업 제외, 스토어 복원) |
+| 실기기 결제 확인 | 없음 | 상품 등록 뒤 내부 테스트 트랙에서 (`MONETIZATION.md` 10절) |

@@ -285,7 +285,7 @@ void main() {
   group('저장 v9', () {
     test('새로 설치: 안내 전, 권한 모름, 눈 지킴이 기본 켜짐', () {
       final d = SaveData.decode(null);
-      expect(SaveData.currentVersion, 9);
+      expect(SaveData.currentVersion, greaterThanOrEqualTo(9));
       expect(d.cameraNoticeSeen, isFalse);
       expect(d.cameraPermission, 'unknown');
       expect(d.eyeGuardOn, isTrue);
@@ -299,7 +299,7 @@ void main() {
         'eyeGuardOn': false,
         'language': 'en',
       });
-      expect(json['version'], 9);
+      expect(json['version'], SaveData.currentVersion);
       expect(json['cameraNoticeSeen'], isTrue);
       expect(json['cameraPermission'], 'unknown');
       final d = SaveData.fromJson(json);

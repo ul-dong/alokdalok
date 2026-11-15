@@ -553,8 +553,8 @@ void main() {
 
     test('저장 형식: 새 항목만 더했고 버전은 그대로', () {
       // 놀이 트랙은 버전을 올리지 않았다 (v6은 안전 트랙, v7은 홈 "또 하기")
-      // (v8은 언어 선택, v9는 부모님 카메라 안내)
-      expect(SaveData.currentVersion, 9);
+      // (v8은 언어 선택, v9는 부모님 카메라 안내, v10은 1회 해금 결제)
+      expect(SaveData.currentVersion, 10);
       final d = SaveData.initial()
         ..shapeStageUnlocked = 3
         ..shapeStageCleared = {1, 2}

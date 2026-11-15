@@ -730,4 +730,85 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get cameraNotice_ok => '확인';
+
+  @override
+  String get unlock_title => '전체 놀이 열기';
+
+  @override
+  String get unlock_forParents => '부모님용 화면이에요. 아이 화면에는 가격이나 결제 버튼이 나오지 않아요.';
+
+  @override
+  String get unlock_body =>
+      '숫자 놀이 8단계와 색깔, 모양, 크기, 짝 맞추기 5단계를 모두 열고, 꾸미기 옷 17가지 테마와 탈것 7가지를 모두 코인으로 살 수 있게 해요.';
+
+  @override
+  String get unlock_terms =>
+      '한 번만 결제해요. 구독이 아니고 광고도 없어요. 코인은 계속 놀이로만 모으고, 돈으로 팔지 않아요.';
+
+  @override
+  String unlock_buy(Object price) {
+    return '$price에 모두 열기';
+  }
+
+  @override
+  String get unlock_connecting => '스토어에 연결하는 중이에요';
+
+  @override
+  String get unlock_unavailable =>
+      '지금은 스토어에 연결할 수 없어요. 인터넷 연결을 확인하고 다시 연결해 주세요. 이미 연 것은 그대로 쓸 수 있어요.';
+
+  @override
+  String get unlock_retry => '다시 연결';
+
+  @override
+  String get unlock_purchasing => '결제 창을 기다리는 중이에요';
+
+  @override
+  String get unlock_pending => '결제 승인을 기다리고 있어요. 승인되면 저절로 열려요.';
+
+  @override
+  String get unlock_restore => '구매 복원';
+
+  @override
+  String get unlock_restoring => '산 기록을 찾는 중이에요';
+
+  @override
+  String get unlock_nothing => '이 스토어 계정으로 산 기록을 찾지 못했어요.';
+
+  @override
+  String get unlock_canceled => '결제를 취소했어요.';
+
+  @override
+  String get unlock_failed => '결제가 끝나지 않았어요. 잠시 뒤 다시 해 주세요.';
+
+  @override
+  String get unlock_done => '모두 열렸어요. 고맙습니다!';
+
+  @override
+  String get settings_unlockSection => '전체 놀이 열기';
+
+  @override
+  String get settings_unlockFree => '무료 범위만 열려 있어요';
+
+  @override
+  String get settings_unlockFreeHint =>
+      '숫자 1~3단계, 색깔 1~2단계, 나머지 놀이 1단계, 로봇 옷과 열기구';
+
+  @override
+  String get settings_unlockAll => '모두 열려 있어요';
+
+  @override
+  String get settings_unlockOpen => '보기';
+
+  @override
+  String get settings_note1Billing =>
+      '회원가입, 서버, 광고, 추적, 구독이 없습니다. 결제는 이 부모님 화면의 한 번뿐인 \'전체 놀이 열기\'만 있습니다.';
+
+  @override
+  String shop_tileLocked(Object name) {
+    return '$name, 잠겨 있음';
+  }
+
+  @override
+  String get shop_lockedHint => '부모님께 보여 주세요';
 }

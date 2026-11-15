@@ -9,17 +9,21 @@ import '../data/item_catalog.dart';
 import '../data/vehicles.dart';
 import '../l10n/l10n.dart';
 import '../services/audio_service.dart';
+import '../screens/unlock_screen.dart';
 import '../services/game_state.dart';
 import '../vehicle/garage_screen.dart';
 import '../vehicle/ride_view.dart';
 import '../vehicle/vehicle_painter.dart';
+import '../widgets/big_lock.dart';
 import '../widgets/common.dart';
 import '../widgets/paged_grid.dart';
 import '../widgets/poke_character.dart';
 import 'item_widgets.dart';
 
 /// 꾸미기 상점. 테마(로봇·공주·소방관·경찰·군인·원시인)와 탈것을 고른다.
-/// 아이템을 누르면 바로 입혀 보고(미리보기), 게임 코인으로만 산다. 현금 결제·광고·뽑기는 없다.
+/// 아이템을 누르면 바로 입혀 보고(미리보기), 게임 코인으로만 산다. 광고·뽑기·코인 판매는 없다.
+/// 1회 해금이 있어야 하는 물건(결제 기능이 켜졌을 때만)은 가격 대신 자물쇠만 보이고, 입어 보기도 하지 않는다.
+/// 자물쇠를 누르면 부모 확인 → 부모용 결제 화면이다 (코인으로는 살 수 없다).
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key, this.startWithVehicles = false});
 
@@ -40,7 +44,8 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
 
   Map<ItemSlot, String> _preview(GameState state) {
     final map = Map<ItemSlot, String>.of(state.equipped);
-    if (selected != null) map[selected!.slot] = selected!.id;
+    final item = selected;
+    if (item != null && !state.itemLocked(item.id)) map[item.slot] = item.id;
     return map;
   }
 
@@ -169,8 +174,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                           ? RideView(
                               width: min(c.maxWidth, c.maxHeight * 1.5),
                               cheer: cheer,
-                              vehicleId:
-                                  selectedVehicle?.id ?? state.ride ?? 'car',
+                              vehicleId: _previewVehicle(state),
                             )
                           : PokeCharacter(
                               child: CharacterView(
@@ -224,6 +228,13 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
     );
   }
 
+  /// 왼쪽에 보여 줄 탈것 (잠긴 탈것은 태워 보지 않는다)
+  String _previewVehicle(GameState state) {
+    final v = selectedVehicle;
+    if (v != null && !state.vehicleLocked(v.id)) return v.id;
+    return state.ride ?? 'car';
+  }
+
   Widget _itemGrid(GameState state) {
     final items = ItemCatalog.byTheme(theme!);
     // 밀어서 보지 않는다: 한 화면에 맞추고 넘치면 큰 화살표로 쪽 넘기기
@@ -243,6 +254,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
         selected: selected?.id == items[i].id,
         owned: state.owns(items[i].id),
         equipped: state.equipped[items[i].slot] == items[i].id,
+        locked: state.itemLocked(items[i].id),
         onTap: () => _select(items[i]),
         flat: true,
       ),
@@ -261,10 +273,13 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
     itemBuilder: (_, i) {
       final v = Vehicles.all[i];
       final owned = state.ownsVehicle(v.id);
+      final locked = state.vehicleLocked(v.id);
       return Pressable(
         onTap: () => _selectVehicle(v),
         semanticLabel: owned
             ? context.l10n.shop_tileOwned(v.name)
+            : locked
+            ? context.l10n.shop_tileLocked(v.name)
             : context.l10n.shop_tilePrice(v.name, v.price),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -296,6 +311,8 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
                               : ShopStyle.pinkDeep,
                           size: 24,
                         )
+                      : locked
+                      ? const SizedBox(width: 26, height: 30, child: BigLock())
                       : PriceTag(price: v.price),
                 ),
               ),
@@ -318,6 +335,7 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
         onTap: () => state.toggleEquip(item.id),
       );
     }
+    if (state.itemLocked(item.id)) return const _LockedAction();
     return _PriceButton(
       price: item.price,
       coins: state.coins,
@@ -363,12 +381,42 @@ class _ShopScreenState extends State<ShopScreen> with ScreenMusic {
         ],
       );
     }
+    if (state.vehicleLocked(v.id)) return const _LockedAction();
     return _PriceButton(
       price: v.price,
       coins: state.coins,
       onBuy: () => _buyVehicle(v),
     );
   }
+}
+
+/// 잠긴 물건을 골랐을 때 사기 버튼 자리: 큰 자물쇠 그림만 (가격·결제 글자 없음).
+/// 누르면 부모 확인 → 부모용 결제 화면. 부모님이 알아보도록 작은 글자 "부모님께 보여 주세요".
+class _LockedAction extends StatelessWidget {
+  const _LockedAction();
+
+  @override
+  Widget build(BuildContext context) => FlatPill(
+    color: ShopStyle.surface,
+    onTap: () => openUnlock(context),
+    semanticLabel: context.l10n.shop_lockedHint,
+    child: FitBox(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(width: 34, height: 42, child: BigLock()),
+          const SizedBox(width: 10),
+          Text(
+            context.l10n.shop_lockedHint,
+            style: const TextStyle(
+              fontSize: TextSizes.body,
+              color: Palette.textSoft,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _Hint extends StatelessWidget {

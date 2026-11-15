@@ -16,6 +16,7 @@ import '../widgets/common.dart';
 import '../widgets/eye_guard_overlay.dart';
 import 'camera_notice_screen.dart';
 import 'nickname_screen.dart';
+import 'unlock_screen.dart';
 
 // 부모님께 칸을 길게 누르면 열리는 개발 진단 칸 (한국어 전용, 번역하지 않는다)
 part 'settings_diagnostics.dart';
@@ -24,6 +25,9 @@ part 'settings_diagnostics.dart';
 /// 닉네임, 부모용 정보와 기록 지우기.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  /// 전체 놀이 열기 버튼 (결제 기능이 켜졌을 때만, 테스트용 키)
+  static const unlockKey = ValueKey('settings-unlock');
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +84,32 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+                  // 1회 전체 해금 (결제 기능이 켜졌을 때만 보인다, docs/MONETIZATION.md)
+                  if (state.entitlement.enabled) ...[
+                    _Section(context.l10n.settings_unlockSection),
+                    _Panel(
+                      children: [
+                        _RowTile(
+                          icon: state.fullAccess
+                              ? Icons.lock_open_rounded
+                              : Icons.lock_rounded,
+                          title: state.fullAccess
+                              ? context.l10n.settings_unlockAll
+                              : context.l10n.settings_unlockFree,
+                          subtitle: state.fullAccess
+                              ? null
+                              : context.l10n.settings_unlockFreeHint,
+                          trailing: _SmallButton(
+                            key: SettingsScreen.unlockKey,
+                            icon: Icons.chevron_right_rounded,
+                            label: context.l10n.settings_unlockOpen,
+                            semanticLabel: context.l10n.settings_unlockSection,
+                            onTap: () => openUnlock(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   _Section(context.l10n.settings_eyeSection),
                   const _EyeGuardCard(),
                   _Section(context.l10n.settings_playTimeSection),
@@ -505,6 +535,7 @@ class _Chip extends StatelessWidget {
 /// 흰 알약 작은 버튼 (아이콘 + 글자)
 class _SmallButton extends StatelessWidget {
   const _SmallButton({
+    super.key,
     required this.icon,
     required this.label,
     required this.onTap,
@@ -1236,7 +1267,9 @@ class _ParentNotesState extends State<_ParentNotes> {
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
           children: [
             _Bullets([
-              context.l10n.settings_note1,
+              AppScope.of(context).entitlement.enabled
+                  ? context.l10n.settings_note1Billing
+                  : context.l10n.settings_note1,
               context.l10n.settings_note2,
               context.l10n.settings_note3,
               context.l10n.settings_note4,

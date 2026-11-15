@@ -15,9 +15,15 @@ import 'eye_guard_overlay.dart';
 /// ```dart
 /// if (await confirmParent(context)) { /* 설정 열기 */ }
 /// ```
-Future<bool> confirmParent(BuildContext context, {Random? random}) async {
+///
+/// [force]가 true면 설정에서 부모 확인을 꺼 두었어도 항상 묻는다 (부모용 결제 화면 앞).
+Future<bool> confirmParent(
+  BuildContext context, {
+  Random? random,
+  bool force = false,
+}) async {
   final state = context.getInheritedWidgetOfExactType<AppScope>()?.notifier;
-  if (state != null && !state.parentGateOn) return true;
+  if (state != null && !state.parentGateOn && !force) return true;
   state?.audio.say(L10n.current.gate_callParentSay);
   final ok = await showGeneralDialog<bool>(
     context: context,

@@ -1399,6 +1399,150 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'확인'**
   String get cameraNotice_ok;
+
+  /// No description provided for @unlock_title.
+  ///
+  /// In ko, this message translates to:
+  /// **'전체 놀이 열기'**
+  String get unlock_title;
+
+  /// No description provided for @unlock_forParents.
+  ///
+  /// In ko, this message translates to:
+  /// **'부모님용 화면이에요. 아이 화면에는 가격이나 결제 버튼이 나오지 않아요.'**
+  String get unlock_forParents;
+
+  /// No description provided for @unlock_body.
+  ///
+  /// In ko, this message translates to:
+  /// **'숫자 놀이 8단계와 색깔, 모양, 크기, 짝 맞추기 5단계를 모두 열고, 꾸미기 옷 17가지 테마와 탈것 7가지를 모두 코인으로 살 수 있게 해요.'**
+  String get unlock_body;
+
+  /// No description provided for @unlock_terms.
+  ///
+  /// In ko, this message translates to:
+  /// **'한 번만 결제해요. 구독이 아니고 광고도 없어요. 코인은 계속 놀이로만 모으고, 돈으로 팔지 않아요.'**
+  String get unlock_terms;
+
+  /// No description provided for @unlock_buy.
+  ///
+  /// In ko, this message translates to:
+  /// **'{price}에 모두 열기'**
+  String unlock_buy(Object price);
+
+  /// No description provided for @unlock_connecting.
+  ///
+  /// In ko, this message translates to:
+  /// **'스토어에 연결하는 중이에요'**
+  String get unlock_connecting;
+
+  /// No description provided for @unlock_unavailable.
+  ///
+  /// In ko, this message translates to:
+  /// **'지금은 스토어에 연결할 수 없어요. 인터넷 연결을 확인하고 다시 연결해 주세요. 이미 연 것은 그대로 쓸 수 있어요.'**
+  String get unlock_unavailable;
+
+  /// No description provided for @unlock_retry.
+  ///
+  /// In ko, this message translates to:
+  /// **'다시 연결'**
+  String get unlock_retry;
+
+  /// No description provided for @unlock_purchasing.
+  ///
+  /// In ko, this message translates to:
+  /// **'결제 창을 기다리는 중이에요'**
+  String get unlock_purchasing;
+
+  /// No description provided for @unlock_pending.
+  ///
+  /// In ko, this message translates to:
+  /// **'결제 승인을 기다리고 있어요. 승인되면 저절로 열려요.'**
+  String get unlock_pending;
+
+  /// No description provided for @unlock_restore.
+  ///
+  /// In ko, this message translates to:
+  /// **'구매 복원'**
+  String get unlock_restore;
+
+  /// No description provided for @unlock_restoring.
+  ///
+  /// In ko, this message translates to:
+  /// **'산 기록을 찾는 중이에요'**
+  String get unlock_restoring;
+
+  /// No description provided for @unlock_nothing.
+  ///
+  /// In ko, this message translates to:
+  /// **'이 스토어 계정으로 산 기록을 찾지 못했어요.'**
+  String get unlock_nothing;
+
+  /// No description provided for @unlock_canceled.
+  ///
+  /// In ko, this message translates to:
+  /// **'결제를 취소했어요.'**
+  String get unlock_canceled;
+
+  /// No description provided for @unlock_failed.
+  ///
+  /// In ko, this message translates to:
+  /// **'결제가 끝나지 않았어요. 잠시 뒤 다시 해 주세요.'**
+  String get unlock_failed;
+
+  /// No description provided for @unlock_done.
+  ///
+  /// In ko, this message translates to:
+  /// **'모두 열렸어요. 고맙습니다!'**
+  String get unlock_done;
+
+  /// No description provided for @settings_unlockSection.
+  ///
+  /// In ko, this message translates to:
+  /// **'전체 놀이 열기'**
+  String get settings_unlockSection;
+
+  /// No description provided for @settings_unlockFree.
+  ///
+  /// In ko, this message translates to:
+  /// **'무료 범위만 열려 있어요'**
+  String get settings_unlockFree;
+
+  /// No description provided for @settings_unlockFreeHint.
+  ///
+  /// In ko, this message translates to:
+  /// **'숫자 1~3단계, 색깔 1~2단계, 나머지 놀이 1단계, 로봇 옷과 열기구'**
+  String get settings_unlockFreeHint;
+
+  /// No description provided for @settings_unlockAll.
+  ///
+  /// In ko, this message translates to:
+  /// **'모두 열려 있어요'**
+  String get settings_unlockAll;
+
+  /// No description provided for @settings_unlockOpen.
+  ///
+  /// In ko, this message translates to:
+  /// **'보기'**
+  String get settings_unlockOpen;
+
+  /// No description provided for @settings_note1Billing.
+  ///
+  /// In ko, this message translates to:
+  /// **'회원가입, 서버, 광고, 추적, 구독이 없습니다. 결제는 이 부모님 화면의 한 번뿐인 \'전체 놀이 열기\'만 있습니다.'**
+  String get settings_note1Billing;
+
+  /// No description provided for @shop_tileLocked.
+  ///
+  /// In ko, this message translates to:
+  /// **'{name}, 잠겨 있음'**
+  String shop_tileLocked(Object name);
+
+  /// No description provided for @shop_lockedHint.
+  ///
+  /// In ko, this message translates to:
+  /// **'부모님께 보여 주세요'**
+  String get shop_lockedHint;
 }
 
 class _AppLocalizationsDelegate

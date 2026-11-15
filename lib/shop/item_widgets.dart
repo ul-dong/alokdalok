@@ -6,6 +6,7 @@ import '../character/item_thumb.dart';
 import '../core/palette.dart';
 import '../data/item_catalog.dart';
 import '../l10n/l10n.dart';
+import '../widgets/big_lock.dart';
 import '../widgets/common.dart';
 import '../widgets/paged_grid.dart';
 
@@ -144,7 +145,11 @@ class ItemTile extends StatelessWidget {
     required this.onTap,
     this.showPrice = true,
     this.flat = false,
+    this.locked = false,
   });
+
+  /// 1회 해금이 있어야 살 수 있는 물건: 가격 대신 자물쇠 그림만 (결제 기능이 켜졌을 때만)
+  final bool locked;
 
   final Item item;
   final bool selected;
@@ -175,6 +180,8 @@ class ItemTile extends StatelessWidget {
     onTap: onTap,
     semanticLabel: owned
         ? context.l10n.shop_tileOwned(item.name)
+        : locked
+        ? context.l10n.shop_tileLocked(item.name)
         : context.l10n.shop_tilePrice(item.name, item.price),
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -257,6 +264,9 @@ class ItemTile extends StatelessWidget {
       );
     }
     if (!showPrice) return const SizedBox.shrink();
+    if (locked) {
+      return SizedBox(width: h * .9, height: h * 1.1, child: const BigLock());
+    }
     if (flat) return PriceTag(price: item.price, height: h);
     return Container(
       padding: EdgeInsets.symmetric(horizontal: h * .3),

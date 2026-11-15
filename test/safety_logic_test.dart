@@ -311,8 +311,8 @@ void main() {
   });
 
   group('저장 버전 6', () {
-    test('버전 번호는 9이고(v7: 또 하기, v8: 언어, v9: 카메라 안내), 단계 목록 길이와 같다', () {
-      expect(SaveData.currentVersion, 9);
+    test('버전 번호는 10이고(v7: 또 하기, v8: 언어, v9: 카메라 안내, v10: 1회 해금), 단계 목록 길이와 같다', () {
+      expect(SaveData.currentVersion, 10);
       expect(SaveData.steps.length, SaveData.currentVersion);
     });
 

@@ -11,14 +11,20 @@ import '../games/common/scene_game.dart';
 import '../games/game_entry.dart';
 import '../l10n/l10n.dart';
 import '../services/game_state.dart';
+import '../widgets/big_lock.dart';
 import '../widgets/common.dart';
 import '../widgets/paged_grid.dart';
 import '../widgets/season_icon.dart';
+import 'unlock_screen.dart';
+
+export '../widgets/big_lock.dart' show BigLock;
 
 /// 단계 고르기. 카드는 화면에 맞춰 크기를 고르고, 다 안 들어가면 큰 화살표로 한 쪽씩 넘긴다
 /// (옆으로 밀기 없음). 글자 없이도 고를 수 있게 카드마다 그 단계의 문제 그림과 계절 아이콘을 그리고,
 /// 아래에는 깬 단계만큼 내 친구가 골인 지점으로 나아가는 길이 있다.
 /// 잠긴 단계를 누르면 카드가 흔들리며 "앞 단계를 먼저 놀아 볼까요?"라고 말한다.
+/// 1회 해금이 있어야 하는 단계(결제 기능이 켜졌을 때만)도 같은 자물쇠 그림만 보이고(가격·배지 없음),
+/// 누르면 놀이를 시작하지 않고 부모 확인 → 부모용 결제 화면으로 간다.
 class StagePicker extends StatefulWidget {
   const StagePicker({super.key, required this.game});
 
@@ -52,6 +58,17 @@ class _StagePickerState extends State<StagePicker> {
   GameKind get game => widget.game;
 
   void _start(int stageId) => openGame(context, game, stageId);
+
+  void _tap(int id, int unlocked) {
+    final state = AppScope.read(context);
+    if (state.stageNeedsUnlock(game, id)) {
+      openUnlock(context);
+    } else if (id <= unlocked) {
+      _start(id);
+    } else {
+      _locked(id);
+    }
+  }
 
   void _locked(int id) {
     setState(() => _shakes[id] = (_shakes[id] ?? 0) + 1);
@@ -121,7 +138,7 @@ class _StagePickerState extends State<StagePicker> {
                     cleared: cleared.contains(id),
                     highlight: id == unlocked,
                     art: _art(id),
-                    onTap: () => id <= unlocked ? _start(id) : _locked(id),
+                    onTap: () => _tap(id, unlocked),
                   ),
                 );
               },
@@ -295,67 +312,6 @@ class _StageCard extends StatelessWidget {
       ),
     );
   }
-}
-
-/// 잠긴 단계의 큰 자물쇠 (외곽선 없는 납작한 면: 고리 + 몸통 + 열쇠 구멍)
-class BigLock extends StatelessWidget {
-  const BigLock({super.key});
-
-  @override
-  Widget build(BuildContext context) => const AspectRatio(
-    aspectRatio: .82,
-    child: CustomPaint(painter: _LockPainter()),
-  );
-}
-
-class _LockPainter extends CustomPainter {
-  const _LockPainter();
-
-  static const body = Color(0xFFB9AC9B);
-  static const shackle = Color(0xFFCFC4B4);
-  static const hole = Color(0xFF8A7C6B);
-
-  @override
-  void paint(Canvas c, Size s) {
-    final w = s.width, h = s.height;
-    // 고리: 두꺼운 둥근 띠 (면으로 그린다)
-    final ring = Path()
-      ..addRRect(
-        RRect.fromLTRBR(w * .2, 0, w * .8, h * .62, Radius.circular(w * .3)),
-      )
-      ..addRRect(
-        RRect.fromLTRBR(
-          w * .34,
-          h * .14,
-          w * .66,
-          h * .7,
-          Radius.circular(w * .16),
-        ),
-      )
-      ..fillType = PathFillType.evenOdd;
-    c.drawPath(ring, Paint()..color = shackle);
-    // 몸통
-    c.drawRRect(
-      RRect.fromLTRBR(0, h * .4, w, h, Radius.circular(w * .2)),
-      Paint()..color = body,
-    );
-    // 열쇠 구멍
-    final kp = Paint()..color = hole;
-    c.drawCircle(Offset(w / 2, h * .64), w * .1, kp);
-    c.drawRRect(
-      RRect.fromLTRBR(
-        w * .45,
-        h * .66,
-        w * .55,
-        h * .84,
-        Radius.circular(w * .05),
-      ),
-      kp,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _NumberStageArt extends StatelessWidget {

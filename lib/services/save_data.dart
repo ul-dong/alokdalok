@@ -58,11 +58,13 @@ class SaveData {
     this.language = 'auto',
     this.cameraNoticeSeen = false,
     this.cameraPermission = 'unknown',
+    this.unlocked = false,
+    this.keepStages,
   }) : shapeStageCleared = shapeStageCleared ?? {},
        sizeStageCleared = sizeStageCleared ?? {},
        matchStageCleared = matchStageCleared ?? {};
 
-  static const int currentVersion = 9;
+  static const int currentVersion = 10;
 
   String nickname;
 
@@ -167,6 +169,15 @@ class SaveData {
 
   static const cameraPermissions = ['unknown', 'granted', 'denied', 'later'];
 
+  /// 1회 전체 해금을 샀는지 (v10부터, 스토어 확인 결과를 기기에 저장한 캐시).
+  /// 결제 기능이 꺼져 있으면 읽지 않는다(전부 열림). 스토어에서 복원하는 값이라 백업에는 넣지 않는다.
+  bool unlocked;
+
+  /// 결제가 처음 켜졌을 때 이미 열려 있던 단계 (v10부터): 놀이 이름 → 단계.
+  /// 이 단계까지는 해금하지 않아도 계속 놀 수 있다(기존 사용자 보호). 결제가 켜진 첫 실행에서
+  /// 한 번 정한다. 아직 정하지 않았으면 null. 기기를 옮겨도 지키도록 백업에 넣는다.
+  Map<String, int>? keepStages;
+
   /// 가진 꾸미기 아이템 / 탈것 (둘 다 [owned]에 함께 저장)
   bool ownsVehicle(String id) => owned.contains(id) && Vehicles.exists(id);
 
@@ -245,6 +256,8 @@ class SaveData {
     'language': language,
     'cameraNoticeSeen': cameraNoticeSeen,
     'cameraPermission': cameraPermission,
+    'unlocked': unlocked,
+    if (keepStages != null) 'keepStages': keepStages,
   };
 
   String encode() => jsonEncode(toJson());
@@ -294,6 +307,7 @@ class SaveData {
     _v6to7,
     _v7to8,
     _v8to9,
+    _v9to10,
   ];
 
   /// 매번 도는 정리 단계 (버전과 무관, 멱등)
@@ -367,6 +381,12 @@ class SaveData {
     'cameraNoticeSeen': true,
     'cameraPermission': 'unknown',
   };
+
+  // 버전 9: 1회 전체 해금 결제(기능 플래그, 기본 꺼짐)가 생겼다(2026-11-15). 예전 저장값에는 산 기록이
+  // 없으므로 꺼짐. 기존 사용자 보호 단계(keepStages)는 결제가 처음 켜지는 실행에서 정하므로
+  // 여기서는 비워 둔다(그때까지 더 깬 단계도 지킬 수 있게).
+  static SaveJson _v9to10(SaveJson json) => {...json, 'unlocked': false}
+    ..remove('keepStages');
 
   /// 없어진 탈것을 [Vehicles.retired]의 새 탈것으로 옮긴다: 가진 탈것, 타는 탈것,
   /// 붙인 스티커(새 탈것에 이미 있으면 합침), 칠한 색, 그 탈것용으로 산 색('paint_x@bicycle').
@@ -625,6 +645,15 @@ class SaveData {
     d.cameraPermission = cam is String && cameraPermissions.contains(cam)
         ? cam
         : 'unknown';
+    d.unlocked = json['unlocked'] == true;
+    final keep = json['keepStages'];
+    if (keep is Map) {
+      d.keepStages = {
+        for (final e in keep.entries)
+          if (e.key is String && gameStageCounts.containsKey(e.key))
+            e.key as String: _int(e.value, 1, 1, gameStageCounts[e.key]!),
+      };
+    }
     return d;
   }
 
