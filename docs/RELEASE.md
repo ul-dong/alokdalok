@@ -106,6 +106,7 @@ tool/build_android.sh --debug-signed   # 점검용 (debug 키로 서명): build/
 | `com.google.android.gms.permission.AD_ID` | **현재 의존성에는 없다** | 의존성이 바뀌어도 들어오지 않게 미리 제거 규칙을 넣었다 | 없음 |
 | `uses-feature camera.any` | camera_android_camerax가 required=true로 넣는다 | **required=false**로 바꿨다. 카메라 없는 기기도 설치할 수 있다. 그런 기기에서는 눈 지킴이가 "앞카메라가 없어요"를 보여 준다 | required=false |
 | `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | androidx.core (앱 자신의 signature 권한) | 유지 | 있음 |
+| `com.android.vending.BILLING` (+ `<queries>` 결제 서비스 2개, `ProxyBillingActivity`·`V2`) | `com.android.billingclient:billing:9.1.0` (in_app_purchase, 2026-11-15) | 유지. 1회 해금 결제 골격(기능 플래그 꺼짐). 결제 라이브러리는 **INTERNET을 요청하지 않는다**(Play 스토어 앱에 IPC로 붙는다). 근거·실측은 `docs/MONETIZATION.md` 7절 | 있음 |
 
 - debug와 profile 빌드는 `src/debug|profile/AndroidManifest.xml`의 INTERNET을 그대로 갖는다. Flutter 개발 도구가 이 권한을 쓴다.
   release에서만 빠진다는 것을 `processDebugManifest`로 확인했다.
@@ -144,7 +145,7 @@ tool/build_android.sh --debug-signed   # 점검용 (debug 키로 서명): build/
 | 콘텐츠 등급 | 7.3 참고 |
 | **타겟층** | 연령 그룹에서 **"만 5세 이하"만** 선택한다. 다른 연령대는 고르지 않는다. 이렇게 하면 **가족 정책(Families)이 전부 적용되는 아동 전용 앱**이 된다 |
 | 아동에게 의도치 않게 매력적인지 | 해당 없음 (아동 대상 앱) |
-| 가족 정책 준수 선언 | 동의한다. 근거: 광고와 광고 SDK 없음, AD_ID 없음, 인앱 결제와 가챠 없음, 앱 자체의 개인정보 수집 없음(ML Kit 진단 정보는 7.2에 신고), 외부 링크 없음, 위치 권한 없음. 카메라 권한은 부모님 안내 화면 뒤에만 묻는다. 코인은 놀이로만 얻고 틀려도 줄지 않는다. ML Kit의 가족 정책 SDK 요구사항 충족 여부는 10절에서 확인한다 |
+| 가족 정책 준수 선언 | 동의한다. 근거: 광고와 광고 SDK 없음, AD_ID 없음, 인앱 결제와 가챠 없음(결제 기능 플래그가 꺼진 출시 기준. 켜는 출시부터는 "부모 확인 뒤 1회 전체 해금 인앱 결제만 있음, 가챠·코인 판매·구독 없음"으로 바꾼다, `docs/MONETIZATION.md`), 앱 자체의 개인정보 수집 없음(ML Kit 진단 정보는 7.2에 신고), 외부 링크 없음, 위치 권한 없음. 카메라 권한은 부모님 안내 화면 뒤에만 묻는다. 코인은 놀이로만 얻고 틀려도 줄지 않는다. ML Kit의 가족 정책 SDK 요구사항 충족 여부는 10절에서 확인한다 |
 | 뉴스 앱 | 아니요 |
 | 코로나19 접촉 추적·상태 앱 | 아니요 |
 | 데이터 보안(데이터 안전성) | 7.2 참고 |
@@ -195,6 +196,9 @@ tool/build_android.sh --debug-signed   # 점검용 (debug 키로 서명): build/
 
 참고: release 앱은 INTERNET 권한을 빼서(5절) 앱 프로세스의 전송 통로(datatransport)로는 보낼 수 없다.
 그래도 Play 서비스 프로세스 쪽 로깅은 앱이 통제할 수 없으므로 신고한다. 개인정보처리방침(`web/privacy.html` 2절, 4절)도 같은 내용으로 맞췄다.
+
+**1회 해금 결제를 켜는 출시 때 다시 볼 것** (2026-11-15, `docs/MONETIZATION.md` 7절): 결제 라이브러리가 들어와도 INTERNET은 없고(실측), 앱이 기기에 남기는 것은 "해금했는지" 참/거짓 하나다.
+결제 정보는 Google Play 결제 시스템이 Play 스토어 앱에서 처리한다. 이것을 "금융 정보 → 구매 기록"으로 신고해야 하는지는 **Google 문서로 최종 확인 필요**. 플래그가 꺼진 지금 출시는 위 표 그대로다.
 
 ### 7.3 콘텐츠 등급 설문 메모
 
@@ -317,3 +321,4 @@ Privacy policy: https://ul-dong.github.io/alokdalok/privacy.html
     맞지 않으면 눈 지킴이 기본값이나 얼굴 인식 방식을 다시 정해야 하므로 출시 전에 반드시 확인한다.
 11. 실기기에서 첫 실행 부모님 안내 화면을 확인한다: 안내 전에 카메라 표시등이 켜지지 않는지, [허용하고 시작] 뒤에만 권한 창이 뜨는지, 거절해도 앱이 정상인지.
     (2026-11-15 사용자 결정으로 "부모님 안내 → 권한 요청" 순서를 넣었다. `docs/MASTER_PROMPT.md` 눈 보호 항목.)
+12. **1회 해금 결제(나중에)**: 켜기 전 할 일은 `docs/MONETIZATION.md` 10절(인앱 상품 `full_unlock` 등록, 내부 테스트 트랙에서 INTERNET 없는 빌드로 결제·복원 확인, 데이터 안전성·스토어 문구 갱신).
