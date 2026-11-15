@@ -111,9 +111,12 @@ assets/
 
 ## 음성 안내
 
-- 기본은 **녹음 목소리**입니다. 무료 오픈소스 음성 모델 MeloTTS(MIT 라이선스, 한국어 모델)로 만든
-  문장 조각(`assets/voice/ko/*.mp3`, 1044개)을 이어 붙여 말합니다. 녹음은 언어별 폴더
-  (`assets/voice/<언어>/` + `manifest.json`)에 두고, 녹음이 없는 언어(지금은 영어)는 모두 기기 음성으로 읽습니다.
+- 기본은 **녹음 목소리**입니다. 무료 오픈소스 음성 모델 MeloTTS(MIT 라이선스, 한국어·영어 모델)로 만든
+  문장 조각(`assets/voice/ko/*.mp3` 1044개, `assets/voice/en/*.mp3` 976개)을 이어 붙여 말합니다. 녹음은 언어별 폴더
+  (`assets/voice/<언어>/` + `manifest.json`)에 두고, 녹음이 없는 언어·문장은 그 언어 기기 음성으로 읽습니다.
+  - 목소리: 높고 밝은 만화 캐릭터 느낌(한국어 약 310Hz, 영어 약 390Hz). 높이만 올리면 무섭게 들려서
+    포먼트는 1.05~1.07만 올리고 억양(강세 튐, 감탄 끝 올렸다 내림, 질문 끝 올림)으로 생동감을 낸다.
+    설정은 `tool/voice/child_voice.py`의 `VOICES` 한곳(MeloTTS 속도·sdp_ratio·씨앗 포함, 같은 문장은 늘 같은 녹음).
   - "빨간 풍선이 / 세 개! / 정말 잘했어요!" 처럼 조각으로 나눠 녹음해서 수천 가지 문장을 만듭니다.
   - 조각 목록은 언어별로 `lib/l10n/ko/voice_lines_ko.dart`, `lib/l10n/en/voice_lines_en.dart`
     (`lib/services/voice_lines.dart`의 `VoiceLines.forLocale`). 문장을 바꾸면 목록도 맞춰야 합니다
@@ -121,6 +124,7 @@ assets/
   - 다시 만들기: 맥에서 `tool/gen_voice.command [ko|en]`(Homebrew 필요). 그 언어 문장 목록을 내보내고
     (`tool/voice/export_lines_test.dart` → `tool/voice/lines_<언어>.json`), 녹음이 없는 문장만 새로 만들어
     `assets/voice/<언어>`에 넣는다. 영어는 MeloTTS 영어 모델(EN-US)을 쓴다.
+    목소리 설정을 바꿨으면 `tool/gen_voice.command <언어> --all`로 그 언어를 전부 다시 녹음한다.
 - 녹음에 없는 말(아이 이름 등)과 설정에서 '기기'를 고르면 기기 음성 합성(TTS, `flutter_tts`)을 씁니다.
   음높이를 올리면 기계음이 일그러져 무섭게 들려서 올리지 않습니다.
 - 더 아이다운 목소리를 원하면 같은 파일 이름으로 사람 목소리를 녹음해 `assets/voice/ko`를 바꾸면 됩니다.

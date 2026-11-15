@@ -76,6 +76,10 @@ Map<String, String> koManifest() => (jsonDecode(
   File('assets/voice/ko/manifest.json').readAsStringSync(),
 ) as Map).cast<String, String>();
 
+Map<String, String> enManifest() => (jsonDecode(
+  File('assets/voice/en/manifest.json').readAsStringSync(),
+) as Map).cast<String, String>();
+
 /// [lines]를 다 녹음했다고 치고 만든 팩
 VoicePack fakePack(List<String> lines) =>
     VoicePack({for (var i = 0; i < lines.length; i++) lines[i]: 'v$i.mp3'});
@@ -189,7 +193,7 @@ void main() {
   tearDown(() => L10n.use(AppLanguage.fallback));
 
   group('언어별 녹음 팩 자리', () {
-    test('한국어 녹음은 assets/voice/ko, 영어는 빈 manifest만 있다', () {
+    test('한국어 녹음은 assets/voice/ko, 영어 녹음은 assets/voice/en', () {
       final ko = koManifest();
       expect(ko.length, greaterThanOrEqualTo(1044));
       for (final f in ko.values.toSet()) {
@@ -203,10 +207,14 @@ void main() {
             .map((f) => f.path),
         isEmpty,
       );
-      final en = jsonDecode(
+      final en = (jsonDecode(
         File('assets/voice/en/manifest.json').readAsStringSync(),
-      ) as Map;
-      expect(en, isEmpty, reason: '영어 음성은 아직 만들지 않는다');
+      ) as Map).cast<String, String>();
+      // 영어 문장 목록(VoiceLines.forLocale('en'))을 모두 녹음했다
+      expect(en.keys.toSet(), containsAll(VoiceLines.forLocale('en')));
+      for (final f in en.values.toSet()) {
+        expect(File('assets/voice/en/$f').existsSync(), isTrue, reason: f);
+      }
       final pubspec = File('pubspec.yaml').readAsStringSync();
       expect(pubspec, contains('- assets/voice/ko/'));
       expect(pubspec, contains('- assets/voice/en/'));
@@ -220,7 +228,7 @@ void main() {
       expect(pack.assets.first, startsWith('voice/ko/v'));
     });
 
-    testWidgets('앱 에셋에서 읽기: 한국어는 녹음 팩, 영어는 빈 팩', (t) async {
+    testWidgets('앱 에셋에서 읽기: 한국어·영어 모두 녹음 팩', (t) async {
       final ko = await t.runAsync(
         () => DeviceAudio.loadVoicePack(rootBundle, 'ko'),
       );
@@ -229,8 +237,9 @@ void main() {
       );
       expect(ko!.isEmpty, isFalse);
       expect(ko.folder, 'voice/ko');
-      expect(en!.isEmpty, isTrue);
+      expect(en!.isEmpty, isFalse);
       expect(en.folder, 'voice/en');
+      expect(en.plan('Great job!')!.single.asset, 'voice/en/v0007.mp3');
     });
 
     test('manifest가 없거나 깨져도 빈 팩 (멈추지 않는다)', () async {
@@ -265,7 +274,7 @@ void main() {
   });
 
   group('녹음이 없으면 기기 음성(TTS)으로', () {
-    test('route: 한국어 녹음 문장은 조각, 영어는 en-US 기기 음성', () {
+    test('route: 녹음 문장은 조각, 녹음 없는 문장·빈 팩은 그 언어 기기 음성', () {
       final ko = VoicePack(koManifest());
       final r1 = DeviceAudio.route(ko, '정말 잘했어요!', style: 'pack', locale: 'ko');
       expect(r1.usesTts, isFalse);
@@ -277,6 +286,15 @@ void main() {
       );
       expect(r2.usesTts, isTrue);
       expect(r2.ttsLanguage, 'en-US');
+      // 영어 녹음 팩: 녹음 문장은 조각, 아이 이름처럼 녹음 없는 문장은 en-US 기기 음성
+      final en = VoicePack(enManifest(), folder: 'voice/en');
+      expect(
+        DeviceAudio.route(en, 'Great job!', style: 'pack', locale: 'en').usesTts,
+        isFalse,
+      );
+      final r4 = DeviceAudio.route(en, 'Hi, Bori!', style: 'pack', locale: 'en');
+      expect(r4.usesTts, isTrue);
+      expect(r4.ttsLanguage, 'en-US');
       // 녹음이 없는 한국어 문장(아이 이름 등)은 한국어 기기 음성
       final r3 = DeviceAudio.route(ko, '김철수야', style: 'pack', locale: 'ko');
       expect(r3.usesTts, isTrue);
@@ -293,7 +311,7 @@ void main() {
       );
     });
 
-    testWidgets('DeviceAudio: 한국어는 녹음 조각, 영어로 바꾸면 TTS(en-US)로 말한다', (t) async {
+    testWidgets('DeviceAudio: 언어마다 그 언어 녹음 조각, 녹음 없는 문장만 TTS', (t) async {
       final tts = FakeTts();
       final loaded = <String>[];
       final audio = DeviceAudio(tts: tts, clipPlayer: () => FakeClip(loaded));
@@ -312,24 +330,41 @@ void main() {
         audio.locale = 'en';
         await audio.prepareVoice();
         expect(tts.language, 'en-US');
-        expect(audio.hasVoicePack, isFalse);
+        expect(audio.hasVoicePack, isTrue);
         expect(audio.voiceAvailable, isTrue);
         loaded.clear();
+        final before = tts.spoken.length;
         await audio.say('Great job!');
-        expect(loaded, isEmpty, reason: '영어 녹음 조각은 없다');
-        expect(tts.spoken.last, 'Great job!');
+        expect(loaded, ['voice/en/v0007.mp3']);
+        expect(tts.spoken.length, before, reason: '녹음 문장은 TTS로 읽지 않는다');
+        // 녹음 없는 영어 문장(아이 이름)은 영어 기기 음성
+        await audio.say('Hi, Bori!');
+        expect(tts.spoken.last, 'Hi, Bori!');
 
         // 다시 한국어로 오면 녹음 조각
         audio.locale = 'ko';
         await audio.prepareVoice();
+        loaded.clear();
         await audio.say('정말 잘했어요!');
         expect(loaded, ['voice/ko/v0002.mp3']);
       });
     });
 
-    testWidgets('기기에 그 언어 음성이 없으면 voiceAvailable이 false (설정에 안내)', (t) async {
+    testWidgets('기기에 그 언어 음성이 없어도 녹음 팩이 있으면 말할 수 있다', (t) async {
       final tts = FakeTts()..available = false;
       final audio = DeviceAudio(tts: tts, clipPlayer: () => FakeClip([]));
+      audio.locale = 'en';
+      await t.runAsync(audio.prepareVoice);
+      expect(audio.voiceAvailable, isTrue, reason: '영어 녹음 팩이 있다');
+    });
+
+    testWidgets('녹음 팩도 기기 음성도 없으면 voiceAvailable이 false (설정에 안내)', (t) async {
+      final tts = FakeTts()..available = false;
+      final audio = DeviceAudio(
+        tts: tts,
+        clipPlayer: () => FakeClip([]),
+        bundle: EmptyBundle(),
+      );
       audio.locale = 'en';
       await t.runAsync(audio.prepareVoice);
       expect(audio.voiceAvailable, isFalse);
@@ -375,5 +410,19 @@ void main() {
         expect(missing, isEmpty);
       });
     }
+
+    test('en: 실제 영어 녹음(manifest)으로 놀이·화면의 말을 모두 녹음 조각으로 낸다', () {
+      L10n.use(const Locale('en'));
+      final pack = VoicePack(enManifest(), folder: 'voice/en');
+      final missing = <String>{
+        for (final s in [...runtimeLines(), ...spokenArbValues('en')])
+          if (pack.plan(s) == null) s,
+      };
+      expect(missing, isEmpty);
+      // 숫자 세기 + 칭찬은 조각 둘을 쉼표 박자로 잇는다
+      final clips = pack.plan('Three, Great job!')!;
+      expect(clips.length, 2);
+      expect(clips[1].pauseBefore, VoicePack.commaPause);
+    });
   });
 }

@@ -1,9 +1,11 @@
-# MeloTTS(MIT 라이선스, 한국어 모델)로 놀이터 음성 조각을 만든다.
-# 사용: python gen_voice.py lines_ko.json assets/voice/ko [속도] [--lang=KR|EN] [--all]  (tool/gen_voice.command 가 부른다)
+# MeloTTS(MIT 라이선스, 한국어·영어 모델)로 놀이터 음성 조각을 만든다.
+# 사용: python gen_voice.py lines_ko.json assets/voice/ko [--lang=KR|EN] [--all]  (tool/gen_voice.command 가 부른다)
 #   --lang: MeloTTS 언어 (KR 기본, EN 은 미국 영어 EN-US 목소리)
 #   --all 을 붙이면 이미 있는 녹음도 모두 새로 만든다 (목소리 설정을 바꿨을 때만).
-# 녹음마다 child_voice.py 의 처리(피치 +5반음, 포먼트 ×1.12, 서울 말투 억양, 따뜻한 EQ, 음량 맞추기)를 거친다.
-# MeloTTS 설정(sdp_ratio 등)과 난수 씨앗도 child_voice.py 에 있어서 같은 문장은 늘 같은 녹음이 나온다.
+#   (예전처럼 세 번째 인자로 속도를 주면 그 속도로 만든다. 보통은 주지 않는다)
+# 녹음마다 child_voice.py 의 언어별 처리(만화 캐릭터 느낌 억양, 따뜻한 EQ, 음량 맞추기)를 거친다.
+# MeloTTS 설정(화자·속도·sdp_ratio 등)과 난수 씨앗도 child_voice.py 의 VOICES 에 있어서
+# 같은 문장은 늘 같은 녹음이 나온다.
 # 그래서 나중에 문장을 더 넣고 다시 돌려도 새 문장이 같은 목소리로 나온다.
 import json, os, subprocess, sys, time
 
@@ -11,12 +13,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 redo_all = "--all" in sys.argv
 lang = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--lang=")), "KR")
-speaker = {"KR": "KR", "EN": "EN-US"}[lang]
 lines_path, out_dir = args[0], args[1]
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 import child_voice  # noqa: E402  (설정값만 먼저 읽는다. 무거운 모듈은 녹음할 때 불러온다)
 
-# 0.82: 만 3세가 알아듣기 쉽게 조금 천천히 (마지막 음절은 child_voice 가 1.3배로 늘인다)
-speed = float(args[2]) if len(args) > 2 else child_voice.MELO["speed"]
+melo = child_voice.VOICES[lang]["melo"]
+speaker = melo["speaker"]
+# 한국어는 빠르게(1.1) 만든 뒤 child_voice 가 PSOLA 로 1.34배 늘인다 (말 속도 약 3.9음절/초)
+speed = float(args[2]) if len(args) > 2 else melo["speed"]
 lines = json.load(open(lines_path, encoding="utf-8"))
 os.makedirs(out_dir, exist_ok=True)
 
@@ -63,9 +67,9 @@ if todo:
         mp3 = os.path.join(out_dir, item["file"])
         torch.manual_seed(child_voice.SEED)
         model.tts_to_file(item["text"], spk, tmp, speed=speed, quiet=True,
-                          sdp_ratio=child_voice.MELO["sdp_ratio"],
-                          noise_scale=child_voice.MELO["noise_scale"],
-                          noise_scale_w=child_voice.MELO["noise_scale_w"])
+                          sdp_ratio=melo["sdp_ratio"],
+                          noise_scale=melo["noise_scale"],
+                          noise_scale_w=melo["noise_scale_w"])
         y, sr = sf.read(tmp)
         if y.ndim > 1:
             y = y.mean(axis=1)

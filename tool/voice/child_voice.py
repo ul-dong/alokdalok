@@ -1,45 +1,38 @@
-# 어른 목소리(MeloTTS 한국어 화자)를 만 3세에게 친근한 "어린이 느낌" 목소리로 바꾸고,
-# 다정한 서울 말투 억양을 입힌다. (2026-10 샘플 "5_서울말투"로 고른 목소리)
+# MeloTTS 원음을 만 3~4세에게 친근한 "만화 캐릭터 느낌" 목소리로 바꾼다. (2026-11 샘플로 고른 목소리)
+#   한국어: 샘플 "ko_match_mid"  (높이 약 320Hz, 서울 말투 억양)
+#   영어:   샘플 "en_cartoon3"   (장난스러운 톤, 높이 약 390Hz)
+# 예전 목소리(피치 +5반음, 포먼트 x1.12)는 "무섭다"는 평을 받았다. 그래서 높이만 올리지 않고
+# 포먼트(입 안 울림 자리)는 1.05~1.07 만 올리고, 억양·리듬의 생동감으로 캐릭터 느낌을 낸다.
 #
 # 방법: Praat(parselmouth, GPL 도구지만 결과 음성에는 아무 조건이 없다)로 한 번의 PSOLA 처리
-#   - 목소리 높이(피치) 중앙값을 +5 반음 올리고, 포먼트(입 안 울림 자리)는 ×1.12 만 올린다
-#     (Change gender 와 같은 방법: 샘플링 주파수를 1.12배로 읽어 포먼트를 올리고 PSOLA 로 피치·길이를 맞춤)
-#   - 억양: 첫머리를 조금 높게 시작해 점점 내려오고, 칭찬("잘했어요")은 첫 음절에 강세,
-#     질문("~까요?")은 끝 음절을 부드럽게 올리고, 감탄·평서("~요!")는 끝을 올렸다가 살짝 내린다.
-#     마지막 음절은 1.3배로 늘인다. 숫자 세기 조각("하나"…"열")은 이어 붙여도 어색하지 않게 약하게만.
-#   - 억양과 피치를 한 번에 처리해야 금속성 소리가 늘지 않는다.
+#   - 높이: 문장마다 원음 중앙값에서 일정하게 올리지 않고 정해 둔 높이(한국어 305Hz)에 맞추거나
+#     (영어) 화자 평소 높이 기준으로만 올린다. 원래 들떠서 높게 읽은 문장이 더 높아지지 않게.
+#   - 억양: 높은 자리(강세)는 위로 더 튀게(up), 낮은 쪽은 덜(rng). 첫머리를 조금 높게 시작해 내려온다.
+#     칭찬은 첫 음절 강세 + 살짝 높게, 감탄은 끝을 크게 올렸다 내리고, 질문은 끝을 부드럽게 올린다.
+#     숫자 세기 조각("하나"~"열", "One"~"Ten")은 이어 붙여도 어색하지 않게 약하게만.
+#   - 날카롭게 튀지 않게: 원래 높이보다 8반음 위, 절대 천장(한국어 620Hz, 영어 600Hz) 근처는 부드럽게 누른다.
+#   - 한국어(방법 2): MeloTTS 로 빠르게(속도 1.1) 만든 뒤 PSOLA 로 1.34배 늘인다.
+#     같은 높이에서 그냥 올린 것보다 HNR 이 높고(덜 거칠고) 튀는 곳이 없었다. 말 속도는 약 3.9음절/초.
+#   - 억양과 피치·길이를 한 번에 처리해야 금속성 소리가 늘지 않는다.
 # 그다음 말끝을 덜 자르고(-55dB, 150ms 남기고 120ms 페이드), 따뜻한 EQ·부드러운 압축을 거쳐,
 # 모든 조각을 같은 크기(-16 LUFS, 최대 -1.5 dBFS)로 고정 배율로 맞춘다.
 #
 # gen_voice.py 가 새 문장을 녹음할 때마다 이 처리를 거치므로, 나중에 추가한 문장도 같은 목소리가 된다.
+# 설정을 바꿨다면 그 언어는 --all 로 전부 다시 녹음해야 섞이지 않는다.
 import math
 import os
+import re
 import subprocess
 import tempfile
 
 import numpy as np
 from scipy.signal import lfilter, resample_poly
 
-# 다른 사람이 바꿔 볼 수 있게 숫자를 한곳에 모았다
-PITCH_SEMITONES = 5.0  # 원래 목소리 중앙값에서 몇 반음 올릴지
-FORMANT_RATIO = 1.12  # 포먼트 이동 비율 (1.0 = 그대로, 1.2 이상은 다람쥐 소리 위험)
-PITCH_RANGE = 1.15  # 억양 폭 (반음 단위로 넓힘)
 TARGET_LUFS = -16.0
 PEAK_DBFS = -1.5
 SILENCE_DB = -45.0  # 앞뒤 무음 자르기 기준 (최대값 대비, 예전 방식 trim)
 PAD_SEC = 0.03  # 예전 방식 trim 에서 앞뒤로 남기는 여유
-
-# MeloTTS 설정: 기본값(sdp 0.2, noise 0.6/0.8)보다 억양 변화를 키워 낭독조를 줄인다
-MELO = dict(speed=0.82, sdp_ratio=0.5, noise_scale=0.65, noise_scale_w=0.9)
 SEED = 1234  # 같은 문장은 늘 같은 녹음이 나오게
-
-# 서울 말투 억양 (반음)
-DECL = 1.5  # 첫머리를 이만큼 높게 시작해 끝으로 내려온다 (평균 높이는 그대로)
-ACCENT = 2.0  # 칭찬 첫 음절 강세
-Q_RISE = 6.0  # 질문 끝 음절을 부드럽게 올리는 폭
-RF = 3.5  # 감탄·평서 끝 음절: 이만큼 올렸다가
-RF_END = -0.5  # 끝은 음절 시작보다 이만큼
-STRETCH = 1.3  # 마지막 음절 늘이기
 
 # 말끝 덜 자르기
 GENTLE_DB = -55.0
@@ -52,13 +45,35 @@ POST = ("highpass=f=90:poles=2,"
         "equalizer=f=7000:t=q:w=0.8:g=-3,"
         "acompressor=threshold=-20dB:ratio=2:attack=15:release=180:knee=6:makeup=1")
 
+# 언어별 목소리. melo: MeloTTS 설정(화자·속도·sdp_ratio 등), 나머지: 억양 처리
+#   target_hz: 이 높이에 맞춘다 (없으면 pitch 반음만큼, 단 화자 평소 높이 ref +2반음까지만 기준으로)
+#   fr: 포먼트 비율, rng/up: 낮은 쪽/높은 쪽 억양 폭, acc: 강세(반음), Q: 질문 끝 올림(반음)
+#   RF/RFE: 감탄 끝을 올렸다가(RF) 끝은 음절 시작보다 RFE, RFw/RFEw: 약한 감탄(평서)용
+#   strx: 마지막 음절 늘이기, lift: 칭찬은 전체를 이만큼 높게, ceil/top: 천장(반음/Hz)
+#   tempo: PSOLA 로 길이를 몇 배 늘일지 (빠르게 만든 원음을 늘인다)
+VOICES = {
+    "KR": dict(
+        melo=dict(speaker="KR", speed=1.1, sdp_ratio=0.8, noise_scale=0.7, noise_scale_w=1.0),
+        ref=190.0, target_hz=305.0, pitch=0.0, fr=1.07, rng=1.3, up=1.7, acc=3.0, decl=1.0,
+        Q=8.0, RF=5.5, RFE=-1.5, RFw=2.5, RFEw=-0.3, strx=1.25, lift=1.0,
+        ceil=8.0, top=620.0, tempo=1.34),
+    "EN": dict(
+        melo=dict(speaker="EN-US", speed=0.92, sdp_ratio=0.8, noise_scale=0.7, noise_scale_w=1.0),
+        ref=295.0, target_hz=None, pitch=3.2, fr=1.05, rng=1.35, up=1.75, acc=3.0, decl=1.0,
+        Q=7.0, RF=5.5, RFE=-1.5, RFw=2.5, RFEw=-0.3, strx=1.25, lift=1.0,
+        ceil=8.0, top=600.0, tempo=1.0),
+}
+# 예전 이름 (gen_voice.py 가 읽는다): 한국어 MeloTTS 설정
+MELO = {k: v for k, v in VOICES["KR"]["melo"].items() if k != "speaker"}
+
 # 숫자 세기 조각: 도장 박자에 맞춰 한 마디씩 이어 말하므로 억양을 약하게
-COUNTING = {"하나", "둘", "셋", "넷", "다섯", "여섯", "일곱", "여덟", "아홉", "열"}
+COUNTING = {"하나", "둘", "셋", "넷", "다섯", "여섯", "일곱", "여덟", "아홉", "열",
+            "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"}
+PRAISE_EN = re.compile(r"\b(great|good|cool|yay|wow|well done|super|awesome|amazing)\b", re.I)
 
 
-def change_voice(y, sr, pitch_semitones=PITCH_SEMITONES, formant_ratio=FORMANT_RATIO,
-                 pitch_range=PITCH_RANGE):
-    """Praat Change gender. 원래 피치 중앙값을 재서 그보다 pitch_semitones 만큼 높게 맞춘다."""
+def change_voice(y, sr, pitch_semitones, formant_ratio, pitch_range):
+    """Praat Change gender (아주 짧은 소리용). 원래 피치 중앙값보다 pitch_semitones 만큼 높게 맞춘다."""
     import parselmouth
     from parselmouth.praat import call
 
@@ -66,7 +81,7 @@ def change_voice(y, sr, pitch_semitones=PITCH_SEMITONES, formant_ratio=FORMANT_R
     pitch = call(snd, "To Pitch", 0.0, 75, 600)
     median = call(pitch, "Get quantile", 0, 0, 0.5, "Hertz")
     if not median or math.isnan(median):
-        median = 210.0  # 소리가 너무 짧아 피치를 못 잰 경우 (MeloTTS 화자 평균)
+        median = 210.0  # 소리가 너무 짧아 피치를 못 잰 경우
     new_median = median * 2 ** (pitch_semitones / 12)
     out = call(snd, "Change gender", 75, 600, formant_ratio, new_median, pitch_range, 1.0)
     return np.asarray(out.values[0], dtype=np.float64)
@@ -160,15 +175,30 @@ def gentle_trim(y, sr, silence_db=GENTLE_DB, pad=TAIL_SEC, fade=TAIL_FADE, head_
     return y
 
 
-def kind_of(text):
-    """끝 억양 종류: q(질문) e(감탄·평서) count(숫자 세기) name(문장 조각·이름)"""
+def syllables(text, lang):
+    """음절 수 (한국어: 한글 글자 수, 영어: 모음 묶음 수로 어림)"""
+    if lang == "KR":
+        return max(1, sum("가" <= c <= "힣" for c in text))
+    n = 0
+    for w in re.findall(r"[A-Za-z']+", text):
+        w = w.lower()
+        if w.endswith("e") and len(w) > 2:
+            w = w[:-1]
+        n += max(1, len(re.findall(r"[aeiouy]+", w)))
+    return max(1, n)
+
+
+def kind_of(text, lang="KR"):
+    """끝 억양 종류: q(질문) praise(칭찬) e(감탄·평서) count(숫자 세기) name(문장 조각·이름)"""
     t = text.strip()
     if t in COUNTING:
         return "count"
     if t.endswith("?"):
         return "q"
+    if lang != "KR" and PRAISE_EN.search(t):
+        return "praise"
     if t[-1:] in "!.":
-        return "e"
+        return "praise" if ("잘했" in t or "멋져" in t) else "e"
     return "name"
 
 
@@ -176,78 +206,101 @@ def _smooth(x):
     return 0.5 - 0.5 * math.cos(math.pi * max(0.0, min(1.0, x)))
 
 
-def final_shape(kind, x):
+def final_shape(kind, x, q, rf, rfe):
     """마지막 음절 모양 (음절 시작 높이 기준, 반음). x: 0~1"""
     if kind == "q":  # 부드럽게 올린다
-        return Q_RISE * _smooth(x)
-    if kind == "e":  # 살짝 올렸다가 내린다
+        return q * _smooth(x)
+    if kind in ("e", "praise"):  # 올렸다가 내린다
         if x < 0.4:
-            return RF * _smooth(x / 0.4)
-        return RF + (RF_END - RF) * _smooth((x - 0.4) / 0.6)
+            return rf * _smooth(x / 0.4)
+        return rf + (rfe - rf) * _smooth((x - 0.4) / 0.6)
     if kind == "count":  # "하나~": 아주 살짝 올렸다가 제자리 (이어 세어도 자연스럽게)
         if x < 0.5:
             return 1.2 * _smooth(x / 0.5)
         return 1.2 - 1.0 * _smooth((x - 0.5) / 0.5)
-    # 조각·이름("빨간 풍선을", "분홍 리본"): 내리지 않고 살짝 들어 둔다 (뒤에 말이 이어질 수 있게)
+    # 조각·이름("빨간 풍선을"): 내리지 않고 살짝 들어 둔다 (뒤에 말이 이어질 수 있게)
     return 1.0 * _smooth(x)
 
 
-def seoul_voice(y, sr, text, pitch_semitones=PITCH_SEMITONES, formant_ratio=FORMANT_RATIO,
-                pitch_range=PITCH_RANGE):
-    """한 번의 PSOLA 로 음색(피치 +5, 포먼트 ×1.12)·서울 말투 억양·말끝 늘이기를 함께 한다."""
+def cartoon_voice(y, sr, text, lang="KR", v=None):
+    """한 번의 PSOLA 로 음색(높이·포먼트)·억양·말끝 늘이기·길이를 함께 한다."""
     import parselmouth
     from parselmouth.praat import call
 
-    f = formant_ratio
+    v = v or VOICES[lang]
+    f = v["fr"]
     snd = parselmouth.Sound(np.asarray(y, dtype=np.float64), sampling_frequency=sr * f)
-    man = call(snd, "To Manipulation", 0.01, 75 * f, 600 * f)
+    man = call(snd, "To Manipulation", 0.01, 75 * f, 700 * f)
     pt = call(man, "Extract pitch tier")
     n = call(pt, "Get number of points")
+    k = kind_of(text, lang)
     if n < 5:
         # 소리가 너무 짧아 억양을 못 잡으면 음색만 바꾼다
-        return change_voice(y, sr, pitch_semitones, formant_ratio, pitch_range)
+        st = v["pitch"] if not v["target_hz"] else 12 * math.log2(v["target_hz"] / v["ref"])
+        return change_voice(y, sr, st, f, v["rng"])
     ts = np.array([call(pt, "Get time from index", i) for i in range(1, n + 1)])
     hz = np.array([call(pt, "Get value at index", i) / f for i in range(1, n + 1)])
     med = float(np.median(hz))
-    target = med * 2 ** (pitch_semitones / 12)
+    lift = v["lift"] if k == "praise" else 0.0
+    if v["target_hz"]:
+        target = v["target_hz"] * 2 ** (lift / 12)
+    else:
+        target = min(med, v["ref"] * 2 ** (2 / 12)) * 2 ** ((v["pitch"] + lift) / 12)
+    strong = k in ("e", "praise")  # 강한 튐은 감탄·칭찬에만
     t0, t1 = float(ts[0]), float(ts[-1])
     span = max(1e-3, t1 - t0)
-    syl = span / max(1, sum("가" <= c <= "힣" for c in text))
+    syl = span / syllables(text, lang)
     win0 = t1 - syl * 1.1  # 마지막 음절 자리
-    kind = kind_of(text)
-    praise = "잘했" in text or "멋져" in text
-    decl = DECL if kind != "count" else 0.0
+    decl = 0.0 if k == "count" else v["decl"]
+    up = v["up"] if strong else v["rng"]
 
     def body(t):
-        pos = (t - t0) / span
-        c = decl * ((1 - pos) ** 1.3 - 0.43)  # 높게 시작해 내려온다 (평균 0 근처)
-        if praise:
+        c = decl * ((1 - (t - t0) / span) ** 1.3 - 0.43)  # 높게 시작해 내려온다 (평균 0 근처)
+        if strong:
             x = (t - t0) / (syl * 1.4)
             if 0 <= x <= 1:
-                c += ACCENT * math.sin(math.pi * x)
+                c += v["acc"] * math.sin(math.pi * x)
         return c
 
-    sts = 12 * np.log2(hz / med) * pitch_range
+    top = v["top"]
+
+    def lim(st):
+        """날카롭게 튀지 않게: target 위 ceil 반음, 절대 천장 top 근처를 부드럽게 누른다"""
+        c = v["ceil"]
+        if st > c - 3:
+            st = c - 3 + 3 * math.tanh((st - (c - 3)) / 3)
+        h = target * 2 ** (st / 12)
+        c2 = top / 1.19  # 천장 3반음 아래부터
+        if h > c2:
+            h = c2 * 2 ** (3 * math.tanh(12 * math.log2(h / c2) / 3) / 12)
+        return 12 * math.log2(h / target)
+
+    st0 = 12 * np.log2(hz / med)
+    sts = np.where(st0 > 0, st0 * up, st0 * v["rng"])  # 강세는 위로 더, 낮은 쪽은 덜
     fin = ts >= win0
     base = float(np.median(sts[fin][:3])) if fin.any() else 0.0
+    if strong:
+        base = max(base, -1.0)  # 감탄 말끝이 바닥에서 시작하지 않게
+    rf, rfe = (v["RF"], v["RFE"]) if strong else (v["RFw"], v["RFEw"])
     newpt = call("Create PitchTier", "p", snd.xmin, snd.xmax)
-    for t, st0 in zip(ts, sts):
-        st = st0 + body(t)
+    for t, s0 in zip(ts, sts):
+        st = s0 + body(t)
         if t >= win0:
             # 마지막 음절은 MeloTTS 의 툭 떨어지거나 뾰족하게 튀는 끝 대신 정해 둔 모양으로
             x = (t - win0) / (t1 - win0 + 1e-6)
-            a = _smooth(x / 0.25)
-            st = (1 - a) * st + a * (base + body(win0) + final_shape(kind, x))
-        call(newpt, "Add point", float(t), float(target * 2 ** (st / 12)))
+            a = _smooth(x / (0.25 if k == "q" else 0.4))
+            st = (1 - a) * st + a * (base + body(win0) + final_shape(k, x, v["Q"], rf, rfe))
+        call(newpt, "Add point", float(t), float(target * 2 ** (lim(st) / 12)))
     call([man, newpt], "Replace pitch tier")
 
-    # 길이: f배로 빨라진 것을 되돌리고 마지막 음절만 늘인다
-    stretch = STRETCH if kind in ("q", "e") else 1.12
+    # 길이: f배로 빨라진 것을 되돌리고(×tempo 만큼 더 늘이고) 마지막 음절만 더 늘인다
+    stretch = v["strx"] if k in ("q", "e", "praise") else 1.1
+    d = f * v["tempo"]
     dt = call("Create DurationTier", "d", snd.xmin, snd.xmax)
-    call(dt, "Add point", t0, f)
-    call(dt, "Add point", max(t0, win0 - 0.03), f)
-    call(dt, "Add point", win0 + 0.04, f * stretch)
-    call(dt, "Add point", t1 + 0.05, f * stretch)
+    call(dt, "Add point", t0, d)
+    call(dt, "Add point", max(t0, win0 - 0.03), d)
+    call(dt, "Add point", win0 + 0.04, d * stretch)
+    call(dt, "Add point", t1 + 0.05, d * stretch)
     call([man, dt], "Replace duration tier")
     out = call(man, "Get resynthesis (overlap-add)")
     z = np.asarray(out.values[0], dtype=np.float64)
@@ -270,13 +323,9 @@ def warm(y, sr):
 
 
 def process(y, sr, text, lang="KR"):
-    """MeloTTS 결과 → 어린이 느낌 서울 말투 목소리, 말끝 덜 자르기, 따뜻한 EQ, 음량 맞추기.
-    lang 이 KR 이 아니면(영어) 한국어 억양 모양은 빼고 음색(피치·포먼트)만 같게 맞춘다."""
+    """MeloTTS 결과 → 만화 캐릭터 느낌 목소리, 말끝 덜 자르기, 따뜻한 EQ, 음량 맞추기"""
     y = gentle_trim(np.asarray(y, dtype=np.float64), sr)
-    if lang == "KR":
-        y = seoul_voice(y, sr, text)
-    else:
-        y = change_voice(y, sr)
+    y = cartoon_voice(y, sr, text, lang)
     y = warm(y, sr)
     y = gentle_trim(y, sr)
     return normalize(y, sr)

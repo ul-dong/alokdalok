@@ -197,7 +197,7 @@ class SpeechRoute {
 /// 실제 기기용 구현.
 /// - 효과음: audioplayers로 WAV 재생
 /// - 음성: 녹음 팩(assets/voice/<언어>/)이 있으면 녹음 조각, 없거나 그 문장이 없으면
-///   기기 음성(TTS). 영어는 아직 녹음이 없어서 모두 기기 음성(en-US)이다.
+///   기기 음성(TTS). 영어도 녹음 팩(assets/voice/en)이 있고, 녹음 없는 문장만 en-US 기기 음성.
 class DeviceAudio extends AudioService {
   DeviceAudio({
     SpeechEngine? tts,
