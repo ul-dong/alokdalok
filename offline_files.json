@@ -1,5 +1,5 @@
 {
-"version": "4dd0ef0ed308",
+"version": "9460096b89d8",
 "files": [
 "assets/AssetManifest.bin",
 "assets/AssetManifest.bin.json",
@@ -2071,6 +2071,7 @@
 "mediapipe/wasm/vision_wasm_internal.wasm",
 "mediapipe/wasm/vision_wasm_nosimd_internal.js",
 "mediapipe/wasm/vision_wasm_nosimd_internal.wasm",
+"privacy.html",
 "version.json"
 ]
 }
