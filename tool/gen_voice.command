@@ -57,6 +57,8 @@ fi
 pip install -q "setuptools<70" "numpy==1.26.4" || fail "setuptools/numpy 고정 실패"
 # 목소리 처리(tool/voice/child_voice.py)에 쓰는 Praat
 python -c "import parselmouth" 2>/dev/null || pip install -q "praat-parselmouth==0.4.7" "numpy==1.26.4" || fail "parselmouth 설치 실패"
+# 다시 합성(WORLD)에 쓰는 pyworld
+python -c "import pyworld" 2>/dev/null || pip install -q "pyworld" "numpy==1.26.4" || fail "pyworld 설치 실패"
 python -c "import nltk; [nltk.download(p, quiet=True) for p in ['averaged_perceptron_tagger','averaged_perceptron_tagger_eng','cmudict']]" || true
 # 맥은 대소문자를 구분하지 않아 일본어용 MeCab 과 한국어용 mecab 폴더가 겹친다.
 # 한국어용만 남기고, 일본어용은 gen_voice.py 안에서 가짜로 채운다.

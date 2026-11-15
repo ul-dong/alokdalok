@@ -52,6 +52,8 @@ POST = ("highpass=f=90:poles=2,"
 #   strx: 마지막 음절 늘이기, lift: 칭찬은 전체를 이만큼 높게, ceil/top: 천장(반음/Hz)
 #   tempo: PSOLA 로 길이를 몇 배 늘일지 (빠르게 만든 원음을 늘인다), qslow: 질문은 이만큼 더 천천히
 #   melo.q_speed: 질문 문장은 MeloTTS 에서부터 이 속도로 천천히 만든다
+#   engine: "world" 면 PSOLA 대신 WORLD(pyworld)로 다시 만든다 (펄스 어긋남·클릭이 크게 줄었다, 2026-11-16)
+#   count_rng: 숫자 세기 조각 억양 폭 (모두 같은 높이에 맞춘다)
 #   ap: 한국어 어절마다 넣는 약한 억양 굽이(반음). 말끝만 올라가지 않고 문장 전체가 고르게 움직이게
 #   (2026-11-15 수정: 튐·전자음 깨짐 때문에 억양 확대·높이·포먼트를 줄이고, 옥타브 오류 보정·
 #    무성음 구간 보호·곡선 다듬기·변화 속도 제한을 넣었다. 질문은 천천히)
@@ -60,12 +62,12 @@ VOICES = {
         melo=dict(speaker="KR", speed=1.1, q_speed=0.95, sdp_ratio=0.8, noise_scale=0.7, noise_scale_w=1.0),
         ref=190.0, target_hz=300.0, pitch=0.0, fr=1.06, rng=1.15, up=1.3, acc=2.0, decl=1.5,
         ap=2.6, Q=5.5, RF=3.5, RFE=-1.0, RFw=2.0, RFEw=-0.3, strx=1.2, lift=0.7,
-        ceil=6.0, top=520.0, tempo=1.34, qslow=1.38),
+        ceil=6.0, top=520.0, tempo=1.24, qslow=1.23, engine="world"),
     "EN": dict(
         melo=dict(speaker="EN-US", speed=0.92, q_speed=0.68, sdp_ratio=0.8, noise_scale=0.7, noise_scale_w=1.0),
         ref=295.0, target_hz=None, pitch=2.0, fr=1.03, rng=1.15, up=1.3, acc=1.8, decl=1.0,
         ap=0.0, Q=6.0, RF=3.5, RFE=-1.0, RFw=2.0, RFEw=-0.3, strx=1.2, lift=0.7,
-        ceil=6.0, top=540.0, tempo=1.0, qslow=1.6),
+        ceil=6.0, top=540.0, tempo=0.94, qslow=1.52, engine="world"),
 }
 # 예전 이름: 한국어 MeloTTS 설정
 MELO = {k: v for k, v in VOICES["KR"]["melo"].items() if k not in ("speaker", "q_speed")}
@@ -83,7 +85,7 @@ COUNTING = {"하나", "둘", "셋", "넷", "다섯", "여섯", "일곱", "여덟
 PRAISE_EN = re.compile(r"\b(great|good|cool|yay|wow|well done|super|awesome|amazing)\b", re.I)
 
 
-def change_voice(y, sr, pitch_semitones, formant_ratio, pitch_range):
+def change_voice(y, sr, pitch_semitones, formant_ratio, pitch_range, target_hz=None):
     """Praat Change gender (아주 짧은 소리용). 원래 피치 중앙값보다 pitch_semitones 만큼 높게 맞춘다."""
     import parselmouth
     from parselmouth.praat import call
@@ -93,7 +95,7 @@ def change_voice(y, sr, pitch_semitones, formant_ratio, pitch_range):
     median = call(pitch, "Get quantile", 0, 0, 0.5, "Hertz")
     if not median or math.isnan(median):
         median = 210.0  # 소리가 너무 짧아 피치를 못 잰 경우
-    new_median = median * 2 ** (pitch_semitones / 12)
+    new_median = target_hz or median * 2 ** (pitch_semitones / 12)
     out = call(snd, "Change gender", 75, 600, formant_ratio, new_median, pitch_range, 1.0)
     return np.asarray(out.values[0], dtype=np.float64)
 
@@ -282,14 +284,17 @@ def cartoon_voice(y, sr, text, lang="KR", v=None):
     k = kind_of(text, lang)
     if n < 5:
         # 소리가 너무 짧아 억양을 못 잡으면 음색만 바꾼다
-        st = v["pitch"] if not v["target_hz"] else 12 * math.log2(v["target_hz"] / v["ref"])
-        return change_voice(y, sr, st, f, v["rng"])
+        goal = v["target_hz"] or v["ref"] * 2 ** (v["pitch"] / 12)
+        return change_voice(y, sr, 0.0, f, v["rng"], target_hz=goal)
     ts = np.array([call(pt, "Get time from index", i) for i in range(1, n + 1)])
     hz = _fix_octaves(ts, np.array([call(pt, "Get value at index", i) / f for i in range(1, n + 1)]))
     med = float(np.median(hz))
     lift = v["lift"] if k == "praise" else 0.0
     if v["target_hz"]:
         target = v["target_hz"] * 2 ** (lift / 12)
+    elif k == "count":
+        # 숫자 세기 조각은 이어 붙여 듣으므로 모두 같은 높이에 맞춘다 (원음 높이가 제각각이라 튀었다)
+        target = v["ref"] * 2 ** (v["pitch"] / 12)
     else:
         target = min(med, v["ref"] * 2 ** (2 / 12)) * 2 ** ((v["pitch"] + lift) / 12)
     strong = k in ("e", "praise")  # 강한 튐은 감탄·칭찬에만
@@ -358,6 +363,9 @@ def cartoon_voice(y, sr, text, lang="KR", v=None):
     base = float(np.median(sts[fin][:3])) if fin.any() else 0.0
     if strong:
         base = max(base, -1.0)  # 감탄 말끝이 바닥에서 시작하지 않게
+    if k == "count":
+        base = 0.0  # 숫자 조각은 정해 둔 높이에서 (첫소리 높이를 따라가지 않게)
+        sts = st0 * v.get("count_rng", 0.5)
     rf, rfe = (v["RF"], v["RFE"]) if strong else (v["RFw"], v["RFEw"])
     shaped = np.empty(n)
     for i, (t, s0) in enumerate(zip(ts, sts)):
@@ -380,25 +388,92 @@ def cartoon_voice(y, sr, text, lang="KR", v=None):
         anchor = shaped[j]  # 말끝을 늘인 -s/-z 처럼 모음에서 멀어도 모음 높이를 잇는다
         out_st[i] = w[i] * shaped[i] + (1 - w[i]) * anchor
     out_st = _tidy(ts, out_st)
-    newpt = call("Create PitchTier", "p", snd.xmin, snd.xmax)
-    for t, st in zip(ts, out_st):
-        call(newpt, "Add point", float(t), float(target * 2 ** (lim(st) / 12)))
-    call([man, newpt], "Replace pitch tier")
+    new_hz = np.array([target * 2 ** (lim(st) / 12) for st in out_st])
 
     # 길이: f배로 빨라진 것을 되돌리고(×tempo 만큼 더 늘이고) 마지막 음절만 더 늘인다
     stretch = v["strx"] if k in ("q", "e", "praise") else 1.1
     d = f * v["tempo"] * (v["qslow"] if k == "q" else 1.0)
+    dur = [(t0, d), (max(t0, win0 - 0.03), d), (win0 + 0.04, d * stretch), (t1 + 0.05, d * stretch)]
+    if v.get("engine") == "world":
+        # 시간은 원래 소리 기준(snd 시간 × f), 길이 배율도 f 를 뺀 값
+        return _world_render(y, sr, f, ts * f, new_hz, [(t * f, x / f) for t, x in dur])
+    newpt = call("Create PitchTier", "p", snd.xmin, snd.xmax)
+    for t, h in zip(ts, new_hz):
+        call(newpt, "Add point", float(t), float(h))
+    call([man, newpt], "Replace pitch tier")
     dt = call("Create DurationTier", "d", snd.xmin, snd.xmax)
-    call(dt, "Add point", t0, d)
-    call(dt, "Add point", max(t0, win0 - 0.03), d)
-    call(dt, "Add point", win0 + 0.04, d * stretch)
-    call(dt, "Add point", t1 + 0.05, d * stretch)
+    for t, x in dur:
+        call(dt, "Add point", t, x)
     call([man, dt], "Replace duration tier")
     out = call(man, "Get resynthesis (overlap-add)")
     z = np.asarray(out.values[0], dtype=np.float64)
     num, den = 1000, int(round(1000 * f))  # 샘플링 주파수 sr*f → sr
     g = math.gcd(num, den)
     return resample_poly(z, num // g, den // g)
+
+
+def _world_render(y, sr, f, ts, hz, dur, fp=5.0):
+    """PSOLA 대신 WORLD(pyworld)로 다시 만든다: 펄스 자리 어긋남(버즈·튐)이 없다.
+    ts/hz: 원래 소리 시간 기준 새 높이, f: 포먼트 비율, dur: (원래 시간, 길이 배율) 점들"""
+    import pyworld as pw
+
+    x = np.ascontiguousarray(y, dtype=np.float64)
+    f0, t = pw.harvest(x, sr, f0_floor=70.0, f0_ceil=800.0, frame_period=fp)
+    sp = pw.cheaptrick(x, f0, t, sr)
+    ap = pw.d4c(x, f0, t, sr)
+    # 새 높이: 유성 프레임만 바꾼다 (무성은 0 그대로)
+    nf0 = np.where(f0 > 0, np.interp(t, ts, hz), 0.0)
+    # 포먼트: 주파수 축을 f 배로 늘인다
+    K = sp.shape[1]
+    src = np.arange(K) / f
+    sp = np.array([np.interp(src, np.arange(K), row) for row in sp])
+    ap = np.array([np.interp(src, np.arange(K), row) for row in ap])
+    # 길이: 배율을 적분해 출력 시간 → 원래 시간 대응표를 만든다
+    dts, dvs = zip(*dur)
+    rate = np.interp(t, dts, dvs)
+    out_t = np.concatenate([[0.0], np.cumsum(rate[:-1] * fp / 1000)])
+    grid = np.arange(0, out_t[-1] + 1e-9, fp / 1000)
+    src_idx = np.interp(grid, out_t, np.arange(len(t)))
+    i0 = np.floor(src_idx).astype(int)
+    i1 = np.minimum(i0 + 1, len(t) - 1)
+    w = (src_idx - i0)[:, None]
+    sp2 = (1 - w) * sp[i0] + w * sp[i1]
+    ap2 = (1 - w) * ap[i0] + w * ap[i1]
+    near = np.where(w[:, 0] < 0.5, i0, i1)
+    f02 = np.where((nf0[i0] > 0) & (nf0[i1] > 0), (1 - w[:, 0]) * nf0[i0] + w[:, 0] * nf0[i1], nf0[near])
+    z = pw.synthesize(np.ascontiguousarray(f02), np.ascontiguousarray(sp2), np.ascontiguousarray(ap2), sr, fp)
+    return np.asarray(z, dtype=np.float64)
+
+
+def _declick(y, sr):
+    """유성음(모음) 안의 순간 클릭만 고친다: 샘플 차분이 주변 10ms 평균의 12배를 넘는 곳 ±0.6ms 를 매끄럽게 잇는다.
+    (자음 터짐 소리는 유성음 밖이라 건드리지 않는다)"""
+    import parselmouth
+    from parselmouth.praat import call
+
+    y = np.asarray(y, dtype=np.float64).copy()
+    d = np.abs(np.diff(y))
+    w = int(0.01 * sr)
+    if len(d) < 3 * w:
+        return y
+    med = np.convolve(d, np.ones(w) / w, "same") + 1e-5
+    idx = np.where((d / med > 12) & (d > 0.02))[0]
+    if len(idx) == 0:
+        return y
+    snd = parselmouth.Sound(y, sampling_frequency=sr)
+    pt = call(snd, "To Pitch", 0.005, 75, 800)
+    it = call(snd, "To Intensity", 100, 0, "yes")
+    mx = call(it, "Get maximum", 0, 0, "Parabolic")
+    h = max(2, int(0.0006 * sr))
+    for i in idx:
+        tt = i / sr
+        f0 = call(pt, "Get value at time", tt, "Hertz", "linear")
+        iv = call(it, "Get value at time", tt, "cubic")
+        if not (f0 == f0 and iv == iv and iv > mx - 20):
+            continue
+        a, b = max(0, i - h), min(len(y) - 1, i + h + 1)
+        y[a:b + 1] = np.linspace(y[a], y[b], b - a + 1)
+    return y
 
 
 def warm(y, sr):
@@ -456,6 +531,7 @@ def process(y, sr, text, lang="KR"):
             break
         v.update(safer)
         z = cartoon_voice(y, sr, text, lang, v)
+    z = _declick(z - np.mean(z), sr)  # 직류 성분(DC)을 빼고, 모음 안 클릭을 고친다
     z = warm(z, sr)
     z = gentle_trim(z, sr)
     return normalize(z, sr)
