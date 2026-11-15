@@ -88,7 +88,7 @@ void main() {
         'lastGame': 'color',
         'lastStage': 2,
       });
-      expect(json['version'], 8);
+      expect(json['version'], SaveData.currentVersion);
       expect(json['language'], 'ko');
       final d = SaveData.fromJson(json);
       expect(d.language, 'ko');

@@ -697,4 +697,37 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get eye_errLoad => '눈 지킴이를 불러오지 못했어요';
+
+  @override
+  String get cameraNotice_title => '부모님께 알려 드려요';
+
+  @override
+  String get cameraNotice_body =>
+      '눈 지킴이는 화면과의 거리를 재려고 앞카메라를 써요. 영상은 저장하거나 기기 밖으로 보내지 않아요.';
+
+  @override
+  String get cameraNotice_detail =>
+      '아이가 화면에 너무 가까이 다가가면 잠깐 멈추고 알려 줘요. 허용 버튼을 누르면 기기가 카메라 사용 허락을 물어봐요.';
+
+  @override
+  String get cameraNotice_allow => '허용하고 시작';
+
+  @override
+  String get cameraNotice_allowSettings => '허용하고 켜기';
+
+  @override
+  String get cameraNotice_later => '나중에';
+
+  @override
+  String get cameraNotice_asking => '카메라 허락을 묻는 중';
+
+  @override
+  String get cameraNotice_laterDone => '눈 지킴이를 꺼 두었어요. 설정에서 언제든 다시 켤 수 있어요.';
+
+  @override
+  String get cameraNotice_deniedDone =>
+      '카메라를 쓸 수 없어서 눈 지킴이를 꺼 두었어요. 다른 놀이는 그대로 할 수 있어요. 기기 설정에서 카메라를 허용한 뒤 앱 설정에서 다시 켤 수 있어요.';
+
+  @override
+  String get cameraNotice_ok => '확인';
 }

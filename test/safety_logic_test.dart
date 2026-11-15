@@ -311,8 +311,8 @@ void main() {
   });
 
   group('저장 버전 6', () {
-    test('버전 번호는 8이고(v7: 또 하기, v8: 언어), 단계 목록 길이와 같다', () {
-      expect(SaveData.currentVersion, 8);
+    test('버전 번호는 9이고(v7: 또 하기, v8: 언어, v9: 카메라 안내), 단계 목록 길이와 같다', () {
+      expect(SaveData.currentVersion, 9);
       expect(SaveData.steps.length, SaveData.currentVersion);
     });
 
@@ -675,7 +675,7 @@ void main() {
       final c = FakeClock();
       final sensor = FakeSensor();
       final s = GameState(
-        storage: MemoryStorage(),
+        storage: MemoryStorage.noticeSeen(),
         audio: RecordingAudio(),
         eyeGuard: EyeGuard(sensor: sensor, now: c.call),
         now: c.call,

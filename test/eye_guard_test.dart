@@ -175,7 +175,7 @@ void main() {
     final sensor = FakeSensor();
     final audio = RecordingAudio();
     final s = GameState(
-      storage: MemoryStorage(),
+      storage: MemoryStorage.noticeSeen(),
       audio: audio,
       eyeGuard: EyeGuard(sensor: sensor, now: () => now),
     );

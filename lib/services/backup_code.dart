@@ -43,7 +43,10 @@ class BackupCode {
       ..remove('eyeCalibration')
       ..remove('playDay')
       ..remove('playSeconds')
-      ..remove('playBonusMin');
+      ..remove('playBonusMin')
+      // 카메라 안내·권한은 기기마다 다르다
+      ..remove('cameraNoticeSeen')
+      ..remove('cameraPermission');
     final body = base64Url
         .encode(utf8.encode(jsonEncode(json)))
         .replaceAll('=', '');

@@ -42,7 +42,7 @@ void main() {
   }) async {
     var now = DateTime(2026, 10, 21, 9);
     final s = GameState(
-      storage: MemoryStorage(),
+      storage: MemoryStorage.noticeSeen(),
       audio: RecordingAudio(),
       now: () => now,
       eyeGuard: eye,

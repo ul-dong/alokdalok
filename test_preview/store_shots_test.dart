@@ -101,6 +101,7 @@ void main() {
     final storage = MemoryStorage();
     storage.raw =
         (SaveData.decode(null)
+              ..cameraNoticeSeen = true
               ..coins = 120
               ..owned = {
                 for (final i in ItemCatalog.all)

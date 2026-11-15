@@ -13,6 +13,7 @@ import 'package:alokdalok/games/size_game/size_game_screen.dart';
 import 'package:alokdalok/l10n/l10n.dart';
 import 'package:alokdalok/l10n/phrases.dart';
 import 'package:alokdalok/screens/bag_screen.dart';
+import 'package:alokdalok/screens/camera_notice_screen.dart';
 import 'package:alokdalok/screens/character_screen.dart';
 import 'package:alokdalok/screens/home_screen.dart';
 import 'package:alokdalok/screens/nickname_screen.dart';
@@ -42,6 +43,7 @@ Future<GameState> l10nState(
 }) async {
   final storage = MemoryStorage();
   final d = SaveData.decode(null)
+    ..cameraNoticeSeen = true
     ..coins = 120
     ..language = code
     ..owned = {
@@ -162,6 +164,11 @@ final l10nScreens = <L10nScreen>[
   L10nScreen('settings_end', () => const SettingsScreen(), scroll: 5000),
   L10nScreen('nickname', () => const NicknameScreen(onboarding: true)),
   L10nScreen('zodiac', () => const ZodiacPickerScreen(onboarding: true)),
+  L10nScreen('camera_notice', () => CameraNoticeScreen(onDone: (_) {})),
+  L10nScreen(
+    'camera_notice_settings',
+    () => CameraNoticeScreen(fromSettings: true, onDone: (_) {}),
+  ),
   L10nScreen(
     'gate',
     () => Scaffold(

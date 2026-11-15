@@ -796,7 +796,7 @@ void main() {
       addTearDown(t.view.reset);
       final sensor = FakeSensor();
       final s = GameState(
-        storage: MemoryStorage(),
+        storage: MemoryStorage.noticeSeen(),
         audio: RecordingAudio(),
         eyeGuard: EyeGuard(sensor: sensor, now: clock),
         now: clock,
@@ -1051,7 +1051,7 @@ void main() {
       final sensor = FakeSensor();
       final audio = RecordingAudio();
       final s = GameState(
-        storage: MemoryStorage(),
+        storage: MemoryStorage.noticeSeen(),
         audio: audio,
         eyeGuard: EyeGuard(sensor: sensor, now: clock),
         now: clock,

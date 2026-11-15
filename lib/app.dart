@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'core/app_theme.dart';
 import 'core/slow_clock.dart';
 import 'l10n/l10n.dart';
+import 'screens/camera_notice_screen.dart';
 import 'screens/zodiac_picker_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/eye_guard.dart';
@@ -83,7 +84,7 @@ void _rebuildAll(BuildContext context) {
   (context as Element).visitChildren(mark);
 }
 
-/// 처음 실행이면 닉네임 화면, 아니면 메인 화면
+/// 처음 실행이면 부모님 카메라 안내 → 친구 고르기·이름 짓기, 아니면 메인 화면
 class RootGate extends StatelessWidget {
   const RootGate({super.key});
 
@@ -99,7 +100,13 @@ class RootGate extends StatelessWidget {
       kind: EyeScreen.child,
       child: AnimatedSwitcher(
         duration: RootGate.fadeDuration,
-        child: state.nicknameChosen
+        // 부모님 카메라 안내는 아이 화면보다 먼저 한 번 (끝나기 전에는 카메라를 열지 않는다)
+        child: state.cameraNoticeNeeded
+            ? CameraNoticeScreen(
+                key: const ValueKey('cameraNotice'),
+                onDone: state.answerCameraNotice,
+              )
+            : state.nicknameChosen
             ? const HomeScreen(key: ValueKey('home'))
             : const ZodiacPickerScreen(
                 key: ValueKey('onboarding'),

@@ -1339,6 +1339,66 @@ abstract class AppLocalizations {
   /// In ko, this message translates to:
   /// **'눈 지킴이를 불러오지 못했어요'**
   String get eye_errLoad;
+
+  /// 첫 실행 부모님 카메라 안내 제목 (글자만, 음성 없음)
+  ///
+  /// In ko, this message translates to:
+  /// **'부모님께 알려 드려요'**
+  String get cameraNotice_title;
+
+  /// No description provided for @cameraNotice_body.
+  ///
+  /// In ko, this message translates to:
+  /// **'눈 지킴이는 화면과의 거리를 재려고 앞카메라를 써요. 영상은 저장하거나 기기 밖으로 보내지 않아요.'**
+  String get cameraNotice_body;
+
+  /// No description provided for @cameraNotice_detail.
+  ///
+  /// In ko, this message translates to:
+  /// **'아이가 화면에 너무 가까이 다가가면 잠깐 멈추고 알려 줘요. 허용 버튼을 누르면 기기가 카메라 사용 허락을 물어봐요.'**
+  String get cameraNotice_detail;
+
+  /// No description provided for @cameraNotice_allow.
+  ///
+  /// In ko, this message translates to:
+  /// **'허용하고 시작'**
+  String get cameraNotice_allow;
+
+  /// 설정에서 눈 지킴이를 켤 때 같은 안내의 허용 버튼
+  ///
+  /// In ko, this message translates to:
+  /// **'허용하고 켜기'**
+  String get cameraNotice_allowSettings;
+
+  /// No description provided for @cameraNotice_later.
+  ///
+  /// In ko, this message translates to:
+  /// **'나중에'**
+  String get cameraNotice_later;
+
+  /// No description provided for @cameraNotice_asking.
+  ///
+  /// In ko, this message translates to:
+  /// **'카메라 허락을 묻는 중'**
+  String get cameraNotice_asking;
+
+  /// No description provided for @cameraNotice_laterDone.
+  ///
+  /// In ko, this message translates to:
+  /// **'눈 지킴이를 꺼 두었어요. 설정에서 언제든 다시 켤 수 있어요.'**
+  String get cameraNotice_laterDone;
+
+  /// No description provided for @cameraNotice_deniedDone.
+  ///
+  /// In ko, this message translates to:
+  /// **'카메라를 쓸 수 없어서 눈 지킴이를 꺼 두었어요. 다른 놀이는 그대로 할 수 있어요. 기기 설정에서 카메라를 허용한 뒤 앱 설정에서 다시 켤 수 있어요.'**
+  String get cameraNotice_deniedDone;
+
+  /// No description provided for @cameraNotice_ok.
+  ///
+  /// In ko, this message translates to:
+  /// **'확인'**
+  String get cameraNotice_ok;
 }
 
 class _AppLocalizationsDelegate

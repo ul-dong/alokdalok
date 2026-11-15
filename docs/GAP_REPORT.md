@@ -15,6 +15,7 @@
 | 짝 맞추기 짧게 (2026-10-22, match5) | `flutter test` **440개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **197개 통과** (game_match_1~5 × 568·844·1280, 결과 화면 5문제·3장) |
 | 홈·놀이터 진입 개선 (2026-11-13, home3) | `flutter test` **513개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **218개 통과** (홈 기록 있음·없음, 놀이터 568·844·1280, `playground_items.png`), 터치 칸 감사 통과. 문장 목록 1044 = manifest 1044 = mp3 1044 |
 | 렉·터치 점검 (2026-11-14, perf) | `flutter test` **540개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **225개 통과** (`settings_perf_diag_*` 렉·터치 진단 칸). 홈 1초 다시 그리기 2880 → 172 (`test/perf_test.dart`), 웹 얼굴 인식은 Web Worker(`web/eye_worker.js`), 웹 녹음 조각은 최근 48개만 풀어 둠 |
+| 부모님 카메라 안내 (2026-11-15, consent) | `flutter test` **786개 전부 통과** (`test/camera_notice_test.dart` 22개 추가), `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **430개 통과** (`shots/camera_notice_<ko·en>_<ask·later·denied·settings>_<568·844·1280>.png`, `l10n_<ko·en>_camera_notice*`). `flutter build apk --debug`, `flutter build ios --simulator` 성공 |
 | 점검 수정 (2026-10-22, release2) | `flutter test` **395개 전부 통과**, `flutter analyze` **0건**, `flutter test test_preview --update-goldens` **187개 통과**. 문장 목록 577 = manifest 577 = mp3 577 (14장) |
 | 기준선 `flutter test` (test/) | **120개 전부 통과** (소스상 `test`/`testWidgets` 72곳: state 33·widget 19·logic 14·eye_guard 6, 화면 크기 반복 포함 실행 120건). 사양 목표 142 |
 | 기준선 `flutter test test_preview` | 그대로 돌리면 9 통과 / 32 실패 (골든 비교: `shots/` 없음 + 저장된 PNG 픽셀 차이). 미리보기 생성기이므로 `--update-goldens`로 돌리면 **41개 전부 통과** |
@@ -24,6 +25,7 @@
 | 사양 | 상태 | 현재 코드 / 메모 |
 |---|---|---|
 | 첫 실행: 친구 고르기 → 이름 짓기 → 이후 홈 | 있음 | `lib/app.dart` RootGate, `screens/zodiac_picker_screen.dart`, `screens/nickname_screen.dart` |
+| 첫 실행 부모님 카메라 안내 → 그 뒤에 카메라 권한 (2026-11-15 사용자 결정) | 있음 | `screens/camera_notice_screen.dart`: 친구 고르기보다 **앞에** 한 번(설치하고 처음 여는 사람은 대개 부모님, 아이가 친구를 고른 뒤면 아이 혼자 누르기 쉬움), 글자만(음성·캐릭터 없음). [허용하고 시작] → `EyeGuard.requestAccess`가 이때 처음 카메라 창을 열어 OS·브라우저 권한 창을 띄움. [나중에]·거절 → 눈 지킴이만 끔(`eyeGuardOn=false`) + "설정에서 다시 켤 수 있어요" 안내, 다시 묻지 않음. 안내 전에는 `GameState._eyeEnabled`(= `eyeGuardOn && cameraNoticeSeen`)가 false라 카메라를 열지 않고, 안내 화면은 `EyeScreen.parent`. 설정에서 켤 때 안내로 허용한 적이 없으면 같은 안내([허용하고 켜기])를 다시 띄움. 눈 지킴이를 못 쓰는 기기(데스크톱 등)는 안내 없음. 저장 v9. `test/camera_notice_test.dart` |
 | 홈: 맨 위 큰 자리 "또 하기"(마지막 놀이·단계, 기록이 없으면 놀이터 가기), 아래 줄 놀이터 가기·내 캐릭터·꾸미기 상점 | 있음 (2026-11-13) | `screens/home_screen.dart`. 또 하기는 내 캐릭터 + 놀이 내용물 그림(`PlayItemPainter`), 누르면 말 없이 `gameScreen(kind, replayStage)`로 바로(잠겨 있으면 열린 단계 중 가장 높은 단계), 길게 누르면 "숫자 놀이야!". 마지막 놀이는 놀이 화면이 열릴 때 `GameState.rememberPlay`로 저장(`SaveData.lastGame/lastStage`, 저장 버전 7). 나머지 버튼은 누르면 이름을 말함. 내 가방(`bag_screen.dart`)은 홈에서 빠짐(내 캐릭터 화면이 같은 일을 함), 탈것 꾸미기는 내 캐릭터 → 탈것 탭에서 |
 | 홈 구석 작은 톱니바퀴 → 부모 확인 → 설정 | 있음 | 톱니바퀴(60px) → `confirmParent(context)`(트랙 C `widgets/parental_gate.dart`) 통과하면 설정 (`HomeScreen._openSettings`) |
 | 놀이터 화면 (놀이 내용물 그림 5개, 이름표, 깬 단계만큼 별, 내 캐릭터 서 있음) | 있음 (2026-11-13 그림 바꿈) | `screens/playground_screen.dart` + `playground_art.dart` `PlayItemPainter`(1·2·3 계단 미끄럼틀, 풍선 다발, 도형 블록, 큰 공·작은 공, 양말 한 켤레). 짧게 누르면 "숫자 놀이!" → 단계 고르기 → 놀이 |
@@ -123,7 +125,7 @@
 
 | 사양 | 상태 | 메모 |
 |---|---|---|
-| 기기 안에만 저장, 버전 번호 + 마이그레이션 | 있음 | `services/save_data.dart` **v7** (v6→v7: 홈 또 하기용 `lastGame`·`lastStage`, 예전 저장값은 기록 없음). `migrate()` = 버전 단계 목록 `SaveData.steps`(n→n+1) + 매번 도는 멱등 정리 단계 `SaveData.repairs`(트랙 D 탈것 정리 자리). `services/storage_service.dart` (직전 값 백업 키) |
+| 기기 안에만 저장, 버전 번호 + 마이그레이션 | 있음 | `services/save_data.dart` **v9** (v6→v7: 홈 또 하기용 `lastGame`·`lastStage`, 예전 저장값은 기록 없음. v7→v8: 언어. v8→v9: `cameraNoticeSeen`·`cameraPermission`, 예전 저장값은 이미 권한 창을 봤으므로 안내 본 것으로·권한 'unknown'. 이 두 값은 기기마다 달라 백업에 넣지 않고, 복구할 때 이 기기의 눈 지킴이 켜짐도 그대로 둔다). `migrate()` = 버전 단계 목록 `SaveData.steps`(n→n+1) + 매번 도는 멱등 정리 단계 `SaveData.repairs`(트랙 D 탈것 정리 자리). `services/storage_service.dart` (직전 값 백업 키) |
 | 없어진 탈것 스티커를 새 탈것으로 옮김 | 있음 | v3→v4 색깔별 탈것 통합 + `SaveData.repairs`의 자전거·킥보드 → 기차·열기구 (5장) |
 | 'ALOK1-' 백업 문자열 복사/붙여 넣기 복구 | 있음 | `services/backup_code.dart`: `ALOK1-<base64url JSON>-<FNV-1a 체크섬>`, 버전 검사(새 버전 거절·예전 버전 마이그레이션), 띄어쓰기 무시, 잘못된 글자는 이유와 함께 거절. 카메라 보정·오늘 논 시간은 빼고 백업 |
 
@@ -161,7 +163,7 @@
 |---|---|---|
 | 웹 `--base-href /alokdalok/ --no-web-resources-cdn`, 서비스 워커, MediaPipe 내장 | 있음 | `tool/build_web.sh`. Flutter 기본 SW는 자기 등록을 지우는 껍데기라 `web/offline_sw.js`(+`web/flutter_bootstrap.js`)로 교체, 파일 489개·47.6MB 미리 담음. 헤드리스 Chrome에서 서버를 끈 뒤 열리는 것 확인. 2026-10-22 다시 빌드 성공 (파일 624개, 48.5MB) |
 | 안드로이드 `install_and_build.command`, arm 전용(armeabi-v7a, arm64-v8a) | 있음 | 저장소 루트 스크립트(caffeinate). `abiFilters` + `disable-abi-filtering=true`. release 키는 `android/key.properties`(git 제외) + 비밀번호 직접 입력, 없으면 debug 키 |
-| Google Play 출시 준비 (AAB·targetSdk 36·권한·개인정보처리방침·스크린샷) | 있음 (2026-11-15) | `tool/build_android.sh`(AAB, 출시 키 없으면 멈춤, `--debug-signed`는 점검용), `build.gradle.kts` compileSdk·targetSdk 36·minSdk 24 고정, ABI에 x86_64 추가(크롬북), 매니페스트에서 INTERNET·RECORD_AUDIO·저장소·AD_ID 제거 + `camera.any` 선택 + `allowBackup=false` + Android 16 큰 화면 가로 유지 속성, `web/privacy.html`, `tool/store_shots.sh`(→ `tool/out/store_shots/`), `test_preview/insets_preview_test.dart`, `test/release_test.dart`. 콘솔 입력값·남은 일은 `docs/RELEASE.md` |
+| Google Play 출시 준비 (AAB·targetSdk 36·권한·개인정보처리방침·스크린샷) | 있음 (2026-11-15) | `tool/build_android.sh`(AAB, 출시 키 없으면 멈춤, `--debug-signed`는 점검용), `build.gradle.kts` compileSdk·targetSdk 36·minSdk 24 고정, ABI에 x86_64 추가(크롬북), 매니페스트에서 INTERNET·RECORD_AUDIO·저장소·AD_ID 제거 + `camera.any` 선택 + `allowBackup=false` + Android 16 큰 화면 가로 유지 속성, `web/privacy.html`, `tool/store_shots.sh`(→ `tool/out/store_shots/`), `test_preview/insets_preview_test.dart`, `test/release_test.dart`. 콘솔 입력값·남은 일은 `docs/RELEASE.md`. 2026-11-15: 데이터 안전성 B안(ML Kit 진단 정보 신고) 확정, 개인정보처리방침에 ML Kit 진단 정보 문장, 문의 연락처는 앱 전용 이메일 자리표시 `[앱 전용 문의 이메일 — 출시 전 입력]` |
 | ML Kit Play 서비스 버전(용량 줄이기) | 있음 | `com.google.mlkit:face-detection` 제외 → `play-services-mlkit-face-detection:17.1.0`, 매니페스트 `com.google.mlkit.vision.DEPENDENCIES=face`. APK 89.6MB → 42.0MB. 2026-10-22 arm 전용 release APK(debug 키 서명) **43.3MB** 빌드 성공 (armeabi-v7a, arm64-v8a) |
 | 음성 `gen_voice.command` | 있음 | `tool/gen_voice.command` (목록 내보내기 → 없는 문장만 `assets/voice`에 녹음, manifest 합치기). 2026-10-22 `~/alokdev/melo-venv`로 135문장 녹음(69초) |
 | 테스트 142개 | 있음 | 482개 (2026-11-13 발열 2단계 기준, 트랙 A `screens_test`, B `games_*_test`, C `safety_*_test`, D `vehicle_test`, 통합 `polish_test` 18개 등) |

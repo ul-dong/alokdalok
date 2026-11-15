@@ -765,6 +765,27 @@ class EyeGuard extends ChangeNotifier {
     if (identical(_stopping, done)) _stopping = null;
   }
 
+  /// 부모님 카메라 안내에서 [허용하고 시작]을 눌렀다: 이때 처음으로 기기(웹은 브라우저)의
+  /// 카메라 권한을 묻는다. 카메라 창을 한 번 열어 보면 OS가 권한 창을 띄우고(이미 허용했으면 그냥 열린다),
+  /// 거부·앞카메라 없음이면 [EyeSensorDenied]가 온다. 연 카메라는 바로 놓는다.
+  /// 그 밖의 오류(카메라가 잠깐 바쁨)는 권한 문제가 아니므로 허용으로 본다 (눈 지킴이가 다시 열어 본다).
+  Future<bool> requestAccess() async {
+    if (!supported) return false;
+    if (_running) return true; // 이미 카메라를 쓰고 있다
+    try {
+      await _sensor.sampleOnce(budget: EyeRules.windowBudget);
+      return true;
+    } on EyeSensorDenied catch (e) {
+      error = e.message;
+      notifyListeners();
+      return false;
+    } catch (_) {
+      return true;
+    } finally {
+      if (!_running) await _sensor.stop();
+    }
+  }
+
   /// 지금 얼굴 크기를 "30cm" 기준으로 저장 (부모님이 30cm 떨어진 곳에서 누른다)
   double? calibrateNow() {
     final r = _last;

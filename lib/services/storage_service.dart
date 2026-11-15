@@ -78,6 +78,12 @@ class PrefsStorage implements StorageService {
 
 /// 테스트용 메모리 저장소
 class MemoryStorage implements StorageService {
+  MemoryStorage();
+
+  /// 부모님 카메라 안내를 이미 지난 저장소 (눈 지킴이가 바로 켜지는 테스트용)
+  MemoryStorage.noticeSeen()
+    : raw = (SaveData.initial()..cameraNoticeSeen = true).encode();
+
   String? raw;
 
   @override

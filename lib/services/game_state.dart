@@ -170,8 +170,9 @@ class GameState extends ChangeNotifier {
       bonusMinutes: _d.playBonusMin,
     );
     eye.calibration = _d.eyeCalibration;
-    // 켜 두기만 하고, 카메라는 놀이 화면이 보일 때만 켠다 (EyeGuard.wanted)
-    eye.enabled = _d.eyeGuardOn;
+    // 켜 두기만 하고, 카메라는 아이 화면이 보일 때만 켠다 (EyeGuard.wanted).
+    // 첫 실행 부모님 안내를 보기 전에는 켜지 않는다 (카메라 권한 창이 먼저 뜨지 않게).
+    eye.enabled = _eyeEnabled;
     _loaded = true;
     notifyListeners();
   }
@@ -202,7 +203,38 @@ class GameState extends ChangeNotifier {
 
   Future<void> setEyeGuard(bool on) async {
     _d.eyeGuardOn = on;
-    eye.enabled = on;
+    eye.enabled = _eyeEnabled;
+    await _commit();
+  }
+
+  /// 눈 지킴이를 실제로 켤지: 설정이 켜져 있고, 부모님 카메라 안내를 지났을 때
+  bool get _eyeEnabled => _d.eyeGuardOn && _d.cameraNoticeSeen;
+
+  // ---------- 부모님 카메라 안내 (2026-11-15) ----------
+
+  /// 첫 실행에서 부모님 카메라 안내를 띄울지 (아직 안 봤고, 이 기기에서 눈 지킴이를 쓸 수 있을 때).
+  /// 이 안내가 끝나기 전에는 눈 지킴이가 카메라를 열지 않는다.
+  bool get cameraNoticeNeeded => !_d.cameraNoticeSeen && eye.supported;
+
+  /// 안내에서 고른 카메라 권한 결과 ('unknown' / 'granted' / 'denied' / 'later')
+  String get cameraPermission => _d.cameraPermission;
+
+  /// 설정에서 눈 지킴이를 켤 때 안내를 다시 보여 줄지 (안내로 허용한 적이 없으면)
+  bool get cameraNoticeBeforeEnable => _d.cameraPermission != 'granted';
+
+  /// [허용하고 시작]을 눌렀다: 이때 처음으로 카메라 권한을 묻는다. 허용되면 true.
+  /// 결과 저장은 [answerCameraNotice]가 한다 (거부 안내를 보여 준 뒤).
+  Future<bool> requestCamera() => eye.requestAccess();
+
+  /// 부모님 카메라 안내를 마쳤다. [answer]: 'granted'(허용), 'denied'(허용 안 함), 'later'(나중에).
+  /// 허용이면 눈 지킴이를 켜고, 아니면 눈 지킴이만 끈다(앱은 그대로). 다시 묻지 않고,
+  /// 부모님이 설정에서 켜면 안내를 다시 보여 준다.
+  Future<void> answerCameraNotice(String answer) async {
+    assert(const ['granted', 'denied', 'later'].contains(answer));
+    _d.cameraNoticeSeen = true;
+    _d.cameraPermission = answer;
+    _d.eyeGuardOn = answer == 'granted';
+    eye.enabled = _eyeEnabled;
     await _commit();
   }
 
@@ -577,7 +609,12 @@ class GameState extends ChangeNotifier {
       ..eyeCalibration = _d.eyeCalibration
       ..playDay = _d.playDay
       ..playSeconds = _d.playSeconds
-      ..playBonusMin = _d.playBonusMin;
+      ..playBonusMin = _d.playBonusMin
+      // 카메라 안내·권한은 이 기기 것. 눈 지킴이 켜짐도 이 기기의 권한을 따라야
+      // 안내 없이 권한 창이 뜨지 않으므로 이 기기 값을 그대로 쓴다.
+      ..cameraNoticeSeen = _d.cameraNoticeSeen
+      ..cameraPermission = _d.cameraPermission
+      ..eyeGuardOn = _d.eyeGuardOn;
     _d = data;
     _applyAudio();
     _applySafety();
@@ -589,7 +626,7 @@ class GameState extends ChangeNotifier {
   /// 저장값의 눈 보호 켜짐/꺼짐을 눈 지킴이에 알린다 (카메라는 필요할 때만 켜진다)
   void _applyEyeRunning() {
     eye.calibration = _d.eyeCalibration;
-    eye.enabled = _d.eyeGuardOn;
+    eye.enabled = _eyeEnabled;
   }
 
   /// 부모용: 모든 진행 기록 지우기

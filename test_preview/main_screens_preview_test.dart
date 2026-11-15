@@ -43,6 +43,7 @@ class _SceneSensor implements EyeSensor {
 Future<GameState> rich({EyeGuard? eye}) async {
   final storage = MemoryStorage();
   final d = SaveData.decode(null)
+    ..cameraNoticeSeen = true
     ..coins = 120
     ..owned = {
       for (final i in ItemCatalog.all)

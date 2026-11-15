@@ -285,7 +285,7 @@ void main() {
       face = at(60);
       sensor = FakeSensor(scene: () => face);
       s = GameState(
-        storage: MemoryStorage(),
+        storage: MemoryStorage.noticeSeen(),
         audio: RecordingAudio(),
         eyeGuard: EyeGuard(sensor: sensor, now: () => now),
         now: () => now,

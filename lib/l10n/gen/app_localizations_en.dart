@@ -714,4 +714,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eye_errLoad => 'Couldn\'t load Eye Guard';
+
+  @override
+  String get cameraNotice_title => 'A note for parents';
+
+  @override
+  String get cameraNotice_body =>
+      'Eye Guard uses the front camera to measure how far the screen is. The video is never saved or sent off the device.';
+
+  @override
+  String get cameraNotice_detail =>
+      'If your child gets too close, play pauses with a gentle reminder. When you tap Allow, your device will ask for camera access.';
+
+  @override
+  String get cameraNotice_allow => 'Allow and start';
+
+  @override
+  String get cameraNotice_allowSettings => 'Allow and turn on';
+
+  @override
+  String get cameraNotice_later => 'Later';
+
+  @override
+  String get cameraNotice_asking => 'Asking for the camera';
+
+  @override
+  String get cameraNotice_laterDone =>
+      'Eye Guard is off for now. You can turn it on anytime in Settings.';
+
+  @override
+  String get cameraNotice_deniedDone =>
+      'Eye Guard is off because the camera can\'t be used. Everything else works as usual. Allow the camera in your device settings, then turn Eye Guard on in the app\'s Settings.';
+
+  @override
+  String get cameraNotice_ok => 'OK';
 }

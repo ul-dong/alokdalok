@@ -56,11 +56,13 @@ class SaveData {
     this.lastGame,
     this.lastStage = 1,
     this.language = 'auto',
+    this.cameraNoticeSeen = false,
+    this.cameraPermission = 'unknown',
   }) : shapeStageCleared = shapeStageCleared ?? {},
        sizeStageCleared = sizeStageCleared ?? {},
        matchStageCleared = matchStageCleared ?? {};
 
-  static const int currentVersion = 8;
+  static const int currentVersion = 9;
 
   String nickname;
 
@@ -152,6 +154,19 @@ class SaveData {
 
   static const languages = ['auto', 'ko', 'en'];
 
+  /// 첫 실행 부모님 카메라 안내를 봤는지 (v9부터). 보기 전에는 눈 지킴이가 카메라를 열지 않는다.
+  /// 새로 설치하면 false, 예전 저장값(v8 이하)은 true: 그때는 첫 화면에서 바로 권한 창이 떴으므로
+  /// 이미 권한 창을 봤다고 보고 안내를 다시 띄우지 않는다.
+  /// 기기마다 다른 값(카메라 권한)이라 백업에는 넣지 않는다.
+  bool cameraNoticeSeen;
+
+  /// 안내에서 고른 카메라 권한 결과 (v9부터): [cameraPermissions] 중 하나.
+  /// 'unknown' = 안내로 묻지 않음(새 설치 전, 예전 저장값), 'granted' = 허용,
+  /// 'denied' = 허용하지 않음(앞카메라 없음 포함), 'later' = [나중에].
+  String cameraPermission;
+
+  static const cameraPermissions = ['unknown', 'granted', 'denied', 'later'];
+
   /// 가진 꾸미기 아이템 / 탈것 (둘 다 [owned]에 함께 저장)
   bool ownsVehicle(String id) => owned.contains(id) && Vehicles.exists(id);
 
@@ -228,6 +243,8 @@ class SaveData {
     'paints': paints,
     'voiceStyle': voiceStyle,
     'language': language,
+    'cameraNoticeSeen': cameraNoticeSeen,
+    'cameraPermission': cameraPermission,
   };
 
   String encode() => jsonEncode(toJson());
@@ -276,6 +293,7 @@ class SaveData {
     _v5to6,
     _v6to7,
     _v7to8,
+    _v8to9,
   ];
 
   /// 매번 도는 정리 단계 (버전과 무관, 멱등)
@@ -340,6 +358,15 @@ class SaveData {
   // 버전 7: 언어 선택(자동/한국어/English)이 생겼다. 이미 쓰던 사람은 기기 언어가 영어여도
   // 갑자기 바뀌지 않게 한국어로 둔다. 새로 설치하면 'auto'(기기 언어를 따름).
   static SaveJson _v7to8(SaveJson json) => {...json, 'language': 'ko'};
+
+  // 버전 8: 첫 실행 부모님 카메라 안내가 생겼다(2026-11-15). 예전 앱은 첫 화면에서 바로 카메라
+  // 권한 창을 띄웠으므로 이미 쓰던 사람은 권한 창을 본 것으로 보고 안내를 다시 띄우지 않는다
+  // (눈 지킴이 설정과 OS 권한은 그대로). 권한 결과는 안내로 묻지 않았으니 'unknown'.
+  static SaveJson _v8to9(SaveJson json) => {
+    ...json,
+    'cameraNoticeSeen': true,
+    'cameraPermission': 'unknown',
+  };
 
   /// 없어진 탈것을 [Vehicles.retired]의 새 탈것으로 옮긴다: 가진 탈것, 타는 탈것,
   /// 붙인 스티커(새 탈것에 이미 있으면 합침), 칠한 색, 그 탈것용으로 산 색('paint_x@bicycle').
@@ -593,6 +620,11 @@ class SaveData {
     d.voiceStyle = vs is String && voiceStyles.contains(vs) ? vs : 'pack';
     final lang = json['language'];
     d.language = lang is String && languages.contains(lang) ? lang : 'auto';
+    d.cameraNoticeSeen = json['cameraNoticeSeen'] == true;
+    final cam = json['cameraPermission'];
+    d.cameraPermission = cam is String && cameraPermissions.contains(cam)
+        ? cam
+        : 'unknown';
     return d;
   }
 

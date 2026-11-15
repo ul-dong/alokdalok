@@ -14,6 +14,7 @@ import '../services/play_clock.dart';
 import '../services/save_data.dart';
 import '../widgets/common.dart';
 import '../widgets/eye_guard_overlay.dart';
+import 'camera_notice_screen.dart';
 import 'nickname_screen.dart';
 
 // 부모님께 칸을 길게 누르면 열리는 개발 진단 칸 (한국어 전용, 번역하지 않는다)
@@ -630,6 +631,29 @@ class _HoldToResetState extends State<_HoldToReset> {
 class _EyeGuardCard extends StatelessWidget {
   const _EyeGuardCard();
 
+  /// 켤 때 안내로 허용한 적이 없으면(나중에·거부·예전 사용자) 부모님 카메라 안내를 다시 보여 주고
+  /// [허용하고 켜기]를 눌렀을 때만 카메라 권한을 묻는다.
+  static Future<void> _toggle(BuildContext context, bool on) async {
+    final state = AppScope.read(context);
+    if (!on || !state.cameraNoticeBeforeEnable) {
+      await state.setEyeGuard(on);
+      return;
+    }
+    await Navigator.of(context).push(
+      softRoute(
+        Builder(
+          builder: (ctx) => CameraNoticeScreen(
+            fromSettings: true,
+            onDone: (answer) {
+              state.answerCameraNotice(answer);
+              Navigator.of(ctx).pop();
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
@@ -667,7 +691,7 @@ class _EyeGuardCard extends StatelessWidget {
             // 다른 설정과 같은 모양의 켜기/끄기
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: eye.supported ? () => state.setEyeGuard(!on) : null,
+              onTap: eye.supported ? () => _toggle(context, !on) : null,
               child: _RowTile(
                 icon: on
                     ? Icons.visibility_rounded
